@@ -5,6 +5,176 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CrossWave — Go Global, One Stack</title>
   <meta name="description" content="CrossWave helps Chinese entrepreneurs, indie hackers, and startups go global with AI-powered content translation, SEO blog generation, and professional deployment services.">
+  <script>
+    let LANG = 'en';
+    function t(k) { return LANGS[LANG][k] || LANGS['en'][k] || k; }
+    function toggleLang() {
+      LANG = LANG === 'en' ? 'zh' : 'en';
+      document.getElementById('lang-toggle').textContent = LANG === 'en' ? '🇨🇳 中文' : '🇬🇧 English';
+      document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+      document.documentElement.lang = LANG;
+    }
+    const LANGS = {
+      en: {
+        badge: '✦ AI Globalization Stack — v1.0',
+        h1_1: 'Go Global.',
+        h1_2: 'One Stack. Zero Friction.',
+        hero_desc: 'CrossWave helps Chinese entrepreneurs, indie hackers, and startups take their content, products, and brands global. AI-powered translation, SEO content generation, and professional deployment — all in one platform.',
+        cta_free: '✦ Try CrossBridge Free',
+        explore: 'Explore Products',
+        trust_live: 'Live on Railway',
+        trust_products: 'Integrated Products',
+        trust_free: 'to Start',
+        trust_ai: 'Powered',
+        prods_title: 'Our Stack',
+        prods_desc: 'Three integrated products, one mission: help Chinese businesses succeed globally.',
+        bridge_title: 'CrossBridge',
+        bridge_desc: 'AI-powered CN→EN content localization. Paste Chinese text — get culturally-adapted English content for X, LinkedIn, and Reddit. Deep cultural adaptation, not robotic translation.',
+        bridge_f1: 'Analyze → Localize → Adapt pipeline',
+        bridge_f2: 'X/LinkedIn/Reddit native formatting',
+        bridge_f3: 'Token tracking & usage analytics',
+        bridge_f4: '$0.0004/run average cost',
+        blog_title: 'CrossBlog',
+        blog_desc: 'SEO-optimized blog post generator. Turn keywords into fully-written, culturally-adapted English content. Bulk generation, multi-platform ready.',
+        blog_f1: 'Keyword → Outline → Full post',
+        blog_f2: 'SEO-optimized structure',
+        blog_f3: 'Bulk generation API',
+        blog_f4: 'Ready for deployment',
+        deploy_title: 'CrossDeploy',
+        deploy_desc: 'Professional deployment and customization for your AI tools. From Docker to Railway, we handle the infrastructure so you focus on your product.',
+        deploy_f1: 'Docker + Railway deployment',
+        deploy_f2: 'Custom feature development',
+        deploy_f3: 'Performance optimization',
+        deploy_f4: 'Ongoing maintenance available',
+        pricing_title: 'Simple Pricing',
+        pricing_desc: 'Start free, scale as you grow. No hidden fees.',
+        plans_free: 'Free',
+        plans_starter: 'Starter',
+        plans_pro: 'Pro',
+        cta_get_started: 'Get Started',
+        cta_coming_soon: 'Coming Soon',
+        deploy_section: 'Deployment Services',
+        deploy_desc_main: 'Need help deploying your AI tools? We offer professional deployment, customization, and infrastructure management for Chinese entrepreneurs going global.',
+        deploy_p1: 'CrossBridge Deployment',
+        deploy_p1_desc: 'Full deployment of AI Content Bridge to your own server or cloud. Includes configuration, SSL, domain setup.',
+        deploy_p1_price: '¥2,000 (one-time)',
+        deploy_p2: 'Polsia Fork Deployment',
+        deploy_p2_desc: 'Deploy your own AI-automated company platform. 10 agents, Celery, Stripe, multi-tenant. Full customization available.',
+        deploy_p2_price: '¥5,000 (one-time)',
+        deploy_p3: 'Custom Development',
+        deploy_p3_desc: 'Need a custom AI tool built? We design, build, and deploy tailored solutions for your specific use case.',
+        deploy_p3_price: 'Contact for quote',
+        contact_title: 'Get In Touch',
+        contact_desc: 'Ready to start? Contact us for deployment inquiries, custom development, or partnership opportunities.',
+        contact_btn: 'Send Inquiry →',
+        contact_email: 'Email',
+        contact_email_placeholder: 'your@email.com',
+        contact_message: 'Message',
+        contact_message_placeholder: 'Tell us about your project...',
+        footer_text: 'Built for the global Chinese creator community. © 2026 CrossWave',
+        footer_github: 'GitHub',
+        footer_crossbridge: 'CrossBridge',
+        footer_polsia: 'Polsia Fork',
+        nav_products: 'Products',
+        nav_pricing: 'Pricing',
+        nav_contact: 'Contact',
+        pricing_free1: 'CrossBridge: 10 translations/mo',
+        pricing_free2: 'All platforms',
+        pricing_free3: 'Mock mode (no API key)',
+        pricing_free4: 'Basic support',
+        pricing_starter1: 'CrossBridge: 100 translations',
+        pricing_starter2: 'CrossBlog: 50 posts/mo',
+        pricing_starter3: '1 social account integration',
+        pricing_starter4: 'Direct publishing',
+        pricing_starter5: 'Email support',
+        pricing_pro1: 'CrossBridge: Unlimited',
+        pricing_pro2: 'CrossBlog: Unlimited',
+        pricing_pro3: 'All social platforms',
+        pricing_pro4: 'API access',
+        pricing_pro5: 'Priority support',
+        pricing_footnote: 'Need custom deployment? Contact us for a quote.',
+      },
+      zh: {
+        badge: '✦ AI 全球化技术栈 — v1.0',
+        h1_1: '走向全球。',
+        h1_2: '一个栈，零摩擦。',
+        hero_desc: 'CrossWave 帮助中国创业者、独立开发者和初创公司将内容、产品和品牌全球化。AI 翻译、SEO 内容生成和专业部署——全在一个平台。',
+        cta_free: '✦ 免费试用 CrossBridge',
+        explore: '探索产品',
+        trust_live: '已上线 Railway',
+        trust_products: '集成产品数',
+        trust_free: '免费开始',
+        trust_ai: 'AI 驱动',
+        prods_title: '产品栈',
+        prods_desc: '三个集成产品，一个使命：帮助中国企业走向全球。',
+        bridge_title: 'CrossBridge',
+        bridge_desc: 'AI 驱动的中文→英文内容本地化。粘贴中文，即可获得文化适配的英文内容，适用于 X、LinkedIn 和 Reddit。深度文化适配，非机器翻译。',
+        bridge_f1: '分析 → 本地化 → 适配流程',
+        bridge_f2: 'X/LinkedIn/Reddit 原生格式',
+        bridge_f3: '用量追踪和分析',
+        bridge_f4: '平均成本 $0.0004/次',
+        blog_title: 'CrossBlog',
+        blog_desc: 'SEO 优化的博客生成器。将关键词转化为完整、文化适配的英文内容。支持批量生成，多平台发布。',
+        blog_f1: '关键词 → 大纲 → 完整文章',
+        blog_f2: 'SEO 优化结构',
+        blog_f3: '批量生成 API',
+        blog_f4: '部署就绪',
+        deploy_title: 'CrossDeploy',
+        deploy_desc: 'AI 工具的专业部署和定制服务。从 Docker 到 Railway，我们处理基础设施，你专注产品。',
+        deploy_f1: 'Docker + Railway 部署',
+        deploy_f2: '定制功能开发',
+        deploy_f3: '性能优化',
+        deploy_f4: '持续维护支持',
+        pricing_title: '简单定价',
+        pricing_desc: '免费开始，随需升级。无隐藏费用。',
+        plans_free: '免费版',
+        plans_starter: '入门版',
+        plans_pro: '专业版',
+        cta_get_started: '开始使用',
+        cta_coming_soon: '即将上线',
+        deploy_section: '部署服务',
+        deploy_desc_main: '需要帮助部署你的 AI 工具？我们为出海创业者提供专业部署、定制和基础设施管理服务。',
+        deploy_p1: 'CrossBridge 部署',
+        deploy_p1_desc: '将 AI Content Bridge 完整部署到你的服务器或云平台。包含配置、SSL、域名设置。',
+        deploy_p1_price: '¥2,000（一次性）',
+        deploy_p2: 'Polsia Fork 部署',
+        deploy_p2_desc: '部署你自己的 AI 自动化公司平台。10 个代理、Celery、Stripe、多租户。支持完整定制。',
+        deploy_p2_price: '¥5,000（一次性）',
+        deploy_p3: '定制开发',
+        deploy_p3_desc: '需要定制 AI 工具？我们为你的特定需求设计、构建和部署定制解决方案。',
+        deploy_p3_price: '联系报价',
+        contact_title: '联系我们',
+        contact_desc: '准备好了吗？联系我们咨询部署、定制开发或合作机会。',
+        contact_btn: '发送咨询 →',
+        contact_email: '邮箱',
+        contact_email_placeholder: 'your@email.com',
+        contact_message: '留言',
+        contact_message_placeholder: '请描述您的项目需求...',
+        footer_text: '为中国出海创业者社区打造。© 2026 CrossWave',
+        footer_github: 'GitHub',
+        footer_crossbridge: 'CrossBridge',
+        footer_polsia: 'Polsia Fork',
+        nav_products: '产品',
+        nav_pricing: '定价',
+        nav_contact: '联系',
+        pricing_free1: 'CrossBridge: 10次翻译/月',
+        pricing_free2: '所有平台',
+        pricing_free3: '模拟模式（无需API密钥）',
+        pricing_free4: '基础支持',
+        pricing_starter1: 'CrossBridge: 100次翻译',
+        pricing_starter2: 'CrossBlog: 50篇文章/月',
+        pricing_starter3: '1个社交账号集成',
+        pricing_starter4: '直接发布',
+        pricing_starter5: '邮件支持',
+        pricing_pro1: 'CrossBridge: 无限',
+        pricing_pro2: 'CrossBlog: 无限',
+        pricing_pro3: '所有社交平台',
+        pricing_pro4: 'API 访问',
+        pricing_pro5: '优先支持',
+        pricing_footnote: '需要定制部署？联系我们获取报价。',
+      }
+    };
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -250,9 +420,10 @@
     <div class="nav-inner">
       <div class="logo"><span class="logo-mark">✦</span> CrossWave</div>
       <div class="nav-links">
-        <a href="#products">Products</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#contact">Contact</a>
+        <a href="#products" data-i18n="nav_products">Products</a>
+        <a href="#pricing" data-i18n="nav_pricing">Pricing</a>
+        <a href="#contact" data-i18n="nav_contact">Contact</a>
+        <a href="#" id="lang-toggle" onclick="toggleLang()" style="font-size:0.8rem;color:var(--text-dim)">🇨🇳 中文</a>
         <a href="https://ai-content-bridge-production.up.railway.app" class="nav-cta">Try CrossBridge →</a>
       </div>
     </div>
@@ -373,11 +544,52 @@
           <a href="https://ai-content-bridge-production.up.railway.app/pricing" class="pricing-cta">Coming Soon</a>
         </div>
       </div>
-      <p class="pricing-footnote">Need custom deployment? <a href="#contact" style="color:var(--accent)">Contact us</a> for a quote.</p>
+      <p class="pricing-footnote"><span data-i18n="pricing_footnote">Need custom deployment? Contact us for a quote.</span></p>
     </section>
 
-    <!-- ── CTA ── -->
+    <!-- ── Deployment Services ── -->
+    <section class="section" id="deploy">
+      <div class="section-header">
+        <h2 class="section-title" data-i18n="deploy_section">Deployment Services</h2>
+        <p class="section-subtitle" data-i18n="deploy_desc_main">Need help deploying your AI tools? We offer professional deployment, customization, and infrastructure management for Chinese entrepreneurs going global.</p>
+      </div>
+      <div class="products-grid">
+        <div class="product-card">
+          <h3 style="margin-top:0">🌉 <span data-i18n="deploy_p1">CrossBridge Deployment</span></h3>
+          <p class="desc" data-i18n="deploy_p1_desc">Full deployment of AI Content Bridge to your own server or cloud. Includes configuration, SSL, domain setup.</p>
+          <div style="margin-top:16px;font-size:1.2rem;font-weight:700;color:var(--accent)" data-i18n="deploy_p1_price">¥2,000 (one-time)</div>
+        </div>
+        <div class="product-card featured">
+          <h3 style="margin-top:0">🤖 <span data-i18n="deploy_p2">Polsia Fork Deployment</span></h3>
+          <p class="desc" data-i18n="deploy_p2_desc">Deploy your own AI-automated company platform. 10 agents, Celery, Stripe, multi-tenant. Full customization available.</p>
+          <div style="margin-top:16px;font-size:1.2rem;font-weight:700;color:var(--accent)" data-i18n="deploy_p2_price">¥5,000 (one-time)</div>
+        </div>
+        <div class="product-card">
+          <h3 style="margin-top:0">🔧 <span data-i18n="deploy_p3">Custom Development</span></h3>
+          <p class="desc" data-i18n="deploy_p3_desc">Need a custom AI tool built? We design, build, and deploy tailored solutions for your specific use case.</p>
+          <div style="margin-top:16px;font-size:1.2rem;font-weight:700;color:var(--accent)" data-i18n="deploy_p3_price">Contact for quote</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Contact ── -->
     <section class="cta-section" id="contact">
+      <h2 data-i18n="contact_title">Get In Touch</h2>
+      <p data-i18n="contact_desc">Ready to start? Contact us for deployment inquiries, custom development, or partnership opportunities.</p>
+      <div class="contact-form" style="max-width:480px;margin:0 auto;text-align:left">
+        <form action="#" onsubmit="return false">
+          <div class="form-group">
+            <label for="ce" style="font-size:0.8rem;font-weight:600;color:var(--text-dim);display:block;margin-bottom:6px" data-i18n="contact_email">Email</label>
+            <input id="ce" type="email" placeholder="your@email.com" style="width:100%;padding:12px 16px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:0.9rem;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor=''" data-i18n="placeholder" data-en="your@email.com" data-zh="your@email.com">
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label for="cm" style="font-size:0.8rem;font-weight:600;color:var(--text-dim);display:block;margin-bottom:6px" data-i18n="contact_message">Message</label>
+            <textarea id="cm" rows="4" placeholder="Tell us about your project..." style="width:100%;padding:12px 16px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:0.9rem;outline:none;resize:vertical;transition:border-color .2s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor=''" data-i18n="placeholder" data-en="Tell us about your project..." data-zh="请描述您的项目需求..."></textarea>
+          </div>
+          <button type="submit" style="margin-top:16px;width:100%;padding:12px;border-radius:var(--radius);background:var(--accent);color:white;border:none;font-weight:600;font-size:0.9rem;cursor:pointer;font-family:var(--font);transition:background .2s" onmouseover="this.style.background='var(--accent-hover)'" onmouseout="this.style.background='var(--accent)'" data-i18n="contact_btn">Send Inquiry →</button>
+        </form>
+      </div>
+    </section>
       <h2>Ready to Go Global?</h2>
       <p>Try CrossBridge free, then upgrade when you're ready. No credit card required.</p>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
