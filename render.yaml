@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: crosswave
+    env: docker
+    repo: https://github.com/guish7423/crosswave
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
