@@ -8,7 +8,7 @@ from os import environ
 class Settings:
     polsia_base_url: str = field(
         default_factory=lambda: environ.get(
-            "POLSIA_BASE_URL", "http://localhost:8001"
+            "POLSIA_BASE_URL", "http://localhost:8000"
         )
     )
     polsia_api_key: str = field(
