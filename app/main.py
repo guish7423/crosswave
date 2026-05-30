@@ -39,6 +39,7 @@ async def index(request: Request):
 async def dashboard(request: Request):
     summary = await polsia_client.get_dashboard_summary()
     agents = await polsia_client.get_agents_status()
+    activity = await polsia_client.get_activity(limit=15)
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -46,6 +47,7 @@ async def dashboard(request: Request):
             "request": request,
             "summary": summary if isinstance(summary, dict) else {},
             "agents": agents if isinstance(agents, list) else [],
+            "activity": activity if isinstance(activity, list) else [],
         },
     )
 
@@ -99,7 +101,43 @@ async def proxy_dashboard_summary():
     return HTMLResponse('<div class="disconnected">🔌 Polsia Fork unavailable</div>')
 
 
+@app.get("/api/v1/_proxy/dashboard/task-summary")
+async def proxy_task_summary():
+    data = await polsia_client.get_dashboard_summary()
+    if isinstance(data, dict):
+        return HTMLResponse(_render_task_summary(data))
+    return HTMLResponse('<div class="disconnected">🔌 Polsia Fork unavailable</div>')
+
+
 # ─── Render helpers ──────────────────────────────────────────────────────
+
+def _render_task_summary(s: dict) -> str:
+    pending = s.get("tasks_today_pending", 0) or 0
+    completed = s.get("tasks_today_completed", 0) or 0
+    failed = s.get("tasks_today_failed", 0) or 0
+    total = pending + completed + failed
+    if total == 0:
+        total = 1
+    pct_pending = (pending / total) * 100
+    pct_done = (completed / total) * 100
+    pct_failed = (failed / total) * 100
+    return f'''
+<div class="task-summary">
+  <div class="task-header">
+    <span>Tasks Today: <strong>{total}</strong></span>
+    <span class="task-legend">
+      <span><span class="dot dot-pending"></span> {pending} pending</span>
+      <span><span class="dot dot-done"></span> {completed} done</span>
+      <span><span class="dot dot-failed"></span> {failed} failed</span>
+    </span>
+  </div>
+  <div class="task-bar">
+    <div class="task-bar-seg pending" style="width:{pct_pending:.1f}%"></div>
+    <div class="task-bar-seg done" style="width:{pct_done:.1f}%"></div>
+    <div class="task-bar-seg failed" style="width:{pct_failed:.1f}%"></div>
+  </div>
+</div>'''
+
 
 def _render_stat_cards(s: dict) -> str:
     agents = s.get("active_agents", 0)
