@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CrossWave — Management Platform</title>
+  <title>CrossWave — Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <link rel="stylesheet" href="/static/style.css">
   <style>
     :root {
       --bg: oklch(0.99 0.002 260);
@@ -15,6 +17,7 @@
       --ink-dim: oklch(0.5 0.025 260);
       --accent: oklch(0.55 0.25 280);
       --green: oklch(0.55 0.2 160);
+      --red: oklch(0.6 0.2 20);
       --font: 'Inter', system-ui, sans-serif;
       --radius: 10px;
       --space: 8px;
@@ -22,25 +25,17 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: var(--font); background: var(--bg); color: var(--ink); line-height: 1.6; font-size: 14px; }
     .app { display: flex; min-height: 100vh; }
-    
-    /* Sidebar */
-    .sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: calc(var(--space) * 3); }
+    .sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: calc(var(--space) * 3); flex-shrink: 0; }
     .sidebar .logo { font-weight: 700; font-size: 16px; margin-bottom: calc(var(--space) * 4); }
     .nav-item { display: flex; align-items: center; gap: var(--space); padding: var(--space) calc(var(--space) * 2); border-radius: var(--radius); color: var(--ink-dim); font-weight: 500; margin-bottom: 2px; text-decoration: none; font-size: 13px; }
     .nav-item:hover, .nav-item.active { background: oklch(0.55 0.25 280 / 0.1); color: var(--accent); }
-    
-    /* Main */
     .main { flex: 1; padding: calc(var(--space) * 4); max-width: 1200px; }
     h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em; }
     .subtitle { color: var(--ink-dim); margin-bottom: calc(var(--space) * 4); font-size: 14px; }
-    
-    /* Stats grid */
     .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(var(--space) * 2); margin-bottom: calc(var(--space) * 4); }
     .stat-card { padding: calc(var(--space) * 3); border-radius: var(--radius); border: 1px solid var(--border); }
     .stat-card .num { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; }
     .stat-card .label { font-size: 12px; color: var(--ink-dim); margin-top: 4px; font-weight: 500; }
-    
-    /* Agent grid */
     .agent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--space) * 2); }
     .agent-card { padding: calc(var(--space) * 3); border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; gap: calc(var(--space)); }
     .agent-card .name { font-weight: 600; font-size: 14px; }
@@ -48,8 +43,11 @@
     .status-idle { color: var(--ink-dim); }
     .status-running { color: var(--accent); }
     .status-done { color: var(--green); }
+    .status-error { color: var(--red); }
     .agent-card .time { font-size: 11px; color: var(--ink-dim); }
-    
+    .disconnected { padding: calc(var(--space) * 4); text-align: center; color: var(--ink-dim); font-size: 13px; grid-column: 1 / -1; }
+    .skeleton { background: oklch(0.93 0.004 260); border-radius: var(--radius); animation: pulse 1.5s infinite; height: 80px; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     @media (max-width: 768px) { .stats { grid-template-columns: repeat(2, 1fr); } .agent-grid { grid-template-columns: 1fr; } .sidebar { display: none; } }
   </style>
 </head>
@@ -64,25 +62,56 @@
     <main class="main">
       <h1>Dashboard</h1>
       <p class="subtitle">Autonomous company operations — real-time status</p>
-      <div class="stats">
-        <div class="stat-card"><div class="num">10</div><div class="label">Active Agents</div></div>
-        <div class="stat-card"><div class="num">24</div><div class="label">Tasks Today</div></div>
-        <div class="stat-card"><div class="num">0</div><div class="label">Active Clients</div></div>
-        <div class="stat-card"><div class="num">¥0</div><div class="label">Revenue</div></div>
+
+      <div id="stat-cards" class="stats"
+           hx-get="/api/v1/_proxy/dashboard/summary"
+           hx-trigger="load, every:60s"
+           hx-swap="innerHTML"
+           hx-indicator="#stat-indicator">
+        {% if summary %}
+          {% macro stat_card(num, label) %}
+          <div class="stat-card"><div class="num">{{ num }}</div><div class="label">{{ label }}</div></div>
+          {% endmacro %}
+          {{ stat_card(summary.get("active_agents", 0), "Active Agents") }}
+          {{ stat_card(summary.get("tasks_today_total", 0), "Tasks Today") }}
+          {{ stat_card(summary.get("active_subscribers", 0), "Active Clients") }}
+          {% set cents = summary.get("mrr_cents", 0) | int %}
+          {{ stat_card("$" ~ (cents // 100) ~ "." ~ ("%02d" % (cents % 100)), "MRR") }}
+        {% else %}
+          <div class="disconnected">🔌 Polsia Fork unavailable</div>
+        {% endif %}
       </div>
+      <span id="stat-indicator" class="htmx-indicator" style="font-size:12px;color:var(--ink-dim);display:none">Refreshing...</span>
+
       <h2 style="font-size:16px;margin-bottom:12px;font-weight:600">Agent Status</h2>
-      <div class="agent-grid">
-        <div class="agent-card"><span class="name">👑 Orchestrator</span><span class="status status-running">● Running</span><span class="time">Last: 5m ago</span></div>
-        <div class="agent-card"><span class="name">📊 Business Planning</span><span class="status status-idle">○ Idle</span><span class="time">Last: 1h ago</span></div>
-        <div class="agent-card"><span class="name">🔍 Competitor Research</span><span class="status status-idle">○ Idle</span><span class="time">Last: 2h ago</span></div>
-        <div class="agent-card"><span class="name">📱 Social Media</span><span class="status status-done">✓ Done</span><span class="time">Last: 30m ago</span></div>
-        <div class="agent-card"><span class="name">✉️ Email Outreach</span><span class="status status-idle">○ Idle</span><span class="time">Last: 3h ago</span></div>
-        <div class="agent-card"><span class="name">📢 Ads Management</span><span class="status status-idle">○ Idle</span><span class="time">Last: 4h ago</span></div>
-        <div class="agent-card"><span class="name">💬 Customer Support</span><span class="status status-idle">○ Idle</span><span class="time">Last: 1h ago</span></div>
-        <div class="agent-card"><span class="name">💻 Code Generation</span><span class="status status-done">✓ Done</span><span class="time">Last: 15m ago</span></div>
-        <div class="agent-card"><span class="name">💰 Finance</span><span class="status status-idle">○ Idle</span><span class="time">Last: 6h ago</span></div>
-        <div class="agent-card"><span class="name">🚀 Deployment</span><span class="status status-done">✓ Done</span><span class="time">Last: 2h ago</span></div>
+      <div id="agent-cards" class="agent-grid"
+           hx-get="/api/v1/_proxy/agents/status"
+           hx-trigger="load, every:30s"
+           hx-swap="innerHTML"
+           hx-indicator="#agent-indicator">
+        {% if agents %}
+          {% for a in agents %}
+          <div class="agent-card">
+            {% set emoji = {"orchestrator":"👑","business_planning":"📊","competitor_research":"🔍","social_media":"📱","email_outreach":"✉️","customer_support":"💬","ads_management":"📢","code_generation":"💻","finance":"💰","deployment":"🚀"}.get(a.get("agent_type",""), "🤖") %}
+            <span class="name">{{ emoji }} {{ a.get("name", a.get("agent_type", "Unknown")) }}</span>
+            {% set s = a.get("status", "idle") %}
+            {% if s == "running" %}
+              <span class="status status-running">● Running</span>
+            {% elif s == "done" %}
+              <span class="status status-done">✓ Done</span>
+            {% elif s == "error" %}
+              <span class="status status-error">✗ Error</span>
+            {% else %}
+              <span class="status status-idle">○ Idle</span>
+            {% endif %}
+            <span class="time">Last: {{ a.get("last_run", "never") }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="disconnected">🔌 Polsia Fork unavailable</div>
+        {% endif %}
       </div>
+      <span id="agent-indicator" class="htmx-indicator" style="font-size:12px;color:var(--ink-dim);display:none">Refreshing...</span>
     </main>
   </div>
 </body>
