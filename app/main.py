@@ -10,7 +10,10 @@ from fastapi.templating import Jinja2Templates
 from app.services.polsia_client import polsia_client
 
 BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+# Landing page (index.html) source of truth is at project root
+templates_root = Jinja2Templates(directory=str(PROJECT_ROOT))
 
 
 @asynccontextmanager
@@ -31,8 +34,8 @@ except RuntimeError:
 # ─── Page routes ──────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html", {"request": request})
+async def landing(request: Request):
+    return templates_root.TemplateResponse(request, "index.html", {"request": request})
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
