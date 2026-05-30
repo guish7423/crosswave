@@ -1,5 +1,5 @@
 """CrossWave — Unified Management Platform"""
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -25,10 +25,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="CrossWave", version="0.3.0", lifespan=lifespan)
 
-try:
+with suppress(RuntimeError):
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-except RuntimeError:
-    pass
 
 
 # ─── Page routes ──────────────────────────────────────────────────────────
