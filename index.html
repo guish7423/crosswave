@@ -4,207 +4,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CrossWave — Go Global, One Stack</title>
-  <meta name="description" content="CrossWave helps Chinese entrepreneurs, indie hackers, and startups go global with AI-powered content translation, SEO blog generation, and professional deployment services.">
-  <script>
-    let LANG = 'en';
-    function t(k) { return LANGS[LANG][k] || LANGS['en'][k] || k; }
-    function toggleLang() {
-      LANG = LANG === 'en' ? 'zh' : 'en';
-      document.getElementById('lang-toggle').textContent = LANG === 'en' ? '🇨🇳 中文' : '🇬🇧 English';
-      document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
-      document.documentElement.lang = LANG;
-    }
-    const LANGS = {
-      en: {
-        badge: '✦ AI Globalization Stack — v1.0',
-        h1_1: 'Go Global.',
-        h1_2: 'One Stack. Zero Friction.',
-        hero_desc: 'CrossWave helps Chinese entrepreneurs, indie hackers, and startups take their content, products, and brands global. AI-powered translation, SEO content generation, and professional deployment — all in one platform.',
-        cta_free: '✦ Try CrossBridge Free',
-        explore: 'Explore Products',
-        trust_live: 'Live on Railway',
-        trust_products: 'Integrated Products',
-        trust_free: 'to Start',
-        trust_ai: 'Powered',
-        prods_title: 'Our Stack',
-        prods_desc: 'Three integrated products, one mission: help Chinese businesses succeed globally.',
-        bridge_title: 'CrossBridge',
-        bridge_desc: 'AI-powered CN→EN content localization. Paste Chinese text — get culturally-adapted English content for X, LinkedIn, and Reddit. Deep cultural adaptation, not robotic translation.',
-        bridge_f1: 'Analyze → Localize → Adapt pipeline',
-        bridge_f2: 'X/LinkedIn/Reddit native formatting',
-        bridge_f3: 'Token tracking & usage analytics',
-        bridge_f4: '$0.0004/run average cost',
-        blog_title: 'CrossBlog',
-        blog_desc: 'SEO-optimized blog post generator. Turn keywords into fully-written, culturally-adapted English content. Bulk generation, multi-platform ready.',
-        blog_f1: 'Keyword → Outline → Full post',
-        blog_f2: 'SEO-optimized structure',
-        blog_f3: 'Bulk generation API',
-        blog_f4: 'Ready for deployment',
-        deploy_title: 'CrossDeploy',
-        deploy_desc: 'Professional deployment and customization for your AI tools. From Docker to Railway, we handle the infrastructure so you focus on your product.',
-        deploy_f1: 'Docker + Railway deployment',
-        deploy_f2: 'Custom feature development',
-        deploy_f3: 'Performance optimization',
-        deploy_f4: 'Ongoing maintenance available',
-        pricing_title: 'Simple Pricing',
-        pricing_desc: 'Start free, scale as you grow. No hidden fees.',
-        plans_free: 'Free',
-        plans_starter: 'Starter',
-        plans_pro: 'Pro',
-        cta_get_started: 'Get Started',
-        cta_coming_soon: 'Coming Soon',
-        deploy_section: 'Deployment Services',
-        deploy_desc_main: 'Need help deploying your AI tools? We offer professional deployment, customization, and infrastructure management for Chinese entrepreneurs going global.',
-        deploy_p1: 'CrossBridge Deployment',
-        deploy_p1_desc: 'Full deployment of AI Content Bridge to your own server or cloud. Includes configuration, SSL, domain setup.',
-        deploy_p1_price: '¥2,000 (one-time)',
-        deploy_p2: 'Polsia Fork Deployment',
-        deploy_p2_desc: 'Deploy your own AI-automated company platform. 10 agents, Celery, Stripe, multi-tenant. Full customization available.',
-        deploy_p2_price: '¥5,000 (one-time)',
-        deploy_p3: 'Custom Development',
-        deploy_p3_desc: 'Need a custom AI tool built? We design, build, and deploy tailored solutions for your specific use case.',
-        deploy_p3_price: 'Contact for quote',
-        contact_title: 'Get In Touch',
-        contact_desc: 'Ready to start? Contact us for deployment inquiries, custom development, or partnership opportunities.',
-        contact_btn: 'Send Inquiry →',
-        contact_email: 'Email',
-        contact_email_placeholder: 'your@email.com',
-        contact_message: 'Message',
-        contact_message_placeholder: 'Tell us about your project...',
-        footer_text: 'Built for the global Chinese creator community. © 2026 CrossWave',
-        footer_github: 'GitHub',
-        footer_crossbridge: 'CrossBridge',
-        footer_polsia: 'Polsia Fork',
-        nav_products: 'Products',
-        nav_pricing: 'Pricing',
-        nav_contact: 'Contact',
-        pricing_free1: 'CrossBridge: 10 translations/mo',
-        pricing_free2: 'All platforms',
-        pricing_free3: 'Mock mode (no API key)',
-        pricing_free4: 'Basic support',
-        pricing_starter1: 'CrossBridge: 100 translations',
-        pricing_starter2: 'CrossBlog: 50 posts/mo',
-        pricing_starter3: '1 social account integration',
-        pricing_starter4: 'Direct publishing',
-        pricing_starter5: 'Email support',
-        pricing_pro1: 'CrossBridge: Unlimited',
-        pricing_pro2: 'CrossBlog: Unlimited',
-        pricing_pro3: 'All social platforms',
-        pricing_pro4: 'API access',
-        pricing_pro5: 'Priority support',
-        pricing_footnote: 'Need custom deployment? Contact us for a quote.',
-      },
-      zh: {
-        badge: '✦ AI 全球化技术栈 — v1.0',
-        h1_1: '走向全球。',
-        h1_2: '一个栈，零摩擦。',
-        hero_desc: 'CrossWave 帮助中国创业者、独立开发者和初创公司将内容、产品和品牌全球化。AI 翻译、SEO 内容生成和专业部署——全在一个平台。',
-        cta_free: '✦ 免费试用 CrossBridge',
-        explore: '探索产品',
-        trust_live: '已上线 Railway',
-        trust_products: '集成产品数',
-        trust_free: '免费开始',
-        trust_ai: 'AI 驱动',
-        prods_title: '产品栈',
-        prods_desc: '三个集成产品，一个使命：帮助中国企业走向全球。',
-        bridge_title: 'CrossBridge',
-        bridge_desc: 'AI 驱动的中文→英文内容本地化。粘贴中文，即可获得文化适配的英文内容，适用于 X、LinkedIn 和 Reddit。深度文化适配，非机器翻译。',
-        bridge_f1: '分析 → 本地化 → 适配流程',
-        bridge_f2: 'X/LinkedIn/Reddit 原生格式',
-        bridge_f3: '用量追踪和分析',
-        bridge_f4: '平均成本 $0.0004/次',
-        blog_title: 'CrossBlog',
-        blog_desc: 'SEO 优化的博客生成器。将关键词转化为完整、文化适配的英文内容。支持批量生成，多平台发布。',
-        blog_f1: '关键词 → 大纲 → 完整文章',
-        blog_f2: 'SEO 优化结构',
-        blog_f3: '批量生成 API',
-        blog_f4: '部署就绪',
-        deploy_title: 'CrossDeploy',
-        deploy_desc: 'AI 工具的专业部署和定制服务。从 Docker 到 Railway，我们处理基础设施，你专注产品。',
-        deploy_f1: 'Docker + Railway 部署',
-        deploy_f2: '定制功能开发',
-        deploy_f3: '性能优化',
-        deploy_f4: '持续维护支持',
-        pricing_title: '简单定价',
-        pricing_desc: '免费开始，随需升级。无隐藏费用。',
-        plans_free: '免费版',
-        plans_starter: '入门版',
-        plans_pro: '专业版',
-        cta_get_started: '开始使用',
-        cta_coming_soon: '即将上线',
-        deploy_section: '部署服务',
-        deploy_desc_main: '需要帮助部署你的 AI 工具？我们为出海创业者提供专业部署、定制和基础设施管理服务。',
-        deploy_p1: 'CrossBridge 部署',
-        deploy_p1_desc: '将 AI Content Bridge 完整部署到你的服务器或云平台。包含配置、SSL、域名设置。',
-        deploy_p1_price: '¥2,000（一次性）',
-        deploy_p2: 'Polsia Fork 部署',
-        deploy_p2_desc: '部署你自己的 AI 自动化公司平台。10 个代理、Celery、Stripe、多租户。支持完整定制。',
-        deploy_p2_price: '¥5,000（一次性）',
-        deploy_p3: '定制开发',
-        deploy_p3_desc: '需要定制 AI 工具？我们为你的特定需求设计、构建和部署定制解决方案。',
-        deploy_p3_price: '联系报价',
-        contact_title: '联系我们',
-        contact_desc: '准备好了吗？联系我们咨询部署、定制开发或合作机会。',
-        contact_btn: '发送咨询 →',
-        contact_email: '邮箱',
-        contact_email_placeholder: 'your@email.com',
-        contact_message: '留言',
-        contact_message_placeholder: '请描述您的项目需求...',
-        footer_text: '为中国出海创业者社区打造。© 2026 CrossWave',
-        footer_github: 'GitHub',
-        footer_crossbridge: 'CrossBridge',
-        footer_polsia: 'Polsia Fork',
-        nav_products: '产品',
-        nav_pricing: '定价',
-        nav_contact: '联系',
-        pricing_free1: 'CrossBridge: 10次翻译/月',
-        pricing_free2: '所有平台',
-        pricing_free3: '模拟模式（无需API密钥）',
-        pricing_free4: '基础支持',
-        pricing_starter1: 'CrossBridge: 100次翻译',
-        pricing_starter2: 'CrossBlog: 50篇文章/月',
-        pricing_starter3: '1个社交账号集成',
-        pricing_starter4: '直接发布',
-        pricing_starter5: '邮件支持',
-        pricing_pro1: 'CrossBridge: 无限',
-        pricing_pro2: 'CrossBlog: 无限',
-        pricing_pro3: '所有社交平台',
-        pricing_pro4: 'API 访问',
-        pricing_pro5: '优先支持',
-        pricing_footnote: '需要定制部署？联系我们获取报价。',
-      }
-    };
-  </script>
+  <meta name="description" content="CrossWave helps Chinese entrepreneurs go global with AI-powered content translation, SEO blog generation, and deployment services.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* ── Tokens ── */
     :root {
-      --bg: #ffffff;
-      --surface: #f8f9fb;
-      --surface-hover: #f0f1f5;
-      --border: #e2e5ec;
-      --text: #1a1d26;
-      --text-dim: #6b7280;
-      --accent: #6366f1;
-      --accent-rgb: 99, 102, 241;
-      --accent-hover: #4f46e5;
-      --accent-glow: rgba(99, 102, 241, 0.1);
-      --green: #059669;
-      --cyan: #0891b2;
-      --orange: #d97706;
-      --radius: 10px;
-      --radius-lg: 16px;
-      --radius-xl: 24px;
-      --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
-      --font-body: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
+      /* OKLCH color palette — tinted cool grays */
+      --bg: oklch(0.99 0.002 260);
+      --surface: oklch(0.97 0.004 260);
+      --surface-hover: oklch(0.94 0.006 260);
+      --border: oklch(0.91 0.008 260);
+      --ink: oklch(0.18 0.02 260);
+      --ink-dim: oklch(0.5 0.025 260);
+      --ink-muted: oklch(0.65 0.02 260);
+      --accent: oklch(0.55 0.25 280);
+      --accent-hover: oklch(0.5 0.25 280);
+      --green: oklch(0.55 0.2 160);
+      --cyan: oklch(0.5 0.18 230);
+      --font: 'Inter', system-ui, sans-serif;
       --mono: 'SF Mono', 'Fira Code', monospace;
-      --space-4: 16px; --space-8: 32px; --space-12: 48px; --space-16: 64px;
-      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-      /* Type scale (1.250) */
-      --text-xs: 0.75rem;
-      --text-sm: 0.875rem;
+      /* 8px spacing system */
+      --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+      --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+      --space-12: 48px; --space-16: 64px; --space-20: 80px; --space-24: 96px;
+      /* Type scale 1.25 */
+      --text-xs: 0.8125rem;
+      --text-sm: 0.9375rem;
       --text-base: 1rem;
       --text-lg: 1.125rem;
       --text-xl: 1.25rem;
@@ -212,223 +38,159 @@
       --text-3xl: 2rem;
       --text-4xl: 2.5rem;
       --text-5xl: 3.25rem;
+      /* Radii */
+      --radius: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      /* Z-index */
+      --z-nav: 50;
+      --z-modal: 100;
+      --z-toast: 200;
+      /* Shadows */
+      --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.05);
+      --shadow-md: 0 4px 12px oklch(0 0 0 / 0.08);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
-      font-family: var(--font-body);
+      font-family: var(--font);
       background: var(--bg);
-      color: var(--text);
+      color: var(--ink);
       line-height: 1.6;
       font-size: var(--text-base);
       -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
     }
-    h1, h2, h3, h4, h5 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
-    p { line-height: 1.7; }
+    h1, h2, h3 { font-weight: 700; line-height: 1.25; letter-spacing: -0.02em; }
+    p { color: var(--ink-dim); line-height: 1.65; max-width: 65ch; }
     a { color: inherit; text-decoration: none; }
-    img { max-width: 100%; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 var(--space-6); }
 
     /* ── Nav ── */
     nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 32px;
-      background: rgba(255,255,255,0.9);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-nav);
+      background: oklch(0.99 0.002 260 / 0.85);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
     }
-    .nav-inner { max-width: 1200px; width: 100%; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
-    .logo { font-weight: 800; font-size: 1.25rem; display: flex; align-items: center; gap: 10px; letter-spacing: -0.02em; }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 var(--space-6); height: 56px;
+    }
+    .logo { font-weight: 700; font-size: var(--text-lg); display: flex; align-items: center; gap: var(--space-2); }
     .logo-mark {
-      width: 32px; height: 32px; border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), var(--cyan));
-      display: flex; align-items: center; justify-content: center; font-size: 1rem;
+      width: 28px; height: 28px; border-radius: var(--radius);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--accent); font-weight: 800; font-size: var(--text-sm);
     }
-    .nav-links { display: flex; gap: 28px; align-items: center; }
-    .nav-links a { color: var(--text-dim); font-size: 0.875rem; font-weight: 500; transition: color .2s; }
-    .nav-links a:hover { color: var(--text); }
+    .nav-links { display: flex; align-items: center; gap: var(--space-6); }
+    .nav-links a { font-size: var(--text-sm); color: var(--ink-dim); transition: color .15s; font-weight: 500; }
+    .nav-links a:hover { color: var(--ink); }
     .nav-cta {
-      padding: 8px 20px; border-radius: 9999px; background: var(--accent); color: white !important;
-      font-weight: 600; font-size: 0.8125rem; transition: background .2s, transform .2s var(--ease-out);
+      padding: 6px 16px; border-radius: 9999px; background: var(--accent);
+      color: white !important; font-weight: 600; font-size: var(--text-xs);
+      transition: background .15s;
     }
-    .nav-cta:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .nav-cta:hover { background: var(--accent-hover) !important; }
 
     /* ── Hero ── */
     .hero {
-      text-align: center; padding: 180px 24px 80px;
-      max-width: 800px; margin: 0 auto;
-      position: relative;
+      padding: var(--space-24) var(--space-6) var(--space-12);
+      max-width: 720px; margin: 0 auto; text-align: center;
     }
-    .hero::before {
-      content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 600px; height: 600px;
-      background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%);
-      pointer-events: none;
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.25rem); margin-bottom: var(--space-4); color: var(--ink); }
+    .hero p { font-size: var(--text-lg); margin: 0 auto var(--space-8); color: var(--ink-dim); }
+    .hero-actions { display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: var(--space-2);
+      padding: var(--space-3) var(--space-6); border-radius: var(--radius-lg);
+      font-weight: 600; font-size: var(--text-sm); transition: all .15s;
     }
-    .hero-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 16px; border-radius: 9999px;
-      background: var(--accent-glow); border: 1px solid rgba(124,58,237,0.25);
-      font-size: 0.8125rem; font-weight: 600; color: var(--accent);
-      margin-bottom: 28px; letter-spacing: 0.01em;
-    }
-    .hero h1 {
-      font-size: 3.5rem; font-weight: 800; line-height: 1.1;
-      letter-spacing: -0.03em; margin-bottom: 24px; position: relative;
-    }
-    .hero .gradient {
-      background: linear-gradient(135deg, #1a1d26, var(--accent), var(--cyan));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .hero p {
-      font-size: 1.125rem; color: var(--text-dim);
-      max-width: 600px; margin: 0 auto 36px; line-height: 1.7;
-    }
-    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .btn-primary {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 14px 32px; border-radius: var(--radius);
-      background: var(--accent); color: white; font-weight: 600; font-size: 0.9375rem;
-      transition: background .2s, transform .2s var(--ease-out);
-    }
-    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-2px); }
-    .btn-secondary {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 14px 32px; border-radius: var(--radius);
-      background: var(--surface); color: var(--text); font-weight: 600; font-size: 0.9375rem;
-      border: 1px solid var(--border);
-      transition: border-color .2s, transform .2s var(--ease-out);
-    }
-    .btn-secondary:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { border: 1px solid var(--border); color: var(--ink); }
+    .btn-secondary:hover { border-color: var(--ink); }
 
-    /* ── Trust Bar ── */
+    /* ── Trust ── */
     .trust-bar {
-      display: flex; justify-content: center; gap: 48px; flex-wrap: wrap;
-      padding: 32px 24px; margin-top: 32px;
+      display: flex; justify-content: center; gap: var(--space-10); flex-wrap: wrap;
+      padding: var(--space-8) 0; margin-top: var(--space-10);
+      color: var(--ink-muted); font-size: var(--text-sm); font-weight: 500;
     }
-    .trust-item { display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 0.875rem; font-weight: 500; }
-    .trust-item .num { color: var(--text); font-weight: 700; }
 
     /* ── Section ── */
-    .section { padding: 100px 24px; max-width: 1200px; margin: 0 auto; }
-    .section-header { text-align: center; margin-bottom: var(--space-12); }
-    .section-title {
-      font-size: 2.25rem; font-weight: 700; letter-spacing: -0.02em;
-      margin-bottom: 12px;
-    }
-    .section-subtitle {
-      color: var(--text-dim); font-size: 1.0625rem; max-width: 600px; margin: 0 auto;
-    }
+    .section { padding: var(--space-20) var(--space-6); }
+    .section-title { font-size: var(--text-3xl); margin-bottom: var(--space-3); }
+    .section-subtitle { font-size: var(--text-lg); margin-bottom: var(--space-10); max-width: 600px; }
 
-    /* ── Products Grid ── */
-    .products-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+    /* ── Products ── */
+    .products { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+    .product {
+      padding: var(--space-8); border-radius: var(--radius-xl);
+      border: 1px solid var(--border); transition: border-color .2s;
     }
-    .product-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: var(--space-8) 28px;
-      transition: border-color .3s, transform .3s var(--ease-out);
-      display: flex; flex-direction: column;
-    }
-    .product-card:hover { border-color: var(--accent); transform: translateY(-4px); }
-    .product-card.featured { border-color: rgba(124,58,237,0.3); }
-    .product-icon { width: 48px; height: 48px; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px; }
-    .icon-bridge { background: rgba(6,182,212,0.12); }
-    .icon-blog { background: rgba(245,158,11,0.12); }
-    .icon-deploy { background: rgba(16,185,129,0.12); }
-    .product-card h3 { font-size: 1.125rem; font-weight: 700; margin-bottom: 4px; }
-    .product-card h3 .tag {
-      display: inline-block; font-size: 0.6875rem; font-weight: 600;
-      padding: 2px 8px; border-radius: 9999px; margin-left: 6px; vertical-align: middle;
-    }
-    .tag-live { background: rgba(6,182,212,0.12); color: var(--cyan); border: 1px solid rgba(6,182,212,0.2); }
-    .tag-ready { background: rgba(245,158,11,0.12); color: var(--orange); border: 1px solid rgba(245,158,11,0.2); }
-    .product-card .desc { color: var(--text-dim); font-size: 0.875rem; line-height: 1.7; margin-top: 8px; flex: 1; }
-    .product-card .features { list-style: none; margin-top: 20px; }
-    .product-card .features li {
-      padding: 6px 0; font-size: 0.8125rem; color: var(--text-dim);
-      display: flex; align-items: center; gap: 8px;
-    }
-    .product-card .features li::before { content: '→'; color: var(--accent); font-weight: 700; }
-    .product-card .product-cta {
-      display: inline-flex; align-items: center; gap: 6px; margin-top: 24px;
-      font-size: 0.875rem; font-weight: 600; color: var(--accent);
-      transition: gap .2s;
-    }
-    .product-card .product-cta:hover { gap: 10px; }
+    .product:hover { border-color: var(--accent); }
+    .product-icon { font-size: 1.5rem; margin-bottom: var(--space-3); }
+    .product h3 { font-size: var(--text-xl); font-weight: 600; margin-bottom: var(--space-1); }
+    .product h3 .tag { font-size: var(--text-xs); font-weight: 600; color: var(--accent); margin-left: var(--space-2); }
+    .product p { font-size: var(--text-sm); color: var(--ink-dim); line-height: 1.65; }
+    .product .actions { margin-top: var(--space-5); }
+    .product .actions a { font-size: var(--text-sm); font-weight: 600; color: var(--accent); }
 
     /* ── Pricing ── */
-    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
     .pricing-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: var(--space-8) 28px;
-      position: relative; transition: border-color .3s, transform .3s var(--ease-out);
+      padding: var(--space-8); border-radius: var(--radius-xl);
+      border: 1px solid var(--border); text-align: center; position: relative;
     }
-    .pricing-card:hover { transform: translateY(-2px); }
     .pricing-card.featured {
-      border-color: var(--accent); transform: scale(1.04);
+      border-color: var(--accent);
+      box-shadow: var(--shadow-md);
+      transform: scale(1.04);
     }
-    .pricing-card.featured:hover { transform: scale(1.04) translateY(-2px); }
-    .popular-badge {
-      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-      padding: 4px 14px; border-radius: 9999px;
-      background: var(--accent); color: white; font-size: 0.6875rem; font-weight: 700;
-      letter-spacing: 0.05em;
-    }
-    .pricing-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
-    .pricing-card .price { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px; }
-    .pricing-card .price span { font-size: 1rem; font-weight: 500; color: var(--text-dim); }
-    .pricing-card .period { font-size: 0.8125rem; color: var(--text-dim); margin-bottom: 24px; }
-    .pricing-card ul { list-style: none; }
-    .pricing-card ul li {
-      padding: 8px 0; font-size: 0.875rem; color: var(--text-dim);
-      display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border);
-    }
+    .pricing-card h3 { font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-2); }
+    .price { font-size: var(--text-4xl); font-weight: 800; letter-spacing: -0.03em; }
+    .price span { font-size: var(--text-base); font-weight: 500; color: var(--ink-muted); }
+    .period { font-size: var(--text-sm); color: var(--ink-muted); margin-bottom: var(--space-6); }
+    .pricing-card ul { list-style: none; text-align: left; }
+    .pricing-card ul li { padding: var(--space-2) 0; font-size: var(--text-sm); color: var(--ink-dim); display: flex; align-items: center; gap: var(--space-2); border-bottom: 1px solid var(--border); }
     .pricing-card ul li:last-child { border-bottom: none; }
-    .pricing-card ul li::before { content: '✓'; color: var(--green); font-weight: 700; }
-    .pricing-cta {
-      display: block; text-align: center; margin-top: 24px;
-      padding: 12px; border-radius: var(--radius);
-      font-size: 0.875rem; font-weight: 600;
-      border: 1px solid var(--border); color: var(--text-dim);
-      transition: border-color .2s, color .2s;
-    }
-    .pricing-cta:hover { border-color: var(--accent); color: var(--text); }
+    .pricing-card ul li::before { content: '\2713'; color: var(--green); font-weight: 700; }
+    .pricing-cta { display: block; padding: var(--space-3); border-radius: var(--radius); font-size: var(--text-sm); font-weight: 600; border: 1px solid var(--border); color: var(--ink-dim); transition: border-color .15s; margin-top: var(--space-6); text-align: center; }
+    .pricing-cta:hover { border-color: var(--accent); }
     .pricing-cta.primary { background: var(--accent); color: white; border-color: var(--accent); }
     .pricing-cta.primary:hover { background: var(--accent-hover); }
-    .pricing-footnote { text-align: center; color: var(--text-dim); font-size: 0.8125rem; margin-top: 32px; }
 
-    /* ── CTA Section ── */
+    /* ── Services ── */
+    .services-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+    .service-card { padding: var(--space-6); border-radius: var(--radius-xl); border: 1px solid var(--border); }
+    .service-card h4 { font-weight: 600; font-size: var(--text-base); margin-bottom: var(--space-1); }
+    .service-card p { font-size: var(--text-sm); }
+    .service-price { margin-top: var(--space-4); font-weight: 700; font-size: var(--text-lg); color: var(--accent); }
+
+    /* ── CTA ── */
     .cta-section {
-      text-align: center; padding: 100px 24px;
-      background: linear-gradient(135deg, var(--surface), transparent);
+      text-align: center; padding: var(--space-20) var(--space-6);
+      background: var(--surface);
       border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
     }
-    .cta-section h2 { font-size: var(--text-3xl); font-weight: 800; margin-bottom: 12px; font-family: var(--font-display); }
-    .cta-section p { color: var(--text-dim); margin-bottom: 28px; max-width: 500px; margin-left: auto; margin-right: auto; font-size: var(--text-base); }
-    .cta-section .btn-primary { font-size: var(--text-sm); }
+    .cta-section h2 { font-size: var(--text-3xl); margin-bottom: var(--space-3); }
+    .cta-section p { margin: 0 auto var(--space-8); }
 
     /* ── Footer ── */
-    footer {
-      text-align: center; padding: 48px 24px;
-      color: var(--text-dim); font-size: 0.8125rem;
-    }
-    footer .links { display: flex; justify-content: center; gap: 24px; margin-bottom: 12px; }
-    footer .links a { color: var(--text-dim); transition: color .2s; }
-    footer .links a:hover { color: var(--accent); }
+    footer { text-align: center; padding: var(--space-12) var(--space-6); color: var(--ink-muted); font-size: var(--text-sm); }
+    footer .links { display: flex; justify-content: center; gap: var(--space-6); margin-bottom: var(--space-4); }
+    footer .links a { color: var(--ink-dim); transition: color .15s; }
+    footer .links a:hover { color: var(--ink); }
 
     /* ── Responsive ── */
     @media (max-width: 768px) {
-      .hero h1 { font-size: 2rem; }
-      .products-grid, .pricing-grid { grid-template-columns: 1fr; }
+      .products, .pricing-grid, .services-grid { grid-template-columns: 1fr; }
       .pricing-card.featured { transform: none; }
-      .pricing-card.featured:hover { transform: none; }
-      .section { padding: var(--space-12) 16px; }
-      .trust-bar { gap: 24px; }
-      .nav-links a:not(.nav-cta) { display: none; }
+      .section-title { font-size: var(--text-2xl); }
+      .hero h1 { font-size: 2rem; }
     }
   </style>
 </head>
@@ -437,123 +199,90 @@
     <div class="nav-inner">
       <div class="logo"><span class="logo-mark">✦</span> CrossWave</div>
       <div class="nav-links">
-        <a href="#products" data-i18n="nav_products">Products</a>
-        <a href="#pricing" data-i18n="nav_pricing">Pricing</a>
-        <a href="#contact" data-i18n="nav_contact">Contact</a>
-        <a href="#" id="lang-toggle" onclick="toggleLang()" style="font-size:0.8rem;color:var(--text-dim)">🇨🇳 中文</a>
-        <a href="https://ai-content-bridge-production.up.railway.app" class="nav-cta">Try CrossBridge →</a>
+        <a href="#products">Products</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#services">Services</a>
+        <a href="https://ai-content-bridge-production.up.railway.app" class="nav-cta">Try CrossBridge</a>
       </div>
     </div>
   </nav>
 
   <main>
-    <!-- ── Hero ── -->
     <section class="hero">
-      <div class="hero-badge">✦ AI Globalization Stack — v1.0</div>
-      <h1>Go Global.<br><span class="gradient">One Stack. Zero Friction.</span></h1>
-      <p>CrossWave helps Chinese entrepreneurs, indie hackers, and startups take their content, products, and brands global. AI-powered translation, SEO content generation, and professional deployment — all in one platform.</p>
+      <h1>Go Global. One Stack. Zero Friction.</h1>
+      <p>CrossWave helps Chinese entrepreneurs, indie hackers, and startups take their content global. AI-powered translation, SEO content generation, and professional deployment — all in one platform.</p>
       <div class="hero-actions">
-        <a href="https://ai-content-bridge-production.up.railway.app" class="btn-primary">✦ Try CrossBridge Free</a>
-        <a href="#products" class="btn-secondary">Explore Products</a>
+        <a href="https://ai-content-bridge-production.up.railway.app" class="btn btn-primary">Try CrossBridge Free</a>
+        <a href="#products" class="btn btn-secondary">See Products</a>
       </div>
       <div class="trust-bar">
-        <div class="trust-item"><span class="num">★</span> Live on Railway</div>
-        <div class="trust-item"><span class="num">3</span> Integrated Products</div>
-        <div class="trust-item"><span class="num">$0</span> to Start</div>
-        <div class="trust-item"><span class="num">AI</span> Powered</div>
+        <span>✦ Live on Railway</span>
+        <span>✦ 3 integrated products</span>
+        <span>✦ $0 to start</span>
+        <span>✦ AI powered</span>
       </div>
     </section>
 
-    <!-- ── Products ── -->
-    <section class="section" id="products">
-      <div class="section-header">
-        <h2 class="section-title">Our Stack</h2>
-        <p class="section-subtitle">Three integrated products, one mission: help Chinese businesses succeed globally.</p>
-      </div>
-      <div class="products-grid">
-        <div class="product-card">
-          <div class="product-icon icon-bridge">🌉</div>
-          <h3>CrossBridge <span class="tag tag-live">● Live</span></h3>
-          <p class="desc">AI-powered CN→EN content localization. Paste Chinese text — get culturally-adapted English content for X, LinkedIn, and Reddit. Deep cultural adaptation, not robotic translation.</p>
-          <ul class="features">
-            <li>Analyze → Localize → Adapt pipeline</li>
-            <li>X/LinkedIn/Reddit native formatting</li>
-            <li>Token tracking &amp; usage analytics</li>
-            <li>$0.0004/run average cost</li>
-          </ul>
-          <a href="https://ai-content-bridge-production.up.railway.app" class="product-cta">Try Free →</a>
+    <section class="section container" id="products">
+      <h2 class="section-title">Products</h2>
+      <p class="section-subtitle">Three integrated tools for Chinese businesses going global.</p>
+      <div class="products">
+        <div class="product">
+          <div class="product-icon">🌉</div>
+          <h3>CrossBridge <span class="tag">Live</span></h3>
+          <p>Paste Chinese text — get culturally-adapted English content for X, LinkedIn, and Reddit. Deep cultural adaptation, not robotic translation.</p>
+          <div class="actions"><a href="https://ai-content-bridge-production.up.railway.app">Try Free →</a></div>
         </div>
-
-        <div class="product-card featured">
-          <div class="product-icon icon-blog">📝</div>
-          <h3>CrossBlog <span class="tag tag-ready">● Beta</span></h3>
-          <p class="desc">SEO-optimized blog post generator. Turn keywords into fully-written, culturally-adapted English content. Bulk generation, multi-platform ready, and built for organic growth.</p>
-          <ul class="features">
-            <li>Keyword → Outline → Full post</li>
-            <li>SEO-optimized structure</li>
-            <li>Bulk generation API</li>
-            <li>Ready for deployment</li>
-          </ul>
-          <a href="#pricing" class="product-cta">Coming Soon →</a>
+        <div class="product">
+          <div class="product-icon">📝</div>
+          <h3>CrossBlog <span class="tag">Beta</span></h3>
+          <p>SEO-optimized blog posts from keywords. Bulk generation, cultural adaptation, and multi-platform ready. Built for organic growth.</p>
+          <div class="actions"><a href="#pricing">Coming Soon →</a></div>
         </div>
-
-        <div class="product-card">
-          <div class="product-icon icon-deploy">🚀</div>
-          <h3>CrossDeploy <span class="tag tag-ready">● Now</span></h3>
-          <p class="desc">Professional deployment and customization for your AI tools. From Docker to Railway, we handle the infrastructure so you focus on your product. One-time deployment or ongoing support.</p>
-          <ul class="features">
-            <li>Docker + Railway deployment</li>
-            <li>Custom feature development</li>
-            <li>Performance optimization</li>
-            <li>Ongoing maintenance available</li>
-          </ul>
-          <a href="#contact" class="product-cta">Get a Quote →</a>
+        <div class="product">
+          <div class="product-icon">🚀</div>
+          <h3>CrossDeploy <span class="tag">Ready</span></h3>
+          <p>Professional deployment for your AI tools. Docker, Railway, custom features, and ongoing support. We handle infrastructure so you focus on product.</p>
+          <div class="actions"><a href="#services">Get a Quote →</a></div>
         </div>
       </div>
     </section>
 
-    <!-- ── Pricing ── -->
-    <section class="section" id="pricing">
-      <div class="section-header">
-        <h2 class="section-title">Simple Pricing</h2>
-        <p class="section-subtitle">Start free, scale as you grow. No hidden fees, no surprises.</p>
-      </div>
+    <section class="section container" id="pricing">
+      <h2 class="section-title">Pricing</h2>
+      <p class="section-subtitle">Start free, scale as you grow. No hidden fees.</p>
       <div class="pricing-grid">
         <div class="pricing-card">
           <h3>Free</h3>
           <div class="price">$0</div>
-          <div class="period">No credit card required</div>
+          <div class="period">No credit card needed</div>
           <ul>
-            <li>CrossBridge: 10 translations/mo</li>
-            <li>All platforms (X/LinkedIn/Reddit)</li>
-            <li>Mock mode (no API key needed)</li>
-            <li>Basic support</li>
+            <li>10 translations per month</li>
+            <li>All platforms</li>
+            <li>Mock mode</li>
           </ul>
           <a href="https://ai-content-bridge-production.up.railway.app" class="pricing-cta primary">Get Started</a>
         </div>
-
         <div class="pricing-card featured">
-          <div class="popular-badge">POPULAR</div>
           <h3>Starter</h3>
           <div class="price">$19 <span>/mo</span></div>
-          <div class="period">For solo founders &amp; freelancers</div>
+          <div class="period">For solo founders</div>
           <ul>
-            <li>CrossBridge: 100 translations</li>
-            <li>CrossBlog: 50 posts/mo</li>
-            <li>1 social account integration</li>
+            <li>100 translations</li>
+            <li>50 blog posts</li>
+            <li>1 social account</li>
             <li>Direct publishing</li>
             <li>Email support</li>
           </ul>
           <a href="https://ai-content-bridge-production.up.railway.app/pricing" class="pricing-cta primary">Coming Soon</a>
         </div>
-
         <div class="pricing-card">
           <h3>Pro</h3>
           <div class="price">$49 <span>/mo</span></div>
-          <div class="period">For growing teams &amp; agencies</div>
+          <div class="period">For teams &amp; agencies</div>
           <ul>
-            <li>CrossBridge: Unlimited</li>
-            <li>CrossBlog: Unlimited</li>
+            <li>Unlimited translations</li>
+            <li>Unlimited blog posts</li>
             <li>All social platforms</li>
             <li>API access</li>
             <li>Priority support</li>
@@ -561,58 +290,34 @@
           <a href="https://ai-content-bridge-production.up.railway.app/pricing" class="pricing-cta">Coming Soon</a>
         </div>
       </div>
-      <p class="pricing-footnote"><span data-i18n="pricing_footnote">Need custom deployment? Contact us for a quote.</span></p>
     </section>
 
-    <!-- ── Deployment Services ── -->
-    <section class="section" id="deploy">
-      <div class="section-header">
-        <h2 class="section-title" data-i18n="deploy_section">Deployment Services</h2>
-        <p class="section-subtitle" data-i18n="deploy_desc_main">Need help deploying your AI tools? We offer professional deployment, customization, and infrastructure management for Chinese entrepreneurs going global.</p>
-      </div>
-      <div class="products-grid">
-        <div class="product-card">
-          <h3 style="margin-top:0">🌉 <span data-i18n="deploy_p1">CrossBridge Deployment</span></h3>
-          <p class="desc" data-i18n="deploy_p1_desc">Full deployment of AI Content Bridge to your own server or cloud. Includes configuration, SSL, domain setup.</p>
-          <div style="margin-top:16px;font-size:1.2rem;font-weight:700;color:var(--accent)" data-i18n="deploy_p1_price">¥2,000 (one-time)</div>
+    <section class="section container" id="services">
+      <h2 class="section-title">Deployment Services</h2>
+      <p class="section-subtitle">The infrastructure is the hard part. We make it easy.</p>
+      <div class="services-grid">
+        <div class="service-card">
+          <h4>CrossBridge Deployment</h4>
+          <p>Full deployment to your own server or cloud. Configuration, SSL, domain setup included.</p>
+          <div class="service-price">¥2,000</div>
         </div>
-        <div class="product-card featured">
-          <h3 style="margin-top:0">🤖 <span data-i18n="deploy_p2">Polsia Fork Deployment</span></h3>
-          <p class="desc" data-i18n="deploy_p2_desc">Deploy your own AI-automated company platform. 10 agents, Celery, Stripe, multi-tenant. Full customization available.</p>
-          <div style="margin-top:16px;font-size:1.2rem;font-weight:700;color:var(--accent)" data-i18n="deploy_p2_price">¥5,000 (one-time)</div>
+        <div class="service-card" style="border-color:var(--accent)">
+          <h4>Polsia Fork Deployment</h4>
+          <p>Your own AI-automated company. 10 agents, Celery, Stripe, multi-tenant. Fully customizable.</p>
+          <div class="service-price">¥5,000</div>
         </div>
-        <div class="product-card">
-          <h3 style="margin-top:0">🔧 <span data-i18n="deploy_p3">Custom Development</span></h3>
-          <p class="desc" data-i18n="deploy_p3_desc">Need a custom AI tool built? We design, build, and deploy tailored solutions for your specific use case.</p>
-          <div style="margin-top:16px;font-size:1.2rem;font-weight:700;color:var(--accent)" data-i18n="deploy_p3_price">Contact for quote</div>
+        <div class="service-card">
+          <h4>Custom Development</h4>
+          <p>Need a custom AI tool? We design, build, and deploy tailored solutions for your specific needs.</p>
+          <div class="service-price" style="color:var(--ink)">Contact for quote</div>
         </div>
       </div>
     </section>
 
-    <!-- ── Contact ── -->
-    <section class="cta-section" id="contact">
-      <h2 data-i18n="contact_title">Get In Touch</h2>
-      <p data-i18n="contact_desc">Ready to start? Contact us for deployment inquiries, custom development, or partnership opportunities.</p>
-      <div class="contact-form" style="max-width:480px;margin:0 auto;text-align:left">
-        <form action="#" onsubmit="return false">
-          <div class="form-group">
-            <label for="ce" style="font-size:0.8rem;font-weight:600;color:var(--text-dim);display:block;margin-bottom:6px" data-i18n="contact_email">Email</label>
-            <input id="ce" type="email" placeholder="your@email.com" style="width:100%;padding:12px 16px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:0.9rem;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor=''" data-i18n="placeholder" data-en="your@email.com" data-zh="your@email.com">
-          </div>
-          <div class="form-group" style="margin-top:12px">
-            <label for="cm" style="font-size:0.8rem;font-weight:600;color:var(--text-dim);display:block;margin-bottom:6px" data-i18n="contact_message">Message</label>
-            <textarea id="cm" rows="4" placeholder="Tell us about your project..." style="width:100%;padding:12px 16px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:0.9rem;outline:none;resize:vertical;transition:border-color .2s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor=''" data-i18n="placeholder" data-en="Tell us about your project..." data-zh="请描述您的项目需求..."></textarea>
-          </div>
-          <button type="submit" style="margin-top:16px;width:100%;padding:12px;border-radius:var(--radius);background:var(--accent);color:white;border:none;font-weight:600;font-size:0.9rem;cursor:pointer;font-family:var(--font);transition:background .2s" onmouseover="this.style.background='var(--accent-hover)'" onmouseout="this.style.background='var(--accent)'" data-i18n="contact_btn">Send Inquiry →</button>
-        </form>
-      </div>
-    </section>
-      <h2>Ready to Go Global?</h2>
-      <p>Try CrossBridge free, then upgrade when you're ready. No credit card required.</p>
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-        <a href="https://ai-content-bridge-production.up.railway.app" class="btn-primary">✦ Try CrossBridge Free</a>
-        <a href="https://github.com/guish7423" class="btn-secondary" target="_blank">View on GitHub</a>
-      </div>
+    <section class="cta-section">
+      <h2>Ready to go global?</h2>
+      <p>Try CrossBridge free. No credit card needed.</p>
+      <a href="https://ai-content-bridge-production.up.railway.app" class="btn btn-primary">Try CrossBridge Free</a>
     </section>
   </main>
 
@@ -620,7 +325,7 @@
     <div class="links">
       <a href="https://github.com/guish7423">GitHub</a>
       <a href="https://ai-content-bridge-production.up.railway.app">CrossBridge</a>
-      <a href="https://github.com/guish7423/polsia-fork">Polsia Fork</a>
+      <a href="https://github.com/guish7423/crosswave">CrossWave</a>
     </div>
     <p>Built for the global Chinese creator community. © 2026 CrossWave</p>
   </footer>
