@@ -1,0 +1,11 @@
+{
+  "name": "crosswave-hq",
+  "version": "0.1.0",
+  "main": "dist/server/index.js",
+  "dependencies": {},
+  "peerDependencies": {
+    "@nocobase/client": "1.x",
+    "@nocobase/server": "1.x",
+    "@nocobase/database": "1.x"
+  }
+}

@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: nocobase
+      POSTGRES_PASSWORD: nocobase
+      POSTGRES_DB: nocobase
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - hq-net
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nocobase"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nocobase:
+    image: nocobase/nocobase:latest
+    ports:
+      - "13000:80"
+    env_file: .env
+    volumes:
+      - storage:/app/nocobase/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hq-net
+    restart: always
+
+volumes:
+  pgdata:
+  storage:
+
+networks:
+  hq-net:
