@@ -116,6 +116,17 @@
     .dash-footer{text-align:center;margin-top:20px}
     .dash-footer a{color:oklch(.6 .25 280);font-size:13px;text-decoration:none}
 
+    /* ── CrossDeploy Case Studies ── */
+    .case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
+    .case-card{padding:24px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);transition:all .3s}
+    .case-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px oklch(0 0 0/.06);border-color:var(--accent)}
+    .case-card .c-icon{font-size:28px;margin-bottom:8px}
+    .case-card h4{font-size:16px;font-weight:700;margin-bottom:4px}
+    .case-card .c-tag{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600;margin-bottom:8px;background:var(--green-soft);color:var(--green)}
+    .case-card p{font-size:13px;color:var(--ink-dim);line-height:1.6}
+    .case-card .c-result{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;font-weight:600;color:var(--ink)}
+    .deploy-sub{text-align:center;margin:48px 0 0;font-size:14px;color:var(--ink-dim)}
+
     /* ── About / Company Story ── */
     .about-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
     .about-text .cn{display:block;font-size:14px;color:var(--ink-muted);margin-top:8px}
@@ -348,13 +359,119 @@
         <p>SEO-optimized blog generation with AI. Automatic content creation, translation, and multi-platform publishing.</p>
         <span class="tag tag-ready">● Code Ready</span>
       </a>
-      <a href="#pricing" class="product">
+      <a href="#deploy" class="product">
         <div class="icon" style="background:var(--accent-soft)">🚀</div>
         <h3>CrossDeploy</h3>
         <p>Full-stack deployment service. We deploy and manage your SaaS infrastructure — from Docker to production domains.</p>
         <span class="tag tag-ready">● ¥2K-5K / project</span>
       </a>
     </div>
+  </div>
+</section>
+
+<!-- ═══ CrossDeploy Services ═══ -->
+<section id="deploy">
+  <div class="container">
+    <div class="sec-header">
+      <h2>CrossDeploy — 代部署服务</h2>
+      <p>我们从 Docker 到生产域名全程管理，让您的 SaaS 产品快速上线。一口价，无隐藏费用。</p>
+      <span class="cn">Full-stack deployment service — from Docker to production. Flat pricing, no hidden fees.</span>
+    </div>
+
+    <div class="pricing" style="margin-bottom:48px">
+      <div class="pricing-card">
+        <div class="p-name">Basic</div>
+        <div class="p-price">¥2,000<span>/project</span></div>
+        <ul>
+          <li>Single service deployment</li>
+          <li>Docker + railway.toml 配置</li>
+          <li>Health check endpoint</li>
+          <li>Custom domain setup</li>
+          <li>Basic monitoring + alerts</li>
+        </ul>
+        <a href="mailto:hello@crosswave.app?subject=CrossDeploy%20Basic" class="btn btn-outline" style="text-align:center;display:block">Contact Sales</a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="p-name">Standard</div>
+        <div class="p-price">¥3,000<span>/project</span></div>
+        <ul>
+          <li>Multi-service deployment</li>
+          <li>Docker Compose 编排</li>
+          <li>PostgreSQL / Redis 配置</li>
+          <li>HTTPS + custom domain</li>
+          <li>CI/CD pipeline setup</li>
+          <li>30-day post-deploy support</li>
+        </ul>
+        <a href="mailto:hello@crosswave.app?subject=CrossDeploy%20Standard" class="btn btn-primary" style="text-align:center;display:block">Contact Sales</a>
+      </div>
+      <div class="pricing-card">
+        <div class="p-name">Enterprise</div>
+        <div class="p-price">¥5,000<span>/project</span></div>
+        <ul>
+          <li>Full-stack deployment</li>
+          <li>Kubernetes / Docker Swarm</li>
+          <li>Auto-scaling + load balancing</li>
+          <li>Database migration management</li>
+          <li>Custom CI/CD + monitoring stack</li>
+          <li>90-day support + SLA</li>
+        </ul>
+        <a href="mailto:hello@crosswave.app?subject=CrossDeploy%20Enterprise" class="btn btn-outline" style="text-align:center;display:block">Contact Sales</a>
+      </div>
+    </div>
+
+    <h3 style="text-align:center;font-size:24px;font-weight:700;margin-bottom:32px">部署流程</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="num">01</div>
+        <h3>需求沟通</h3>
+        <p>了解您的业务需求、技术栈和部署目标。确定服务方案和时间线。</p>
+        <span class="cn">Requirements analysis &amp; planning</span>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <h3>环境搭建</h3>
+        <p>配置云服务器、数据库和缓存服务。搭建 CI/CD 自动构建流水线。</p>
+        <span class="cn">Infrastructure provisioning</span>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <h3>容器化部署</h3>
+        <p>编写 Dockerfile + Compose 编排，确保可复制的生产级部署。</p>
+        <span class="cn">Containerization &amp; deployment</span>
+      </div>
+      <div class="step">
+        <div class="num">04</div>
+        <h3>监控上线</h3>
+        <p>配置健康检查、日志收集和告警。验证通过后正式上线交付。</p>
+        <span class="cn">Monitoring &amp; go-live</span>
+      </div>
+    </div>
+
+    <h3 style="text-align:center;font-size:24px;font-weight:700;margin:48px 0 32px">成功案例</h3>
+    <div class="case-grid">
+      <div class="case-card">
+        <div class="c-icon">📝</div>
+        <div class="c-tag">AI 应用</div>
+        <h4>CrossBlog</h4>
+        <p>SEO-optimized blog generator. Deployed with Docker + Railway, connected to DeepSeek API for AI content generation.</p>
+        <div class="c-result">→ FastAPI + Jinja2 · 2h deployment</div>
+      </div>
+      <div class="case-card">
+        <div class="c-icon">🏢</div>
+        <div class="c-tag">后端平台</div>
+        <h4>Polsia Fork</h4>
+        <p>10-agent autonomous ops platform. FastAPI + Celery + PostgreSQL + ChromaDB. 35 routes, 17 tables, 66+ tests.</p>
+        <div class="c-result">→ Docker multi-service · 4h deployment</div>
+      </div>
+      <div class="case-card">
+        <div class="c-icon">🌐</div>
+        <div class="c-tag">官网</div>
+        <h4>CrossWave 官网</h4>
+        <p>515-line SaaS landing page with live dashboard preview. HTMX + Jinja2 + Polsia proxy. Dual-language support.</p>
+        <div class="c-result">→ Single service · 45min deployment</div>
+      </div>
+    </div>
+    <p class="deploy-sub">以上均为 CrossWave 团队实际交付项目。← <a href="mailto:hello@crosswave.app" style="color:var(--accent);text-decoration:none;font-weight:600">联系我们开始您的项目</a></p>
   </div>
 </section>
 
