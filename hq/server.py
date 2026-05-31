@@ -14,7 +14,7 @@ DB_PATH = os.environ.get("POLSIA_DB", os.path.expanduser("~/.opencode-workspace/
 HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
 HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
 
-CACHE = {"employees": [], "lines": [], "orders": [], "last_sync": None}
+CACHE = {"employees": [], "lines": [], "orders": [], "expenses": [], "revenue_history": [], "last_sync": None}
 
 async def polsia_sync():
     if not os.path.exists(DB_PATH):
@@ -53,6 +53,26 @@ async def polsia_sync():
             "source_id": row[4],
             "platform": "internal",
         })
+    try:
+        expense_rows = await db.execute_fetchall(
+            "SELECT amount, category, description, date FROM expenses ORDER BY date"
+        )
+        CACHE["expenses"] = [
+            {"amount": r[0], "category": r[1] or "other", "description": r[2] or "", "date": r[3] or ""}
+            for r in expense_rows
+        ]
+    except Exception:
+        CACHE["expenses"] = []
+    try:
+        rev_rows = await db.execute_fetchall(
+            "SELECT date, amount, source FROM finance_records ORDER BY date"
+        )
+        CACHE["revenue_history"] = [
+            {"date": r[0] or "", "amount": r[1] or 0, "source": r[2] or "unknown"}
+            for r in rev_rows
+        ]
+    except Exception:
+        CACHE["revenue_history"] = []
     predef_lines = [
         {"name": "CrossBridge", "slug": "crossbridge", "status": "active", "monthly_revenue": 0, "customer_count": 0},
         {"name": "CrossBlog", "slug": "crossblog", "status": "active", "monthly_revenue": 0, "customer_count": 0},
@@ -82,6 +102,7 @@ async def summary():
     orders = CACHE["orders"]
     active_orders = [o for o in orders if o["status"] in ("pending", "in_progress")]
     total_mrr = sum(l.get("monthly_revenue", 0) for l in lines)
+    CACHE["mrr"] = total_mrr
     total_customers = sum(l.get("customer_count", 0) for l in lines)
     status_counts = {}
     for e in emps:
@@ -137,6 +158,72 @@ async def orders_page():
 @app.get("/employees")
 async def employees_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "employees.html"))
+
+@app.get("/api/hq/finances")
+async def get_finances():
+    expenses = CACHE["expenses"]
+    revenue = CACHE["revenue_history"]
+    total_revenue = sum(r["amount"] for r in revenue) if revenue else 0
+    total_costs = sum(e["amount"] for e in expenses) if expenses else 0
+    profit_margin = round((total_revenue - total_costs) / total_revenue * 100, 1) if total_revenue else 0
+    expense_by_cat = {}
+    for e in expenses:
+        cat = e["category"]
+        expense_by_cat[cat] = expense_by_cat.get(cat, 0) + e["amount"]
+    rev_by_month = {}
+    for r in revenue:
+        d = r["date"][:7] if r["date"] else "unknown"
+        rev_by_month[d] = rev_by_month.get(d, 0) + r["amount"]
+    return {
+        "total_revenue": total_revenue,
+        "total_costs": total_costs,
+        "profit_margin": profit_margin,
+        "mrr": CACHE["mrr"] if "mrr" in CACHE else sum(r["amount"] for r in revenue[-3:] if revenue) // 3 if revenue else 0,
+        "arr": CACHE["mrr"] * 12 if "mrr" in CACHE else 0,
+        "expense_by_category": [{"category": k, "amount": v} for k, v in sorted(expense_by_cat.items(), key=lambda x: -x[1])],
+        "revenue_by_month": [{"month": k, "revenue": v} for k, v in sorted(rev_by_month.items())],
+    }
+
+@app.get("/api/hq/reports")
+async def get_reports():
+    orders = CACHE["orders"]
+    employees = CACHE["employees"]
+    total_tasks = len(orders)
+    completed = len([o for o in orders if o["status"] == "done"])
+    failed = len([o for o in orders if o["status"] == "failed"])
+    agent_perf = {}
+    for o in orders:
+        at = o.get("agent_type", "unknown")
+        if at not in agent_perf:
+            agent_perf[at] = {"done": 0, "failed": 0, "total": 0}
+        agent_perf[at]["total"] += 1
+        if o["status"] == "done":
+            agent_perf[at]["done"] += 1
+        elif o["status"] == "failed":
+            agent_perf[at]["failed"] += 1
+    task_by_day = {}
+    for o in orders:
+        d = o["created_at"][:10] if o["created_at"] else "unknown"
+        task_by_day[d] = task_by_day.get(d, 0) + 1
+    activity_7d = sum(v for k, v in task_by_day.items() if k >= (datetime.now(timezone.utc).isoformat()[:10] if task_by_day else ""))
+    return {
+        "total_tasks": total_tasks,
+        "completed_tasks": completed,
+        "failed_tasks": failed,
+        "completion_rate": round(completed / total_tasks * 100, 1) if total_tasks else 0,
+        "agent_performance": [{"agent": k, **v} for k, v in sorted(agent_perf.items(), key=lambda x: -x[1]["total"])],
+        "task_trend": [{"date": k, "count": v} for k, v in sorted(task_by_day.items())],
+        "last_7d_activity": activity_7d,
+        "employee_count": len(employees),
+    }
+
+@app.get("/finance")
+async def finance_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "finances.html"))
+
+@app.get("/reports")
+async def reports_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "reports.html"))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)

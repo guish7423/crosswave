@@ -75,12 +75,59 @@ async def sync_orders(client):
             except Exception as e:
                 print(f"  [skip] {payload['title']}: {e}")
 
+async def sync_expenses(client):
+    import aiosqlite
+    async with aiosqlite.connect(DB_PATH) as db:
+        rows = await db.execute_fetchall(
+            "SELECT amount, category, description, date FROM expenses ORDER BY date"
+        )
+        for row in rows:
+            payload = {
+                "amount": row[0],
+                "category": row[1] or "other",
+                "description": row[2] or "",
+                "date": row[3] or "",
+            }
+            try:
+                await client.post(
+                    f"{HQ_URL}/expenses:create",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {HQ_TOKEN}"},
+                    timeout=10,
+                )
+            except Exception as e:
+                print(f"  [skip] expense {payload['description']}: {e}")
+
+async def sync_revenue_history(client):
+    import aiosqlite
+    async with aiosqlite.connect(DB_PATH) as db:
+        rows = await db.execute_fetchall(
+            "SELECT date, amount, source FROM finance_records ORDER BY date"
+        )
+        for row in rows:
+            payload = {
+                "date": row[0] or "",
+                "amount": row[1] or 0,
+                "source": row[2] or "unknown",
+            }
+            try:
+                await client.post(
+                    f"{HQ_URL}/revenue_records:create",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {HQ_TOKEN}"},
+                    timeout=10,
+                )
+            except Exception as e:
+                print(f"  [skip] revenue {payload['date']}: {e}")
+
 async def main():
     print(f"[polsia_bridge] DB: {DB_PATH}  HQ: {HQ_URL}")
     async with httpx.AsyncClient() as client:
         await sync_employees(client)
         await sync_business_lines(client)
         await sync_orders(client)
+        await sync_expenses(client)
+        await sync_revenue_history(client)
     print("[polsia_bridge] sync complete")
 
 if __name__ == "__main__":
