@@ -7,6 +7,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+import os
+
 from app.services.polsia_client import polsia_client
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -124,6 +126,22 @@ async def proxy_analytics():
     if isinstance(data, dict) and data.get("status_distribution"):
         return data
     return {"status_distribution": [], "agent_breakdown": [], "daily_trend": []}
+
+
+@app.get("/api/v1/_proxy/blog/latest")
+async def proxy_blog_latest():
+    """Proxy popular blog posts from CrossBlog API."""
+    import httpx
+    blog_url = os.getenv("CROSSBLOG_URL", "http://127.0.0.1:8001")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{blog_url}/api/posts/popular")
+            if resp.status_code == 200:
+                posts = resp.json()
+                return {"posts": posts if isinstance(posts, list) else []}
+    except Exception:
+        pass
+    return {"posts": []}
 
 
 # ─── Render helpers ──────────────────────────────────────────────────────

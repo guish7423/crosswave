@@ -513,6 +513,45 @@
   </div>
 </section>
 
+<!-- ═══ Blog Preview ═══ -->
+<section id="blog">
+  <div class="container">
+    <div class="sec-header">
+      <h2>Latest from Our Blog</h2>
+      <p>AI-native content — generated, optimized, and published by our autonomous agents.</p>
+      <span class="cn">由 AI 自主生成的内容引擎</span>
+    </div>
+    <div id="blog-grid" class="blog-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;min-height:200px">
+      <div style="text-align:center;padding:60px 20px;color:var(--text-muted)">Loading posts...</div>
+    </div>
+    <p style="text-align:center;margin-top:32px">
+      <a href="https://blog.crosswave.app" style="color:var(--accent);text-decoration:none;font-weight:600">View all posts →</a>
+    </p>
+  </div>
+</section>
+
+<script>
+(async function() {
+  try {
+    const resp = await fetch('/api/v1/_proxy/blog/latest');
+    const data = await resp.json();
+    const grid = document.getElementById('blog-grid');
+    const posts = data.posts || [];
+    if (!posts.length) { grid.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text-muted)">No posts yet.</div>'; return; }
+    grid.innerHTML = posts.slice(0,6).map(p => `
+      <div class="product-card" style="cursor:pointer;display:flex;flex-direction:column" onclick="window.open('https://blog.crosswave.app/blog/${p.slug || '#'}','_blank')">
+        <div style="font-size:12px;color:var(--accent);margin-bottom:8px">${(p.tags||[]).slice(0,3).map(t=>'<span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;margin-right:4px;font-size:11px">'+t+'</span>').join('')}</div>
+        <h3 style="font-size:16px;margin:0 0 8px;line-height:1.4">${p.title || ''}</h3>
+        <p style="font-size:13px;color:var(--text-muted);flex:1">${(p.meta_description || '').slice(0,120)}</p>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:8px">${p.estimated_read_minutes || 3} min read · ${p.view_count || 0} views</div>
+      </div>
+    `).join('');
+  } catch(e) {
+    document.getElementById('blog-grid').innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text-muted)">Blog service connecting...</div>';
+  }
+})();
+</script>
+
 <!-- ═══ About / Company Story ═══ -->
 <section id="about">
   <div class="container">
