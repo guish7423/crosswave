@@ -29,6 +29,14 @@ with suppress(RuntimeError):
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
+@app.get("/robots.txt", response_class=HTMLResponse)
+async def robots():
+    return """User-agent: *
+Allow: /
+
+Sitemap: https://crosswave.app/sitemap.xml
+"""
+
 # ─── Page routes ──────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
