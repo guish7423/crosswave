@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --bg: oklch(0.99 0.002 260);
@@ -103,7 +104,13 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
 
-    @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } .bottom-row { grid-template-columns: 1fr; } .sidebar { width: 60px; overflow: hidden; } .sidebar .nav-item span { display: none; } .sidebar .logo { font-size: 12px; text-align: center; } .sidebar-footer { display: none; } }
+    /* ── Charts ── */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--space) * 3); margin-top: calc(var(--space) * 3); }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: calc(var(--space) * 3); }
+    .chart-wide { grid-column: 1 / -1; }
+    .chart-card canvas { width: 100% !important; max-height: 220px; }
+
+    @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } .bottom-row { grid-template-columns: 1fr; } .charts-row { grid-template-columns: 1fr; } .sidebar { width: 60px; overflow: hidden; } .sidebar .nav-item span { display: none; } .sidebar .logo { font-size: 12px; text-align: center; } .sidebar-footer { display: none; } }
   </style>
 </head>
 <body>
@@ -213,7 +220,112 @@
           </div>
         </div>
       </div>
+
+      <!-- ── Charts ── -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="panel-title">📊 Task Status</div>
+          <canvas id="statusChart" height="200"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="panel-title">🤖 Tasks by Agent</div>
+          <canvas id="agentChart" height="200"></canvas>
+        </div>
+        <div class="chart-card chart-wide">
+          <div class="panel-title">📈 Daily Task Trend</div>
+          <canvas id="trendChart" height="160"></canvas>
+        </div>
+      </div>
     </main>
   </div>
+  <script>
+  const COLORS = {
+    pending: '#f59e0b', completed: '#10b981', failed: '#ef4444',
+    bg: 'oklch(0.55 0.25 280 / 0.08)',
+    grid: 'oklch(0.91 0.008 260)',
+    text: 'oklch(0.5 0.025 260)',
+  };
+
+  let statusChart, agentChart, trendChart;
+
+  async function loadCharts() {
+    try {
+      const r = await fetch('/api/v1/_proxy/analytics');
+      if (!r.ok) return;
+      const d = await r.json();
+      renderCharts(d);
+    } catch { /* fallback silent */ }
+  }
+
+  function renderCharts(d) {
+    // Status donut
+    if (statusChart) statusChart.destroy();
+    const sCtx = document.getElementById('statusChart').getContext('2d');
+    statusChart = new Chart(sCtx, {
+      type: 'doughnut',
+      data: {
+        labels: d.status_distribution.map(s => s.label),
+        datasets: [{
+          data: d.status_distribution.map(s => s.value),
+          backgroundColor: d.status_distribution.map(s =>
+            s.label === 'Completed' ? COLORS.completed :
+            s.label === 'Pending' ? COLORS.pending : COLORS.failed
+          ),
+          borderWidth: 0,
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: COLORS.text, font: { size: 11 } } } } }
+    });
+
+    // Per-agent horizontal bar
+    if (agentChart) agentChart.destroy();
+    const aCtx = document.getElementById('agentChart').getContext('2d');
+    const agents = d.agent_breakdown;
+    const agentLabels = agents.map(a => a.agent.replace(/_/g, ' '));
+    agentChart = new Chart(aCtx, {
+      type: 'bar',
+      data: {
+        labels: agentLabels,
+        datasets: [
+          { label: 'Completed', data: agents.map(a => a.Completed || 0), backgroundColor: COLORS.completed },
+          { label: 'Pending', data: agents.map(a => a.Pending || 0), backgroundColor: COLORS.pending },
+          { label: 'Failed', data: agents.map(a => a.Failed || 0), backgroundColor: COLORS.failed },
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        scales: { x: { stacked: true, grid: { color: COLORS.grid } },
+                 y: { stacked: true, grid: { display: false }, ticks: { font: { size: 9 } } } },
+        plugins: { legend: { position: 'bottom', labels: { color: COLORS.text, font: { size: 10 } } } } }
+    });
+
+    // Daily trend line
+    if (trendChart) trendChart.destroy();
+    const tCtx = document.getElementById('trendChart').getContext('2d');
+    trendChart = new Chart(tCtx, {
+      type: 'line',
+      data: {
+        labels: d.daily_trend.map(t => t.date.slice(5)),
+        datasets: [{
+          label: 'Tasks',
+          data: d.daily_trend.map(t => t.count),
+          borderColor: COLORS.completed,
+          backgroundColor: COLORS.completed + '33',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3,
+          pointBackgroundColor: COLORS.completed,
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false,
+        scales: { x: { grid: { display: false }, ticks: { color: COLORS.text, font: { size: 10 } } },
+                 y: { beginAtZero: true, grid: { color: COLORS.grid }, ticks: { color: COLORS.text, font: { size: 10 }, stepSize: 1 } } },
+        plugins: { legend: { display: false } } }
+    });
+  }
+
+  loadCharts();
+  setInterval(loadCharts, 60000);
+  </script>
 </body>
 </html>

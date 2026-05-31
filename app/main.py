@@ -118,6 +118,14 @@ async def proxy_task_summary():
     return HTMLResponse('<div class="disconnected">🔌 Polsia Fork unavailable</div>')
 
 
+@app.get("/api/v1/_proxy/analytics")
+async def proxy_analytics():
+    data = await polsia_client.get_analytics()
+    if isinstance(data, dict) and data.get("status_distribution"):
+        return data
+    return {"status_distribution": [], "agent_breakdown": [], "daily_trend": []}
+
+
 # ─── Render helpers ──────────────────────────────────────────────────────
 
 def _render_task_summary(s: dict) -> str:

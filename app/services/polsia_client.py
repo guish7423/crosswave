@@ -99,7 +99,40 @@ class PolsiaClient:
         return await self._get("/api/v1/agents/status")
 
     async def get_activity(self, limit: int = 20) -> dict | list:
-        return await self._get(f"/api/v1/dashboard/activity?limit={limit}")
+        return await self._get(f"/api/v1/activity?limit={limit}")
+
+    async def get_tasks(self, limit: int = 500) -> dict | list:
+        return await self._get(f"/api/v1/tasks?limit={limit}")
+
+    async def get_analytics(self) -> dict:
+        """Aggregate task data into chart-friendly analytics."""
+        tasks = await self.get_tasks()
+        if not isinstance(tasks, list):
+            return {"status_distribution": [], "agent_breakdown": [], "daily_trend": []}
+        from collections import Counter, defaultdict
+        status_counter = Counter()
+        agent_map = defaultdict(lambda: Counter())
+        daily_counter = Counter()
+        for t in tasks:
+            status = t.get("status", "unknown")
+            agent = t.get("agent_type", "unknown")
+            status_counter[status] += 1
+            agent_map[agent][status] += 1
+            created = t.get("created_at", "")
+            if created:
+                daily_counter[created[:10]] += 1
+        return {
+            "status_distribution": [
+                {"label": s.capitalize(), "value": c} for s, c in sorted(status_counter.items(), key=lambda x: -x[1])
+            ],
+            "agent_breakdown": [
+                {"agent": a, **{s.capitalize(): c for s, c in sorted(stats.items())}}
+                for a, stats in sorted(agent_map.items())
+            ],
+            "daily_trend": [
+                {"date": d, "count": c} for d, c in sorted(daily_counter.items())
+            ],
+        }
 
 
 # Singleton
