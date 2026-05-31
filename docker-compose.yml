@@ -1,0 +1,96 @@
+version: "3.9"
+
+# ═══════════════════════════════════════════════════════
+# CrossWave 全栈 Docker Compose
+# 一键部署: docker compose up -d
+# ═══════════════════════════════════════════════════════
+
+services:
+
+  # ── Polsia Fork 后端 ──────────────────────────────
+  polsia-fork:
+    build:
+      context: ./projects/polsia-fork
+      dockerfile: Dockerfile
+    container_name: polsia-fork
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///data/polsia.db
+      - DEBUG=false
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.deepseek.com/v1}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:9999}
+    volumes:
+      - polsia_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ── CrossWave BFF + 官网 ─────────────────────────
+  crosswave:
+    build:
+      context: ./projects/crosswave
+      dockerfile: Dockerfile
+    container_name: crosswave
+    ports:
+      - "9999:9999"
+    environment:
+      - POLSIA_BASE_URL=http://polsia-fork:8000
+      - POLSIA_API_KEY=${POLSIA_API_KEY:-dev-key}
+      - POLSIA_MOCK=false
+    depends_on:
+      polsia-fork:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9999/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ── CrossBlog ─────────────────────────────────────
+  crossblog:
+    build:
+      context: ./projects/ai-blog-engine
+      dockerfile: Dockerfile
+    container_name: crossblog
+    ports:
+      - "7777:7777"
+    environment:
+      - LLM_API_MOCK=${LLM_API_MOCK:-true}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - BLOG_DB_PATH=/data/blog.db
+    volumes:
+      - blog_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7777/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ── Nginx 反向代理 ──────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: crosswave-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      crosswave:
+        condition: service_healthy
+      crossblog:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  polsia_data:
+  blog_data:
