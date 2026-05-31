@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrossWave HQ — 员工管理</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #1e293b, #0f172a); padding: 24px 32px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header h1 span { color: #38bdf8; }
+.header .nav a { color: #94a3b8; font-size: 13px; margin-left: 16px; text-decoration: none; }
+.header .nav a:hover { color: #38bdf8; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 24px 32px 16px; }
+.kpi-card { background: #1e293b; border-radius: 12px; padding: 16px; border: 1px solid #334155; border-left: 4px solid #38bdf8; }
+.kpi-card .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+.kpi-card .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 32px 16px; }
+.chart-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+.chart-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
+.chart-card canvas { max-height: 260px; }
+
+.table-wrap { padding: 0 32px 24px; }
+table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; }
+th { background: #0f172a; color: #94a3b8; font-size: 12px; text-transform: uppercase; padding: 12px 16px; text-align: left; }
+td { padding: 10px 16px; border-bottom: 1px solid #334155; font-size: 14px; }
+tr:last-child td { border-bottom: none; }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 8px; }
+.badge.active { background: #166534; color: #4ade80; }
+.badge.idle { background: #1e3a5f; color: #60a5fa; }
+.badge.error { background: #5c1a1a; color: #f87171; }
+.empty { color: #64748b; text-align: center; padding: 40px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🌊 <span>CrossWave</span> HQ · 员工</h1>
+  <span class="nav">
+    <a href="/">战情室</a>
+    <a href="/orders">订单</a>
+  </span>
+</div>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="chart-row">
+  <div class="chart-card"><h3>👥 按角色分布</h3><canvas id="roleChart"></canvas></div>
+  <div class="chart-card"><h3>📊 按状态分布</h3><canvas id="statusChart"></canvas></div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>姓名</th><th>角色</th><th>类型</th><th>状态</th><th>来源</th></tr></thead>
+    <tbody id="empTable"></tbody>
+  </table>
+</div>
+
+<script>
+const apiBase = 'http://localhost:13001';
+let roleChart, statusChart;
+
+async function load() {
+  try {
+    const res = await fetch(`${apiBase}/api/hq/employees`);
+    const data = (await res.json()).data || [];
+
+    const roles = {}, statuses = {};
+    data.forEach(e => {
+      const r = e.role || e.type || 'unknown';
+      roles[r] = (roles[r] || 0) + 1;
+      const s = e.status || 'idle';
+      statuses[s] = (statuses[s] || 0) + 1;
+    });
+
+    const kpiRow = document.getElementById('kpiRow');
+    kpiRow.innerHTML = `
+      <div class="kpi-card"><div class="label">员工总数</div><div class="value">${data.length}</div></div>
+      <div class="kpi-card" style="border-left-color:#4ade80"><div class="label">活跃</div><div class="value">${statuses['active'] || 0}</div></div>
+      <div class="kpi-card" style="border-left-color:#60a5fa"><div class="label">空闲</div><div class="value">${statuses['idle'] || 0}</div></div>
+      <div class="kpi-card" style="border-left-color:#f87171"><div class="label">错误</div><div class="value">${statuses['error'] || 0}</div></div>
+    `;
+
+    if (roleChart) roleChart.destroy();
+    roleChart = new Chart(document.getElementById('roleChart'), {
+      type: 'doughnut',
+      data: { labels: Object.keys(roles), datasets: [{ data: Object.values(roles), backgroundColor: ['#38bdf8','#4ade80','#facc15','#a78bfa','#fb923c','#f472b6'] }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } },
+    });
+
+    if (statusChart) statusChart.destroy();
+    statusChart = new Chart(document.getElementById('statusChart'), {
+      type: 'doughnut',
+      data: { labels: Object.keys(statuses), datasets: [{ data: Object.values(statuses), backgroundColor: ['#4ade80','#60a5fa','#f87171','#facc15'] }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } },
+    });
+
+    const tbody = document.getElementById('empTable');
+    tbody.innerHTML = data.map(e => `
+      <tr>
+        <td>${e.name || e.agent_type}</td>
+        <td>${e.role || '-'}</td>
+        <td>${e.type || 'ai'}</td>
+        <td><span class="badge ${e.status || 'idle'}">${e.status || 'idle'}</span></td>
+        <td>${e.agent_type || '-'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" class="empty">暂无员工数据</td></tr>';
+  } catch (e) {
+    document.getElementById('kpiRow').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>

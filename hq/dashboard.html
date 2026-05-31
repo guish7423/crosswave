@@ -8,69 +8,50 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
-
-.header {
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  padding: 24px 32px; border-bottom: 1px solid #334155;
-  display: flex; justify-content: space-between; align-items: center;
-}
+.header { background: linear-gradient(135deg, #1e293b, #0f172a); padding: 24px 32px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
 .header h1 { font-size: 22px; font-weight: 700; }
 .header h1 span { color: #38bdf8; }
 .header .time { color: #94a3b8; font-size: 13px; }
+.header .nav a { color: #94a3b8; font-size: 13px; margin-left: 16px; text-decoration: none; }
+.header .nav a:hover { color: #38bdf8; }
+.header .sync-info { font-size: 11px; color: #64748b; }
 
-.kpi-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px; padding: 24px 32px;
-}
-.kpi-card {
-  background: #1e293b; border-radius: 12px; padding: 20px;
-  border: 1px solid #334155; border-left: 4px solid #38bdf8;
-}
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; padding: 24px 32px 16px; }
+.kpi-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; border-left: 4px solid #38bdf8; }
 .kpi-card .label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
 .kpi-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
-.kpi-card .trend { font-size: 12px; margin-top: 4px; }
-.kpi-card .trend.up { color: #4ade80; }
-.kpi-card .trend.down { color: #f87171; }
+.kpi-card .sub { font-size: 12px; margin-top: 4px; color: #94a3b8; }
 
-.chart-row {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
-  padding: 0 32px 24px;
-}
-.chart-card {
-  background: #1e293b; border-radius: 12px; padding: 20px;
-  border: 1px solid #334155;
-}
+.charts-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 0 32px 16px; }
+.chart-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
 .chart-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
-.chart-card canvas { max-height: 280px; }
+.chart-card canvas { max-height: 240px; }
 
-.bottom-row {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
-  padding: 0 32px 24px;
-}
-.section-card {
-  background: #1e293b; border-radius: 12px; padding: 20px;
-  border: 1px solid #334155;
-}
+.health-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 0 32px 16px; }
+.health-card { background: #1e293b; border-radius: 12px; padding: 16px; border: 1px solid #334155; border-left: 4px solid #4ade80; display: flex; justify-content: space-between; align-items: center; }
+.health-card.warning { border-left-color: #facc15; }
+.health-card.critical { border-left-color: #f87171; }
+.health-card .line-name { font-size: 15px; font-weight: 600; }
+.health-card .line-status { font-size: 11px; padding: 2px 8px; border-radius: 8px; }
+.health-card .line-status.active { background: #166534; color: #4ade80; }
+.health-card .line-status.development { background: #5c3d1a; color: #facc15; }
+.health-card .line-status.inactive { background: #5c1a1a; color: #f87171; }
+.health-card .line-meta { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+.bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 32px 24px; }
+.section-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
 .section-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
 .agent-list { list-style: none; }
-.agent-item {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 0; border-bottom: 1px solid #334155;
-}
+.agent-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #334155; }
 .agent-item:last-child { border-bottom: none; }
 .agent-item .name { font-size: 14px; }
 .agent-item .status { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
 .agent-item .status.active { background: #166534; color: #4ade80; }
 .agent-item .status.idle { background: #1e3a5f; color: #60a5fa; }
 .agent-item .status.error { background: #5c1a1a; color: #f87171; }
-
 .activity-feed { max-height: 300px; overflow-y: auto; }
-.activity-item {
-  padding: 6px 0; font-size: 13px; border-bottom: 1px solid #1e293b;
-  display: flex; justify-content: space-between;
-}
+.activity-item { padding: 6px 0; font-size: 13px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; }
 .activity-item .time { color: #64748b; font-size: 12px; }
-
 .empty { color: #64748b; text-align: center; padding: 24px; font-size: 14px; }
 .error-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #f87171; text-align: center; color: #f87171; }
 </style>
@@ -78,20 +59,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="header">
   <h1>🌊 <span>CrossWave</span> HQ</h1>
-  <div class="time" id="time"></div>
+  <div>
+    <span class="sync-info" id="syncInfo"></span>
+    <span class="nav">
+      <a href="/">战情室</a>
+      <a href="/employees">员工</a>
+      <a href="/orders">订单</a>
+    </span>
+    <span class="time" id="time"></span>
+  </div>
 </div>
 
 <div class="kpi-grid" id="kpiGrid">
-  <div class="kpi-card"><div class="label">员工数</div><div class="value">—</div></div>
-  <div class="kpi-card" style="border-left-color:#4ade80"><div class="label">活跃订单</div><div class="value">—</div></div>
-  <div class="kpi-card" style="border-left-color:#facc15"><div class="label">月收入 (MRR)</div><div class="value">—</div></div>
-  <div class="kpi-card" style="border-left-color:#a78bfa"><div class="label">客户数</div><div class="value">—</div></div>
+  <div class="kpi-card"><div class="label">员工数</div><div class="value">—</div><div class="sub" id="empBreakdown"></div></div>
+  <div class="kpi-card" style="border-left-color:#4ade80"><div class="label">活跃订单</div><div class="value">—</div><div class="sub" id="orderBreakdown"></div></div>
+  <div class="kpi-card" style="border-left-color:#facc15"><div class="label">月收入 (MRR)</div><div class="value">—</div><div class="sub">¥ ARR</div></div>
+  <div class="kpi-card" style="border-left-color:#a78bfa"><div class="label">客户数</div><div class="value">—</div><div class="sub">跨业务线</div></div>
 </div>
 
-<div class="chart-row">
+<div class="charts-row">
+  <div class="chart-card"><h3>👥 员工状态分布</h3><canvas id="empChart"></canvas></div>
   <div class="chart-card"><h3>📊 业务线收入分布</h3><canvas id="revenueChart"></canvas></div>
   <div class="chart-card"><h3>🔵 任务状态分布</h3><canvas id="taskChart"></canvas></div>
 </div>
+
+<div class="health-grid" id="healthGrid"></div>
 
 <div class="bottom-row">
   <div class="section-card">
@@ -105,99 +97,107 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-function updateTime() {
-  document.getElementById('time').textContent = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-}
-setInterval(updateTime, 1000);
-updateTime();
+function updateTime() { document.getElementById('time').textContent = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }); }
+setInterval(updateTime, 1000); updateTime();
 
-let revenueChart, taskChart;
-let hqBase = localStorage.getItem('hqUrl') || 'http://localhost:13000/api';
-let hqToken = localStorage.getItem('hqToken') || '';
+let empChart, revenueChart, taskChart;
+const apiBase = 'http://localhost:13001';
 
-async function api(path) {
-  const res = await fetch(`${hqBase}${path}`, {
-    headers: hqToken ? { Authorization: `Bearer ${hqToken}` } : {},
-  });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
-}
-
-async function loadData() {
+async function loadSummary() {
   try {
-    const [emps, lines, orders] = await Promise.all([
-      api('/employees:list?pageSize=100').catch(() => ({ data: [] })),
-      api('/business_lines:list?pageSize=20').catch(() => ({ data: [] })),
-      api('/external_orders:list?pageSize=100&sort=-created_at').catch(() => ({ data: [] })),
-    ]);
+    const res = await fetch(`${apiBase}/api/hq/summary`);
+    const data = await res.json();
 
-    const empData = emps.data || [];
-    const lineData = lines.data || [];
-    const orderData = orders.data || [];
-
-    const activeOrders = orderData.filter(o => o.status === 'pending' || o.status === 'in_progress');
-    const totalMRR = lineData.reduce((s, l) => s + (l.monthly_revenue || 0), 0);
-    const totalCustomers = lineData.reduce((s, l) => s + (l.customer_count || 0), 0);
+    document.getElementById('syncInfo').textContent = data.last_sync ? `同步: ${new Date(data.last_sync).toLocaleString('zh-CN')}` : '';
 
     const kpis = document.getElementById('kpiGrid').children;
-    kpis[0].querySelector('.value').textContent = empData.length;
-    kpis[1].querySelector('.value').textContent = activeOrders.length;
-    kpis[2].querySelector('.value').textContent = `¥${totalMRR.toLocaleString()}`;
-    kpis[3].querySelector('.value').textContent = totalCustomers;
+    kpis[0].querySelector('.value').textContent = data.employees.total;
+    const sd = data.employees.status_distribution;
+    document.getElementById('empBreakdown').textContent = Object.entries(sd).map(([k,v]) => `${k}: ${v}`).join('  ');
+    kpis[1].querySelector('.value').textContent = data.orders.active;
+    const od = data.orders.status_distribution;
+    document.getElementById('orderBreakdown').textContent = Object.entries(od).map(([k,v]) => `${k}: ${v}`).join('  ');
+    kpis[2].querySelector('.value').textContent = `¥${data.mrr.toLocaleString()}`;
+    kpis[2].querySelector('.sub').textContent = `¥${(data.mrr * 12).toLocaleString()} ARR`;
+    kpis[3].querySelector('.value').textContent = data.customers;
 
+    const empLabels = Object.keys(sd);
+    const empValues = Object.values(sd);
+    if (empChart) empChart.destroy();
+    empChart = new Chart(document.getElementById('empChart'), {
+      type: 'doughnut',
+      data: { labels: empLabels, datasets: [{ data: empValues, backgroundColor: ['#4ade80','#60a5fa','#f87171','#facc15'] }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } },
+    });
+
+    const lineNames = data.lines.map(l => l.name);
+    const lineRevenues = data.lines.map(l => l.revenue);
     if (revenueChart) revenueChart.destroy();
     revenueChart = new Chart(document.getElementById('revenueChart'), {
       type: 'doughnut',
-      data: {
-        labels: lineData.map(l => l.name),
-        datasets: [{
-          data: lineData.map(l => l.monthly_revenue || 1),
-          backgroundColor: ['#38bdf8','#4ade80','#facc15','#a78bfa','#fb923c'],
-        }],
-      },
+      data: { labels: lineNames, datasets: [{ data: lineRevenues.map(r => r || 1), backgroundColor: ['#38bdf8','#4ade80','#facc15','#a78bfa','#fb923c'] }] },
       options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } },
     });
 
-    const done = orderData.filter(o => o.status === 'completed').length;
-    const pending = orderData.filter(o => o.status === 'pending').length;
-    const failed = orderData.filter(o => o.status === 'failed').length || 0;
-
+    const taskLabels = Object.keys(od);
+    const taskValues = Object.values(od);
     if (taskChart) taskChart.destroy();
     taskChart = new Chart(document.getElementById('taskChart'), {
       type: 'doughnut',
-      data: {
-        labels: ['已完成', '待处理', '失败'],
-        datasets: [{
-          data: [done, pending, failed],
-          backgroundColor: ['#4ade80', '#facc15', '#f87171'],
-        }],
-      },
+      data: { labels: taskLabels, datasets: [{ data: taskValues, backgroundColor: ['#4ade80','#facc15','#f87171','#60a5fa'] }] },
       options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } },
     });
 
-    const agentList = document.getElementById('agentList');
-    agentList.innerHTML = empData.map(e => `
-      <li class="agent-item">
-        <span class="name">${e.name || 'AI'}</span>
-        <span class="status ${e.status || 'idle'}">${e.role || e.type}</span>
-      </li>
-    `).join('');
-
-    const feed = document.getElementById('activityFeed');
-    feed.innerHTML = orderData.slice(0, 20).map(o => `
-      <div class="activity-item">
-        <span>${o.title || 'Order'}</span>
-        <span class="time">${o.status}</span>
+    const healthGrid = document.getElementById('healthGrid');
+    healthGrid.innerHTML = data.lines.map(l => `
+      <div class="health-card ${l.health}">
+        <div>
+          <div class="line-name">${l.name}</div>
+          <div class="line-meta">¥${l.revenue.toLocaleString()} MRR · ${l.customers} 客户</div>
+        </div>
+        <span class="line-status ${l.status}">${l.status}</span>
       </div>
-    `).join('') || '<div class="empty">暂无活动</div>';
-
+    `).join('');
   } catch (e) {
-    document.getElementById('kpiGrid').innerHTML = `<div class="error-card">⚠️ 无法连接到 HQ API: ${e.message}</div>`;
+    document.getElementById('kpiGrid').innerHTML = `<div class="error-card">⚠️ 无法连接到 HQ: ${e.message}</div>`;
   }
 }
 
-loadData();
-setInterval(loadData, 30000);
+async function loadEmployees() {
+  try {
+    const res = await fetch(`${apiBase}/api/hq/employees`);
+    const data = await res.json();
+    const list = document.getElementById('agentList');
+    list.innerHTML = (data.data || []).map(e => `
+      <li class="agent-item">
+        <span class="name">${e.name || e.agent_type}</span>
+        <span class="status ${e.status}">${e.role || e.type}</span>
+      </li>
+    `).join('') || '<li class="empty">暂无员工</li>';
+  } catch (e) {
+    document.getElementById('agentList').innerHTML = `<li class="empty">Error: ${e.message}</li>`;
+  }
+}
+
+async function loadActivity() {
+  try {
+    const res = await fetch(`${apiBase}/api/hq/orders`);
+    const data = await res.json();
+    const feed = document.getElementById('activityFeed');
+    const items = (data.data || []).slice(0, 20);
+    feed.innerHTML = items.map(o => `
+      <div class="activity-item">
+        <span>${o.title || 'Task'}</span>
+        <span class="time">${o.status}${o.created_at ? ' · ' + new Date(o.created_at).toLocaleDateString('zh-CN') : ''}</span>
+      </div>
+    `).join('') || '<div class="empty">暂无活动</div>';
+  } catch (e) {
+    document.getElementById('activityFeed').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+loadSummary(); loadEmployees(); loadActivity();
+setInterval(() => { loadSummary(); loadEmployees(); loadActivity(); }, 30000);
 </script>
 </body>
 </html>
