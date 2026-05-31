@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrossWave HQ — 财务中心</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #1e293b, #0f172a); padding: 24px 32px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header h1 span { color: #38bdf8; }
+.header .nav a { color: #94a3b8; font-size: 13px; margin-left: 16px; text-decoration: none; }
+.header .nav a:hover { color: #38bdf8; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 24px 32px 16px; }
+.kpi-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; border-left: 4px solid #38bdf8; }
+.kpi-card .label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
+.kpi-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+.kpi-card .sub { font-size: 12px; margin-top: 4px; color: #94a3b8; }
+.kpi-card .value.positive { color: #4ade80; }
+.kpi-card .value.negative { color: #f87171; }
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 32px 24px; }
+.chart-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+.chart-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
+.chart-card canvas { max-height: 300px; }
+.full-width { grid-column: 1 / -1; }
+.empty { color: #64748b; text-align: center; padding: 24px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🌊 <span>CrossWave</span> HQ · 财务中心</h1>
+  <span class="nav">
+    <a href="/">战情室</a>
+    <a href="/employees">员工</a>
+    <a href="/orders">订单</a>
+    <a href="/finance">财务</a>
+    <a href="/reports">报表</a>
+  </span>
+</div>
+
+<div class="kpi-grid" id="kpiGrid">
+  <div class="kpi-card" style="border-left-color:#4ade80"><div class="label">月收入 (MRR)</div><div class="value positive">—</div><div class="sub">年收入 ARR</div></div>
+  <div class="kpi-card" style="border-left-color:#f87171"><div class="label">月成本</div><div class="value negative">—</div></div>
+  <div class="kpi-card" style="border-left-color:#facc15"><div class="label">利润率</div><div class="value">—</div><div class="sub">%</div></div>
+  <div class="kpi-card" style="border-left-color:#a78bfa"><div class="label">总收入</div><div class="value positive">—</div><div class="sub">累计</div></div>
+</div>
+
+<div class="charts-row">
+  <div class="chart-card full-width"><h3>📈 月度收入趋势</h3><canvas id="revenueTrendChart"></canvas></div>
+</div>
+<div class="charts-row">
+  <div class="chart-card"><h3>🧾 费用类别分布</h3><canvas id="expenseChart"></canvas></div>
+  <div class="chart-card"><h3>📊 盈亏概况</h3><canvas id="profitChart"></canvas></div>
+</div>
+
+<script>
+let revenueTrendChart, expenseChart, profitChart;
+const apiBase = 'http://localhost:13001';
+
+async function loadFinances() {
+  try {
+    const res = await fetch(`${apiBase}/api/hq/finances`);
+    const data = await res.json();
+
+    const kpis = document.getElementById('kpiGrid').children;
+    kpis[0].querySelector('.value').textContent = `¥${data.mrr.toLocaleString()}`;
+    kpis[0].querySelector('.sub').textContent = `¥${(data.mrr * 12).toLocaleString()} ARR`;
+    kpis[1].querySelector('.value').textContent = `¥${data.total_costs.toLocaleString()}`;
+    kpis[2].querySelector('.value').textContent = `${data.profit_margin}%`;
+    kpis[3].querySelector('.value').textContent = `¥${data.total_revenue.toLocaleString()}`;
+
+    const revMonths = data.revenue_by_month || [];
+    if (revenueTrendChart) revenueTrendChart.destroy();
+    revenueTrendChart = new Chart(document.getElementById('revenueTrendChart'), {
+      type: 'line',
+      data: {
+        labels: revMonths.map(r => r.month),
+        datasets: [{
+          label: '收入',
+          data: revMonths.map(r => r.revenue),
+          borderColor: '#4ade80',
+          backgroundColor: 'rgba(74, 222, 128, 0.1)',
+          fill: true,
+          tension: 0.4,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        scales: { x: { ticks: { color: '#64748b' } }, y: { ticks: { color: '#64748b', callback: v => '¥' + v } } },
+      },
+    });
+
+    const expenses = data.expense_by_category || [];
+    if (expenseChart) expenseChart.destroy();
+    expenseChart = new Chart(document.getElementById('expenseChart'), {
+      type: 'doughnut',
+      data: {
+        labels: expenses.map(e => e.category),
+        datasets: [{ data: expenses.map(e => e.amount), backgroundColor: ['#f87171','#fb923c','#facc15','#a78bfa','#60a5fa','#4ade80'] }],
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } },
+    });
+
+    if (profitChart) profitChart.destroy();
+    profitChart = new Chart(document.getElementById('profitChart'), {
+      type: 'bar',
+      data: {
+        labels: ['收入', '成本', '利润'],
+        datasets: [{
+          data: [data.total_revenue, data.total_costs, data.total_revenue - data.total_costs],
+          backgroundColor: ['#4ade80', '#f87171', '#60a5fa'],
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { color: '#64748b' } }, y: { ticks: { color: '#64748b', callback: v => '¥' + v } } },
+      },
+    });
+  } catch (e) {
+    document.body.innerHTML += `<div class="empty" style="color:#f87171">⚠️ Error: ${e.message}</div>`;
+  }
+}
+loadFinances();
+setInterval(loadFinances, 30000);
+</script>
+</body>
+</html>
