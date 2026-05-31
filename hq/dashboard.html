@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrossWave HQ — 战情室</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
+
+.header {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  padding: 24px 32px; border-bottom: 1px solid #334155;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.header h1 { font-size: 22px; font-weight: 700; }
+.header h1 span { color: #38bdf8; }
+.header .time { color: #94a3b8; font-size: 13px; }
+
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px; padding: 24px 32px;
+}
+.kpi-card {
+  background: #1e293b; border-radius: 12px; padding: 20px;
+  border: 1px solid #334155; border-left: 4px solid #38bdf8;
+}
+.kpi-card .label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
+.kpi-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+.kpi-card .trend { font-size: 12px; margin-top: 4px; }
+.kpi-card .trend.up { color: #4ade80; }
+.kpi-card .trend.down { color: #f87171; }
+
+.chart-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  padding: 0 32px 24px;
+}
+.chart-card {
+  background: #1e293b; border-radius: 12px; padding: 20px;
+  border: 1px solid #334155;
+}
+.chart-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
+.chart-card canvas { max-height: 280px; }
+
+.bottom-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  padding: 0 32px 24px;
+}
+.section-card {
+  background: #1e293b; border-radius: 12px; padding: 20px;
+  border: 1px solid #334155;
+}
+.section-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
+.agent-list { list-style: none; }
+.agent-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid #334155;
+}
+.agent-item:last-child { border-bottom: none; }
+.agent-item .name { font-size: 14px; }
+.agent-item .status { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
+.agent-item .status.active { background: #166534; color: #4ade80; }
+.agent-item .status.idle { background: #1e3a5f; color: #60a5fa; }
+.agent-item .status.error { background: #5c1a1a; color: #f87171; }
+
+.activity-feed { max-height: 300px; overflow-y: auto; }
+.activity-item {
+  padding: 6px 0; font-size: 13px; border-bottom: 1px solid #1e293b;
+  display: flex; justify-content: space-between;
+}
+.activity-item .time { color: #64748b; font-size: 12px; }
+
+.empty { color: #64748b; text-align: center; padding: 24px; font-size: 14px; }
+.error-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #f87171; text-align: center; color: #f87171; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🌊 <span>CrossWave</span> HQ</h1>
+  <div class="time" id="time"></div>
+</div>
+
+<div class="kpi-grid" id="kpiGrid">
+  <div class="kpi-card"><div class="label">员工数</div><div class="value">—</div></div>
+  <div class="kpi-card" style="border-left-color:#4ade80"><div class="label">活跃订单</div><div class="value">—</div></div>
+  <div class="kpi-card" style="border-left-color:#facc15"><div class="label">月收入 (MRR)</div><div class="value">—</div></div>
+  <div class="kpi-card" style="border-left-color:#a78bfa"><div class="label">客户数</div><div class="value">—</div></div>
+</div>
+
+<div class="chart-row">
+  <div class="chart-card"><h3>📊 业务线收入分布</h3><canvas id="revenueChart"></canvas></div>
+  <div class="chart-card"><h3>🔵 任务状态分布</h3><canvas id="taskChart"></canvas></div>
+</div>
+
+<div class="bottom-row">
+  <div class="section-card">
+    <h3>🤖 AI 员工</h3>
+    <ul class="agent-list" id="agentList"><li class="empty">加载中...</li></ul>
+  </div>
+  <div class="section-card">
+    <h3>📋 最新活动</h3>
+    <div class="activity-feed" id="activityFeed"><div class="empty">加载中...</div></div>
+  </div>
+</div>
+
+<script>
+function updateTime() {
+  document.getElementById('time').textContent = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+let revenueChart, taskChart;
+let hqBase = localStorage.getItem('hqUrl') || 'http://localhost:13000/api';
+let hqToken = localStorage.getItem('hqToken') || '';
+
+async function api(path) {
+  const res = await fetch(`${hqBase}${path}`, {
+    headers: hqToken ? { Authorization: `Bearer ${hqToken}` } : {},
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+async function loadData() {
+  try {
+    const [emps, lines, orders] = await Promise.all([
+      api('/employees:list?pageSize=100').catch(() => ({ data: [] })),
+      api('/business_lines:list?pageSize=20').catch(() => ({ data: [] })),
+      api('/external_orders:list?pageSize=100&sort=-created_at').catch(() => ({ data: [] })),
+    ]);
+
+    const empData = emps.data || [];
+    const lineData = lines.data || [];
+    const orderData = orders.data || [];
+
+    const activeOrders = orderData.filter(o => o.status === 'pending' || o.status === 'in_progress');
+    const totalMRR = lineData.reduce((s, l) => s + (l.monthly_revenue || 0), 0);
+    const totalCustomers = lineData.reduce((s, l) => s + (l.customer_count || 0), 0);
+
+    const kpis = document.getElementById('kpiGrid').children;
+    kpis[0].querySelector('.value').textContent = empData.length;
+    kpis[1].querySelector('.value').textContent = activeOrders.length;
+    kpis[2].querySelector('.value').textContent = `¥${totalMRR.toLocaleString()}`;
+    kpis[3].querySelector('.value').textContent = totalCustomers;
+
+    if (revenueChart) revenueChart.destroy();
+    revenueChart = new Chart(document.getElementById('revenueChart'), {
+      type: 'doughnut',
+      data: {
+        labels: lineData.map(l => l.name),
+        datasets: [{
+          data: lineData.map(l => l.monthly_revenue || 1),
+          backgroundColor: ['#38bdf8','#4ade80','#facc15','#a78bfa','#fb923c'],
+        }],
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } },
+    });
+
+    const done = orderData.filter(o => o.status === 'completed').length;
+    const pending = orderData.filter(o => o.status === 'pending').length;
+    const failed = orderData.filter(o => o.status === 'failed').length || 0;
+
+    if (taskChart) taskChart.destroy();
+    taskChart = new Chart(document.getElementById('taskChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['已完成', '待处理', '失败'],
+        datasets: [{
+          data: [done, pending, failed],
+          backgroundColor: ['#4ade80', '#facc15', '#f87171'],
+        }],
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } },
+    });
+
+    const agentList = document.getElementById('agentList');
+    agentList.innerHTML = empData.map(e => `
+      <li class="agent-item">
+        <span class="name">${e.name || 'AI'}</span>
+        <span class="status ${e.status || 'idle'}">${e.role || e.type}</span>
+      </li>
+    `).join('');
+
+    const feed = document.getElementById('activityFeed');
+    feed.innerHTML = orderData.slice(0, 20).map(o => `
+      <div class="activity-item">
+        <span>${o.title || 'Order'}</span>
+        <span class="time">${o.status}</span>
+      </div>
+    `).join('') || '<div class="empty">暂无活动</div>';
+
+  } catch (e) {
+    document.getElementById('kpiGrid').innerHTML = `<div class="error-card">⚠️ 无法连接到 HQ API: ${e.message}</div>`;
+  }
+}
+
+loadData();
+setInterval(loadData, 30000);
+</script>
+</body>
+</html>
