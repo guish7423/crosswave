@@ -315,5 +315,58 @@ async def portal_order(order_id: int):
 async def portal_page(order_id: int):
     return FileResponse(os.path.join(os.path.dirname(__file__), "portal.html"))
 
+# ─── Monitor (守望者) ──────────────────────────────────────────────────────
+SERVICES_TO_CHECK = [
+    {"name": "polsia-fork", "url": "http://localhost:8001/api/v1/health", "label": "Polsia Fork (AI Agents)"},
+    {"name": "crosswave",     "url": "http://localhost:9999/health",           "label": "CrossWave (Website)"},
+    {"name": "crossblog",     "url": "http://localhost:8002/health",           "label": "CrossBlog (80 Posts)"},
+    {"name": "hq-bridge",     "url": "http://localhost:13001/health",          "label": "CrossWave HQ (Bridge)"},
+]
+
+
+async def _check_svc(name: str, url: str, timeout: int = 5) -> dict:
+    import time
+    start = time.monotonic()
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.get(url, headers={"User-Agent": "CrossWave-Monitor/1.0"})
+        ms = int((time.monotonic() - start) * 1000)
+        return {"service": name, "status": "up" if resp.is_success else "degraded",
+                "http_status": resp.status_code, "response_time_ms": ms, "error": ""}
+    except Exception as e:
+        ms = int((time.monotonic() - start) * 1000)
+        return {"service": name, "status": "down", "http_status": 0,
+                "response_time_ms": ms, "error": str(e)[:120]}
+
+
+@app.get("/health")
+async def hq_health():
+    return {"status": "ok", "app": "CrossWave HQ Bridge", "services": len(SERVICES_TO_CHECK)}
+
+
+@app.get("/api/hq/monitor")
+async def get_monitor():
+    import asyncio
+    tasks = [_check_svc(s["name"], s["url"]) for s in SERVICES_TO_CHECK]
+    results = await asyncio.gather(*tasks)
+    up = sum(1 for r in results if r["status"] == "up")
+    degraded = sum(1 for r in results if r["status"] == "degraded")
+    down = sum(1 for r in results if r["status"] == "down")
+    valid_ms = [r["response_time_ms"] for r in results if r["response_time_ms"] > 0]
+    avg_ms = round(sum(valid_ms) / len(valid_ms)) if valid_ms else 0
+    return {
+        "summary": {
+            "total": len(results), "up": up, "degraded": degraded, "down": down,
+            "avg_response_time_ms": avg_ms, "all_up": up == len(results),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+        "results": [{**r, "label": next((s["label"] for s in SERVICES_TO_CHECK if s["name"] == r["service"]), r["service"])} for r in results],
+    }
+
+
+@app.get("/monitor")
+async def monitor_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "monitor.html"))
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)

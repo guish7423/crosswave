@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系统监控 — CrossWave HQ</title>
+<link rel="stylesheet" href="/static/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  .monitor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .svc-card { background: var(--bg-card); border-radius: var(--radius-md); padding: 1.25rem; border: 1px solid var(--border); transition: transform .2s; }
+  .svc-card:hover { transform: translateY(-2px); }
+  .svc-card .name { font-size: .9rem; color: var(--text-secondary); margin-bottom: .25rem; }
+  .svc-card .label { font-weight: 600; font-size: 1.05rem; margin-bottom: .75rem; }
+  .svc-card .status-badge { display: inline-block; padding: .2rem .75rem; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+  .status-up { background: #10b981; color: #fff; }
+  .status-degraded { background: #f59e0b; color: #fff; }
+  .status-down { background: #ef4444; color: #fff; }
+  .svc-meta { display: flex; justify-content: space-between; margin-top: .75rem; font-size: .8rem; color: var(--text-secondary); }
+  .svc-error { margin-top: .5rem; font-size: .8rem; color: var(--danger); word-break: break-all; }
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  .chart-box { background: var(--bg-card); border-radius: var(--radius-md); padding: 1.25rem; border: 1px solid var(--border); }
+  .chart-box h3 { margin: 0 0 .75rem; font-size: .95rem; color: var(--text-secondary); }
+  .last-refresh { text-align: center; font-size: .8rem; color: var(--text-secondary); margin-top: 1rem; }
+  .summary-row { display: flex; gap: .75rem; align-items: center; }
+  .all-up-badge { background: #10b981; color: #fff; padding: .2rem 1rem; border-radius: 999px; font-weight: 600; font-size: .8rem; }
+  .has-issues-badge { background: #ef4444; color: #fff; padding: .2rem 1rem; border-radius: 999px; font-weight: 600; font-size: .8rem; }
+  @media (max-width: 768px) { .chart-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <span class="nav-brand">🏛️ CrossWave HQ</span>
+    <div class="nav-links">
+      <a href="/">战情室</a>
+      <a href="/employees">员工</a>
+      <a href="/orders">订单</a>
+      <a href="/leads">线索</a>
+      <a href="/deploy">部署</a>
+      <a href="/finance">财务</a>
+      <a href="/reports">报表</a>
+      <a href="/monitor" class="active">监控</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>🛡️ 系统监控 <span id="allUpBadge"></span></h1>
+    <p>全栈服务健康状态 — 自动每 60 秒刷新</p>
+  </div>
+
+  <!-- KPI row -->
+  <div class="kpi-row">
+    <div class="kpi-card"><span class="kpi-value" id="totalCount">0</span><span class="kpi-label">总服务数</span></div>
+    <div class="kpi-card"><span class="kpi-value" style="color:#10b981" id="upCount">0</span><span class="kpi-label">正常</span></div>
+    <div class="kpi-card"><span class="kpi-value" style="color:#f59e0b" id="degradedCount">0</span><span class="kpi-label">降级</span></div>
+    <div class="kpi-card"><span class="kpi-value" style="color:#ef4444" id="downCount">0</span><span class="kpi-label">离线</span></div>
+    <div class="kpi-card"><span class="kpi-value" id="avgMs">0ms</span><span class="kpi-label">平均响应</span></div>
+  </div>
+
+  <!-- Service cards grid -->
+  <div class="monitor-grid" id="serviceGrid"></div>
+
+  <!-- Trend bars -->
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3>📊 响应时间 (ms)</h3>
+      <canvas id="respChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>📈 服务状态分布</h3>
+      <canvas id="donutChart"></canvas>
+    </div>
+  </div>
+
+  <p class="last-refresh" id="refreshInfo">上次更新: —</p>
+</div>
+
+<script>
+const COLORS = {
+  up: '#10b981', degraded: '#f59e0b', down: '#ef4444', bg: '#1e293b',
+  grid: '#334155', text: '#94a3b8',
+};
+
+let respChartInstance = null;
+let donutChartInstance = null;
+
+async function refresh() {
+  try {
+    const resp = await fetch('/api/hq/monitor');
+    const data = await resp.json();
+    const { summary, results } = data;
+
+    // KPI
+    document.getElementById('totalCount').textContent = summary.total;
+    document.getElementById('upCount').textContent = summary.up;
+    document.getElementById('degradedCount').textContent = summary.degraded;
+    document.getElementById('downCount').textContent = summary.down;
+    document.getElementById('avgMs').textContent = summary.avg_response_time_ms + 'ms';
+
+    // badge
+    const badge = document.getElementById('allUpBadge');
+    if (summary.all_up) {
+      badge.innerHTML = '<span class="all-up-badge">✅ 全部正常</span>';
+    } else {
+      badge.innerHTML = '<span class="has-issues-badge">⚠️ 存在问题</span>';
+    }
+
+    // Service cards
+    const grid = document.getElementById('serviceGrid');
+    grid.innerHTML = results.map(s => {
+      const statusClass = 'status-' + s.status;
+      const statusText = {up:'正常', degraded:'降级', down:'离线'}[s.status] || s.status;
+      const errorHtml = s.error ? `<div class="svc-error">${s.error}</div>` : '';
+      return `<div class="svc-card">
+        <div class="name">${s.service}</div>
+        <div class="label">${s.label}</div>
+        <span class="status-badge ${statusClass}">${statusText}</span>
+        <div class="svc-meta">
+          <span>HTTP ${s.http_status || '—'}</span>
+          <span>${s.response_time_ms}ms</span>
+        </div>
+        ${errorHtml}
+      </div>`;
+    }).join('');
+
+    // Response time bar chart
+    const labels = results.map(s => s.label.split('(')[0].trim());
+    const times = results.map(s => s.response_time_ms);
+    const statusColors = results.map(s => s.status === 'up' ? COLORS.up : s.status === 'degraded' ? COLORS.degraded : COLORS.down);
+
+    if (respChartInstance) respChartInstance.destroy();
+    respChartInstance = new Chart(document.getElementById('respChart'), {
+      type: 'bar',
+      data: { labels, datasets: [{
+        label: '响应时间 (ms)',
+        data: times,
+        backgroundColor: statusColors,
+        borderRadius: 4,
+      }]},
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: COLORS.grid }, ticks: { color: COLORS.text } },
+          x: { grid: { display: false }, ticks: { color: COLORS.text } },
+        },
+      }
+    });
+
+    // Donut chart
+    if (donutChartInstance) donutChartInstance.destroy();
+    donutChartInstance = new Chart(document.getElementById('donutChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['正常', '降级', '离线'],
+        datasets: [{
+          data: [summary.up, summary.degraded, summary.down],
+          backgroundColor: [COLORS.up, COLORS.degraded, COLORS.down],
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: COLORS.text } },
+        },
+      }
+    });
+
+    document.getElementById('refreshInfo').textContent = '上次更新: ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    document.getElementById('refreshInfo').textContent = '⚠️ 刷新失败: ' + e.message;
+  }
+}
+
+refresh();
+setInterval(refresh, 60000);
+</script>
+</body>
+</html>
