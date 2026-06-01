@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrossWave HQ — Timeline</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+.timeline{position:relative;padding-left:2rem}
+.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--border)}
+.event{position:relative;padding:1rem 1rem 1rem 1.5rem;margin-bottom:.5rem;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);transition:border-color .2s}
+.event:hover{border-color:var(--accent)}
+.event .dot{position:absolute;left:-1.4rem;top:1.3rem;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg)}
+.dot-activity{background:#6366f1}
+.dot-lead{background:#22c55e}
+.dot-order{background:#f59e0b}
+.event .time{font-size:.75rem;color:var(--text-secondary);font-family:monospace}
+.event .title{font-size:.9rem;margin-top:2px;color:var(--text)}
+.event .meta{font-size:.78rem;color:var(--text-secondary);margin-top:4px}
+.event .level-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:.7rem;font-weight:600}
+.level-info{background:rgba(99,102,241,.15);color:#818cf8}
+.level-warning{background:rgba(245,158,11,.15);color:#fbbf24}
+.level-error{background:rgba(239,68,68,.15);color:#f87171}
+.filter-bar{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.filter-btn{padding:.4rem 1rem;border:1px solid var(--border);border-radius:20px;background:var(--card-bg);color:var(--text-secondary);cursor:pointer;font-size:.82rem;transition:all .2s}
+.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.filter-btn:hover:not(.active){border-color:var(--accent);color:var(--text)}
+.empty-state{text-align:center;padding:4rem 2rem;color:var(--text-secondary)}
+.empty-state .icon{font-size:3rem;margin-bottom:1rem}
+.loading{padding:2rem;text-align:center;color:var(--text-secondary)}
+</style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+<div class="container">
+  <div class="page-header"><h1>⏱️ 统一时间线</h1><p>公司所有事件的统一视图 — Agent 活动 / 线索 / 订单</p></div>
+  <div class="filter-bar" id="filterBar">
+    <button class="filter-btn active" data-filter="all">全部</button>
+    <button class="filter-btn" data-filter="activity">🤖 Agent 活动</button>
+    <button class="filter-btn" data-filter="lead">📋 线索</button>
+    <button class="filter-btn" data-filter="order">📦 订单</button>
+    <span style="flex:1"></span>
+    <span id="eventCount" style="font-size:.82rem;color:var(--text-secondary);padding:.4rem 0"></span>
+  </div>
+  <div id="timelineContainer"><div class="loading">加载中...</div></div>
+</div>
+<script>
+async function loadNav(){const r=await fetch('/static/nav.html');document.getElementById('nav-placeholder').innerHTML=await r.text()}
+loadNav();
+let allEvents=[];
+async function loadTimeline(){
+  const c=document.getElementById('timelineContainer');
+  c.innerHTML='<div class="loading">⏳ 加载时间线...</div>';
+  try{
+    const r=await fetch('/api/hq/timeline?limit=100');
+    const d=await r.json();
+    allEvents=d.data||[];
+    renderEvents('all');
+  }catch(e){c.innerHTML=`<div class="empty-state"><div class="icon">⚠️</div><p>加载失败: ${e.message}</p></div>`}
+}
+function renderEvents(filter){
+  const filtered=filter==='all'?allEvents:allEvents.filter(e=>e.type===filter);
+  document.getElementById('eventCount').textContent=`${filtered.length} 条事件`;
+  const c=document.getElementById('timelineContainer');
+  if(!filtered.length){
+    c.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>暂无事件</p></div>';
+    return;
+  }
+  c.innerHTML='<div class="timeline">'+filtered.map(e=>{
+    const dotClass=`dot-${e.type||'activity'}`;
+    const levelClass=e.level==='error'?'level-error':e.level==='warning'?'level-warning':'level-info';
+    const time=e.time?new Date(e.time+'Z').toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'}):'--';
+    return `<div class="event">
+      <div class="dot ${dotClass}"></div>
+      <div class="time">${time}</div>
+      <div class="title">${escapeHtml(e.title||'')}</div>
+      <div class="meta">
+        <span class="level-badge ${levelClass}">${e.level||'info'}</span>
+        <span style="margin-left:8px">${e.source||''}</span>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+document.getElementById('filterBar').addEventListener('click',e=>{
+  const btn=e.target.closest('.filter-btn');
+  if(!btn)return;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEvents(btn.dataset.filter);
+});
+loadTimeline();
+setInterval(loadTimeline,30000);
+</script>
+</body>
+</html>

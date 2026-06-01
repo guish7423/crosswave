@@ -1,0 +1,59 @@
+<div class="header">
+  <h1>🌊 <span>CrossWave</span> HQ</h1>
+  <div>
+    <span class="nav" id="mainNav">
+      <a href="/">战情室</a>
+      <a href="/timeline">时间线</a>
+      <a href="/employees">员工</a>
+      <a href="/orders">订单</a>
+      <a href="/leads">线索</a>
+      <a href="/deploy">部署</a>
+      <a href="/agents">Agent</a>
+      <a href="/finance">财务</a>
+      <a href="/monitor">监控</a>
+      <a href="/evolution">进化办</a>
+      <a href="/reports">报表</a>
+    </span>
+    <span class="nav-notif" id="notifBadge" style="display:none;cursor:pointer" onclick="window.location.href='/leads'"></span>
+    <span class="nav-time" id="navTime"></span>
+  </div>
+</div>
+<script>
+// Auth check — redirect to login if no token
+(function(){
+  const token=localStorage.getItem('hq_token');
+  if(!token&&!window.location.pathname.includes('/login')){
+    window.location.href='/login?redirect='+encodeURIComponent(window.location.pathname);
+    return;
+  }
+  // Mark active nav item
+  const path=window.location.pathname;
+  document.querySelectorAll('#mainNav a').forEach(a=>{
+    if(a.getAttribute('href')===path)a.classList.add('active');
+  });
+  // Clock
+  function updateTime(){const e=document.getElementById('navTime');if(e)e.textContent=new Date().toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}
+  updateTime();setInterval(updateTime,1000);
+  // Notifications
+  async function loadNotif(){
+    try{
+      const r=await fetch('/api/hq/notifications');
+      const d=await r.json();
+      const badge=document.getElementById('notifBadge');
+      if(d.total>0){badge.style.display='inline';badge.textContent=`🔔 ${d.total}`}
+      else badge.style.display='none';
+    }catch(e){}
+  }
+  loadNotif();setInterval(loadNotif,15000);
+  // Inject X-HQ-Token header into all fetch calls
+  const origFetch=window.fetch;
+  window.fetch=function(url,opts){
+    opts=opts||{};
+    opts.headers=opts.headers||{};
+    if(typeof url==='string'&&!url.includes('auth')&&!url.includes('/health')){
+      opts.headers['X-HQ-Token']=localStorage.getItem('hq_token')||'';
+    }
+    return origFetch.call(this,url,opts);
+  };
+})();
+</script>

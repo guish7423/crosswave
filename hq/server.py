@@ -1,14 +1,26 @@
-import os
-import json
-import asyncio
-import httpx
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+import os, json, asyncio, httpx, uvicorn, secrets, time
+from fastapi import FastAPI, HTTPException, Request, Depends, status
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from datetime import datetime, timezone
 
-app = FastAPI(title="CrossWave HQ Bridge")
+# ─── Simple Auth (Token-based) ─────────────────────────────────────────────
+AUTH_TOKEN = os.environ.get("HQ_AUTH_TOKEN", "")
+if not AUTH_TOKEN:
+    AUTH_TOKEN = secrets.token_urlsafe(24)
+    print(f"[hq] ⚠ No HQ_AUTH_TOKEN set — generated: {AUTH_TOKEN}")
+
+async def require_token(request: Request):
+    """Reject requests missing X-HQ-Token header. Skip public paths."""
+    public_paths = ("/health", "/login", "/api/hq/auth", "/api/portal/", "/portal/", "/static")
+    if request.url.path.startswith("/api/portal/") or request.url.path.startswith("/portal/") or request.url.path in ("/health", "/login") or request.url.path.startswith("/api/hq/auth") or request.url.path.startswith("/static"):
+        return True
+    token = request.headers.get("X-HQ-Token", "")
+    if token == AUTH_TOKEN:
+        return True
+    raise HTTPException(status_code=401, detail="Unauthorized — provide X-HQ-Token header")
+
+app = FastAPI(title="CrossWave HQ Bridge", dependencies=[Depends(require_token)])
 app.mount("/static", StaticFiles(directory=os.path.dirname(__file__)), name="hq_static")
 
 DB_PATH = os.environ.get("POLSIA_DB", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "polsia-fork", "polsia.db"))
@@ -339,6 +351,18 @@ async def _check_svc(name: str, url: str, timeout: int = 5) -> dict:
                 "response_time_ms": ms, "error": str(e)[:120]}
 
 
+@app.get("/login")
+async def login_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "login.html"))
+
+@app.post("/api/hq/auth")
+async def auth_login(request: Request):
+    body = await request.json()
+    token = body.get("token", "")
+    if token == AUTH_TOKEN:
+        return {"ok": True, "token": AUTH_TOKEN}
+    return JSONResponse(status_code=403, content={"ok": False, "error": "Invalid token"})
+
 @app.get("/health")
 async def hq_health():
     return {"status": "ok", "app": "CrossWave HQ Bridge", "services": len(SERVICES_TO_CHECK)}
@@ -459,6 +483,173 @@ async def get_evolution():
 @app.get("/evolution")
 async def evolution_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "evolution.html"))
+
+# ─── Timeline (统一时间线) ──────────────────────────────────────────────────
+@app.get("/api/hq/timeline")
+async def get_timeline(limit: int = 50, offset: int = 0):
+    """Unified chronological event feed across all modules."""
+    events = []
+    # Activities from activity_log
+    if os.path.exists(DB_PATH):
+        try:
+            import aiosqlite
+            async with aiosqlite.connect(DB_PATH) as db:
+                act_rows = await db.execute_fetchall(
+                    "SELECT agent_type, level, message, created_at FROM activity_log "
+                    "ORDER BY created_at DESC LIMIT ? OFFSET ?", (limit, offset)
+                )
+                for row in act_rows:
+                    events.append({
+                        "type": "activity",
+                        "source": row[0] or "system",
+                        "level": row[1] or "info",
+                        "title": (row[2] or "")[:100],
+                        "time": row[3] or "",
+                    })
+                lead_rows = await db.execute_fetchall(
+                    "SELECT name, email, product_interest, status, created_at FROM leads "
+                    "ORDER BY created_at DESC LIMIT ? OFFSET ?", (limit, offset)
+                )
+                for row in lead_rows:
+                    events.append({
+                        "type": "lead",
+                        "source": "sales",
+                        "level": "info",
+                        "title": f"New lead: {row[0] or 'Unknown'} ({row[1] or ''}) — {row[2] or ''}",
+                        "time": row[4] or "",
+                    })
+                ext_rows = await db.execute_fetchall(
+                    "SELECT title, platform, status, score, created_at FROM external_orders "
+                    "ORDER BY created_at DESC LIMIT ? OFFSET ?", (limit, offset)
+                )
+                for row in ext_rows:
+                    score_str = f" Score:{row[3]}" if row[3] else ""
+                    events.append({
+                        "type": "order",
+                        "source": row[1] or "external",
+                        "level": "info",
+                        "title": f"Order {row[2]}: {row[0] or 'Untitled'}{score_str}",
+                        "time": row[4] or "",
+                    })
+        except Exception:
+            pass
+    events.sort(key=lambda e: e.get("time", ""), reverse=True)
+    return {"data": events[:limit], "total": len(events)}
+
+
+# ─── Agent Control Center ───────────────────────────────────────────────────
+@app.get("/api/hq/agents")
+async def get_agents():
+    """List all 16 agents with status from Polsia Fork."""
+    polsia_url = "http://localhost:8001/api/v1/agents"
+    trigger_url = "http://localhost:8001/api/v1/agents/status"
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(polsia_url, headers={"X-API-Key": "dev-key"})
+            agents = resp.json() if resp.is_success else []
+            status_resp = await client.get(trigger_url, headers={"X-API-Key": "dev-key"})
+            status_map = status_resp.json() if status_resp.is_success else {}
+    except Exception:
+        agents = []
+        status_map = {}
+    all_types = ["orchestrator", "social_media", "customer_support", "competitor_research",
+                 "business_planning", "code_generation", "deployment", "finance",
+                 "email_outreach", "ads_management", "order_scanner", "order_fulfiller",
+                 "lead_nurturing", "deploy_agent", "monitor", "evolution"]
+    names = {"orchestrator": "Orchestrator", "social_media": "Social Media",
+             "customer_support": "Customer Support", "competitor_research": "Competitor Research",
+             "business_planning": "Business Planning", "code_generation": "Code Generation",
+             "deployment": "Deployment", "finance": "Finance", "email_outreach": "Email Outreach",
+             "ads_management": "Ads Management", "order_scanner": "Order Scanner",
+             "order_fulfiller": "Order Fulfiller", "lead_nurturing": "Lead Nurturing",
+             "deploy_agent": "Deploy Agent", "monitor": "Monitor (守望者)", "evolution": "Evolution (进化办)"}
+    emojis = {"orchestrator": "🧠", "social_media": "📱", "customer_support": "💬",
+              "competitor_research": "🔍", "business_planning": "📊", "code_generation": "💻",
+              "deployment": "🚀", "finance": "💰", "email_outreach": "📧", "ads_management": "📢",
+              "order_scanner": "🔎", "order_fulfiller": "✅", "lead_nurturing": "🌱",
+              "deploy_agent": "⚙️", "monitor": "👁️", "evolution": "🧬"}
+    agent_map = {a.get("agent_type", ""): a for a in agents if isinstance(a, dict)}
+    result = []
+    for at in all_types:
+        existing = agent_map.get(at, {})
+        result.append({
+            "agent_type": at,
+            "name": names.get(at, at.replace("_", " ").title()),
+            "emoji": emojis.get(at, "🤖"),
+            "status": existing.get("status", "idle") if isinstance(existing, dict) else "idle",
+            "last_run": existing.get("last_run") if isinstance(existing, dict) else None,
+        })
+    return {"data": result, "total": len(result)}
+
+
+@app.post("/api/hq/agents/{agent_type}/trigger")
+async def trigger_agent(agent_type: str):
+    """Trigger an agent via Polsia Fork API."""
+    polsia_url = f"http://localhost:8001/api/v1/agents/{agent_type}/trigger"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(polsia_url, headers={"X-API-Key": "dev-key"})
+            if resp.is_success:
+                return {"ok": True, "message": f"{agent_type} triggered"}
+            return JSONResponse(status_code=resp.status_code, content={"ok": False, "error": resp.text})
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Polsia unreachable: {e}")
+
+
+# ─── Global Search ──────────────────────────────────────────────────────────
+@app.get("/api/hq/search")
+async def global_search(q: str = ""):
+    """Search across all HQ modules."""
+    if not q or len(q) < 2:
+        return {"data": []}
+    ql = q.lower()
+    results = []
+    # Leads
+    for l in CACHE["leads"]:
+        if ql in l.get("name", "").lower() or ql in l.get("email", "").lower() or ql in l.get("company", "").lower():
+            results.append({"module": "leads", "label": f"Lead: {l['name']} ({l['email']})",
+                            "url": "/leads", "status": l.get("status", "")})
+    # Orders
+    for o in CACHE["orders"]:
+        if ql in o.get("title", "").lower() or ql in o.get("agent_type", "").lower():
+            results.append({"module": "orders", "label": f"Task: {o['title'][:60]}",
+                            "url": "/orders", "status": o.get("status", "")})
+    # External orders
+    for o in CACHE.get("external_orders", []):
+        if ql in o.get("title", "").lower() or ql in o.get("platform", "").lower():
+            results.append({"module": "external_orders", "label": f"Order: {o['title'][:60]} ({o.get('platform','')})",
+                            "url": "/orders", "status": o.get("status", "")})
+    # Employees
+    for e in CACHE["employees"]:
+        if ql in e.get("name", "").lower() or ql in e.get("role", "").lower():
+            results.append({"module": "employees", "label": f"Employee: {e['name']} — {e.get('role','')}",
+                            "url": "/employees", "status": e.get("status", "")})
+    return {"data": results[:20], "total": len(results)}
+
+
+# ─── Notifications ──────────────────────────────────────────────────────────
+@app.get("/api/hq/notifications")
+async def get_notifications():
+    """Count new/unread items across modules."""
+    new_leads = len([l for l in CACHE["leads"] if l.get("status") == "new"])
+    pending_orders = len([o for o in CACHE.get("external_orders", []) if o.get("status") in ("pending", "scanned")])
+    active_internal = len([o for o in CACHE["orders"] if o.get("status") in ("pending", "in_progress")])
+    return {
+        "new_leads": new_leads,
+        "pending_external_orders": pending_orders,
+        "active_tasks": active_internal,
+        "total": new_leads + pending_orders + active_internal,
+    }
+
+
+# ─── New HTML Pages ─────────────────────────────────────────────────────────
+@app.get("/timeline")
+async def timeline_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "timeline.html"))
+
+@app.get("/agents")
+async def agents_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "agents.html"))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)

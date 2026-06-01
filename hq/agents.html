@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrossWave HQ — Agent Control</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+.agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
+.agent-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;transition:all .2s}
+.agent-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.agent-header{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem}
+.agent-emoji{font-size:1.8rem;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(99,102,241,.1);border-radius:var(--radius)}
+.agent-name{font-weight:600;font-size:1rem}
+.agent-type{font-size:.75rem;color:var(--text-secondary);font-family:monospace}
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;font-size:.78rem;font-weight:500}
+.status-idle{background:rgba(107,114,128,.15);color:#9ca3af}
+.status-running{background:rgba(34,197,94,.15);color:#4ade80}
+.status-error{background:rgba(239,68,68,.15);color:#f87171}
+.agent-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:.75rem 0}
+.stat-item{text-align:center;padding:6px;background:var(--bg);border-radius:var(--radius)}
+.stat-value{font-size:1.1rem;font-weight:700}
+.stat-label{font-size:.7rem;color:var(--text-secondary)}
+.trigger-btn{padding:.5rem 1rem;border:none;border-radius:var(--radius);background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;cursor:pointer;font-size:.82rem;font-weight:500;transition:opacity .2s;width:100%}
+.trigger-btn:hover{opacity:.85}
+.trigger-btn:disabled{opacity:.5;cursor:not-allowed}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem}
+.kpi-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center}
+.kpi-card .value{font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,var(--accent),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.kpi-card .label{font-size:.78rem;color:var(--text-secondary);margin-top:4px}
+.toast{position:fixed;bottom:2rem;right:2rem;padding:.75rem 1.5rem;border-radius:var(--radius);color:#fff;font-size:.9rem;z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.toast-success{background:#22c55e}
+.toast-error{background:#ef4444}
+</style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+<div class="container">
+  <div class="page-header"><h1>🤖 Agent 控制中心</h1><p>公司 16 个 AI 员工 — 状态监控与手动触发</p></div>
+  <div class="kpi-row" id="kpiRow"></div>
+  <div class="agent-grid" id="agentGrid"><div class="loading" style="grid-column:1/-1;text-align:center;padding:3rem">加载中...</div></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+async function loadNav(){const r=await fetch('/static/nav.html');document.getElementById('nav-placeholder').innerHTML=await r.text()}
+loadNav();
+function toast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast toast-${type} show`;setTimeout(()=>t.classList.remove('show'),2500)}
+async function loadAgents(){
+  try{
+    const r=await fetch('/api/hq/agents');const d=await r.json();
+    const agents=d.data||[];
+    const total=agents.length,idle=agents.filter(a=>a.status==='idle').length,
+          running=agents.filter(a=>a.status==='running').length,
+          error=agents.filter(a=>a.status==='error').length;
+    document.getElementById('kpiRow').innerHTML=
+      `<div class="kpi-card"><div class="value">${total}</div><div class="label">🧠 Agent 总数</div></div>
+       <div class="kpi-card"><div class="value">${idle}</div><div class="label">💤 空闲中</div></div>
+       <div class="kpi-card"><div class="value">${running}</div><div class="label">⚡ 运行中</div></div>
+       <div class="kpi-card"><div class="value">${error}</div><div class="label">⚠️ 异常</div></div>`;
+    document.getElementById('agentGrid').innerHTML=agents.map(a=>{
+      const statusClass=`status-${a.status==='running'?'running':a.status==='error'?'error':'idle'}`;
+      const statusIcon=a.status==='running'?'⚡':a.status==='error'?'❌':'💤';
+      return `<div class="agent-card">
+        <div class="agent-header">
+          <div class="agent-emoji">${a.emoji||'🤖'}</div>
+          <div style="flex:1">
+            <div class="agent-name">${a.name||a.agent_type}</div>
+            <div class="agent-type">${a.agent_type}</div>
+          </div>
+          <span class="status-badge ${statusClass}">${statusIcon} ${a.status}</span>
+        </div>
+        <div class="agent-stats">
+          <div class="stat-item"><div class="stat-value">${a.last_run?'✓':'—'}</div><div class="stat-label">上次运行</div></div>
+          <div class="stat-item"><div class="stat-value">${a.status==='running'?'⚡':'💤'}</div><div class="stat-label">状态</div></div>
+          <div class="stat-item"><div class="stat-value" id="agent-ts-${a.agent_type}">—</div><div class="stat-label">触发时间</div></div>
+        </div>
+        <button class="trigger-btn" onclick="triggerAgent('${a.agent_type}',this)">▶ 触发 ${a.name||a.agent_type}</button>
+      </div>`;
+    }).join('');
+  }catch(e){document.getElementById('agentGrid').innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-secondary)">❌ 加载失败: ${e.message}</div>`}
+}
+async function triggerAgent(type,btn){
+  btn.disabled=true;btn.textContent='⏳ 触发中...';
+  try{
+    const r=await fetch(`/api/hq/agents/${type}/trigger`,{method:'POST'});
+    const d=await r.json();
+    if(d.ok){toast(`✅ ${type} 已触发`);btn.textContent='✅ 已触发';setTimeout(()=>loadAgents(),2000)}
+    else{toast(`❌ ${d.error||'触发失败'}`,'error');btn.disabled=false;btn.textContent=`▶ 触发 ${type}`}
+  }catch(e){toast(`❌ 连接失败: ${e.message}`,'error');btn.disabled=false;btn.textContent=`▶ 触发 ${type}`}
+}
+loadAgents();
+setInterval(loadAgents,30000);
+</script>
+</body>
+</html>

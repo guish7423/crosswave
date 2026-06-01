@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrossWave HQ — Login</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+.login-container{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
+.login-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:3rem;width:100%;max-width:400px;text-align:center}
+.login-card h1{font-size:1.8rem;margin-bottom:.5rem;background:linear-gradient(135deg,var(--accent),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-card p{color:var(--text-secondary);margin-bottom:2rem;font-size:.9rem}
+.input-group{text-align:left;margin-bottom:1.5rem}
+.input-group label{display:block;margin-bottom:.5rem;font-size:.85rem;color:var(--text-secondary);font-weight:500}
+.input-group input{width:100%;padding:.75rem 1rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:.95rem;transition:border-color .2s}
+.input-group input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.btn-primary{width:100%;padding:.8rem;border:none;border-radius:var(--radius);background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;font-size:1rem;font-weight:600;cursor:pointer;transition:opacity .2s}
+.btn-primary:hover{opacity:.9}
+.error-msg{color:#ef4444;font-size:.85rem;margin-top:1rem;display:none}
+</style>
+</head>
+<body>
+<div class="login-container">
+  <div class="login-card">
+    <h1>🏛️ CrossWave HQ</h1>
+    <p>Company Command Center — 输入访问令牌登录</p>
+    <div class="input-group">
+      <label for="token">访问令牌</label>
+      <input type="password" id="token" placeholder="输入 HQ 令牌..." autofocus>
+    </div>
+    <button class="btn-primary" onclick="login()">登录</button>
+    <div class="error-msg" id="error">令牌无效，请重试</div>
+  </div>
+</div>
+<script>
+async function login(){
+  const token=document.getElementById('token').value;
+  if(!token){showError('请输入访问令牌');return}
+  try{
+    const r=await fetch('/api/hq/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    const d=await r.json();
+    if(d.ok){
+      localStorage.setItem('hq_token',token);
+      const params=new URLSearchParams(location.search);
+      window.location.href=params.get('redirect')||'/';
+    }else showError(d.error||'令牌无效');
+  }catch(e){showError('连接失败: '+e.message)}
+}
+function showError(m){const el=document.getElementById('error');el.textContent=m;el.style.display='block'}
+document.getElementById('token').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+const t=localStorage.getItem('hq_token');
+if(t&&window.location.search.includes('auto')){document.getElementById('token').value=t;login()}
+</script>
+</body>
+</html>

@@ -6,6 +6,8 @@ from pathlib import Path
 
 # Point POLSIA_DB to non-existent file so startup sync doesn't error
 os.environ.setdefault("POLSIA_DB", "/tmp/crosswave-test-polsia.db")
+# Set auth token for tests
+os.environ.setdefault("HQ_AUTH_TOKEN", "test-hq-token")
 
 # Ensure hq/ is on sys.path so `from server import app` works
 _hq_dir = str(Path(__file__).resolve().parent.parent)
@@ -20,7 +22,28 @@ from fastapi.testclient import TestClient
 # Must import AFTER env/path setup
 from server import app, CACHE
 
-client = TestClient(app)
+_raw_client = TestClient(app)
+_AUTH = os.environ["HQ_AUTH_TOKEN"]
+
+class _AuthClient:
+    """Wrapper that adds X-HQ-Token to all requests except public endpoints."""
+    def get(self, url, **kw):
+        kw.setdefault("headers", {})["X-HQ-Token"] = _AUTH
+        return _raw_client.get(url, **kw)
+    def post(self, url, **kw):
+        kw.setdefault("headers", {})["X-HQ-Token"] = _AUTH
+        return _raw_client.post(url, **kw)
+    def put(self, url, **kw):
+        kw.setdefault("headers", {})["X-HQ-Token"] = _AUTH
+        return _raw_client.put(url, **kw)
+    def patch(self, url, **kw):
+        kw.setdefault("headers", {})["X-HQ-Token"] = _AUTH
+        return _raw_client.patch(url, **kw)
+    def delete(self, url, **kw):
+        kw.setdefault("headers", {})["X-HQ-Token"] = _AUTH
+        return _raw_client.delete(url, **kw)
+
+client = _AuthClient()
 
 
 @pytest.fixture(autouse=True)
