@@ -134,6 +134,13 @@ tr:hover td { background: rgba(56, 189, 248, 0.03); }
 @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
 .skeleton { background: var(--bg-card-alt); border-radius: 6px; height: 16px; margin: 4px 0; animation: pulse 1.5s ease-in-out infinite; }
 
+/* Section tabs */
+.section-tabs { padding: 0 32px; display: flex; gap: 0; margin-bottom: 0; }
+.tab { padding: 8px 20px; background: var(--bg-card); border: 1px solid var(--border); border-bottom: none; cursor: pointer; font-size: 13px; color: var(--text-muted); border-radius: 8px 8px 0 0; }
+.tab.active { background: var(--bg-card-alt); color: var(--text); font-weight: 600; border-color: var(--border-light); }
+.action-btn { padding: 6px 14px; background: var(--bg-card-alt); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--text); transition: all .2s; }
+.action-btn:hover { background: var(--border-light); border-color: var(--accent); }
+
 /* Section labels */
 .section-label { padding: 0 32px 8px; font-size: 13px; color: var(--text-muted); font-weight: 600; }
 

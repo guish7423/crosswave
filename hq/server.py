@@ -15,7 +15,7 @@ DB_PATH = os.environ.get("POLSIA_DB", os.path.expanduser("~/.opencode-workspace/
 HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
 HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
 
-CACHE = {"employees": [], "lines": [], "orders": [], "leads": [], "expenses": [], "revenue_history": [], "last_sync": None}
+CACHE = {"employees": [], "lines": [], "orders": [], "leads": [], "external_orders": [], "expenses": [], "revenue_history": [], "last_sync": None}
 
 async def polsia_sync():
     if not os.path.exists(DB_PATH):
@@ -35,6 +35,9 @@ async def polsia_sync():
             )
             rev_rows = await db.execute_fetchall(
                 "SELECT snapshot_date, mrr_cents, active_subscribers FROM revenue_snapshots ORDER BY snapshot_date"
+            )
+            ext_order_rows = await db.execute_fetchall(
+                "SELECT id, title, platform, external_id, status, budget_min, budget_max, currency, score, score_reason, assigned_agent, created_at FROM external_orders ORDER BY created_at DESC LIMIT 100"
             )
             lead_rows = await db.execute_fetchall(
                 "SELECT id, name, email, company, product_interest, budget_range, message, status, source_page, created_at FROM leads ORDER BY created_at DESC LIMIT 100"
@@ -106,7 +109,11 @@ async def polsia_sync():
     for row in lead_rows:
         leads.append({"id": row[0], "name": row[1] or "", "email": row[2] or "", "company": row[3] or "", "product_interest": row[4] or "", "budget_range": row[5] or "", "message": row[6] or "", "status": row[7] or "new", "source_page": row[8] or "", "created_at": row[9] or ""})
     CACHE["leads"] = leads
-    print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks, {len(leads)} leads, {len(exps)} expenses, {len(revs)} rev months")
+    ext_orders = []
+    for row in ext_order_rows:
+        ext_orders.append({"id": row[0], "title": row[1] or "", "platform": row[2] or "", "external_id": row[3] or "", "status": row[4] or "scanned", "budget_min": row[5], "budget_max": row[6], "currency": row[7] or "USD", "score": row[8], "score_reason": row[9] or "", "assigned_agent": row[10] or "", "created_at": row[11] or ""})
+    CACHE["external_orders"] = ext_orders
+    print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks, {len(leads)} leads, {len(ext_orders)} ext orders, {len(exps)} expenses, {len(revs)} rev months")
 
 async def periodic_sync():
     while True:
@@ -167,6 +174,16 @@ async def get_leads(status: str = ""):
     if status:
         items = [l for l in items if l.get("status") == status]
     return {"data": items, "total": len(items), "new_count": len([l for l in items if l.get("status") == "new"])}
+
+@app.get("/api/hq/external-orders")
+async def get_external_orders(platform: str = "", status: str = ""):
+    items = CACHE.get("external_orders", [])
+    if platform:
+        items = [o for o in items if o.get("platform") == platform]
+    if status:
+        items = [o for o in items if o.get("status") == status]
+    return {"data": items, "total": len(items)}
+
 
 @app.get("/api/hq/lines")
 async def get_lines():

@@ -22,29 +22,57 @@
 <div class="kpi-row" id="kpiRow"></div>
 
 <div class="filters">
-  <select id="platformFilter" onchange="loadOrders()"><option value="">全部平台</option><option value="internal">内部</option><option value="upwork">Upwork</option><option value="fiverr">Fiverr</option></select>
-  <select id="statusFilter" onchange="loadOrders()"><option value="">全部状态</option><option value="pending">待处理</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="failed">失败</option></select>
+  <select id="sourceFilter" onchange="loadAll()"><option value="">全部来源</option><option value="internal">内部任务</option><option value="upwork">Upwork</option><option value="fiverr">Fiverr</option><option value="zhubajie">猪八戒</option></select>
+  <select id="statusFilter" onchange="loadAll()"><option value="">全部状态</option><option value="pending">待处理</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="failed">失败</option><option value="scanned">已扫描</option><option value="evaluated">已评估</option><option value="accepted">已接单</option></select>
 </div>
 
 <h3 style="padding:0 32px 8px;font-size:13px;color:#94a3b8;">🔌 平台连接</h3>
 <div class="platforms" id="platformGrid"></div>
 
-<div class="table-wrap">
+<div class="section-tabs">
+  <button class="tab active" onclick="switchTab('internal')">📋 内部任务</button>
+  <button class="tab" onclick="switchTab('external')">🌍 外部订单</button>
+</div>
+
+<div class="table-wrap" id="internalTable" style="display:block;">
   <table>
     <thead><tr><th>标题</th><th>平台</th><th>状态</th><th>时间</th></tr></thead>
     <tbody id="orderTable"></tbody>
   </table>
 </div>
 
+<div class="table-wrap" id="externalTable" style="display:none;">
+  <div style="padding:12px 0;display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="action-btn" onclick="scanPlatform('upwork')">🔍 扫描 Upwork</button>
+    <button class="action-btn" onclick="scanPlatform('fiverr')">🔍 扫描 Fiverr</button>
+    <button class="action-btn" onclick="scanPlatform('zhubajie')">🔍 扫描 猪八戒</button>
+  </div>
+  <table>
+    <thead><tr><th>标题</th><th>平台</th><th>预算</th><th>评分</th><th>状态</th><th>指派</th><th>时间</th></tr></thead>
+    <tbody id="extOrderTable"></tbody>
+  </table>
+</div>
+
 <script>
 const apiBase = 'http://localhost:13001';
+let currentTab = 'internal';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section-tabs .tab')[tab === 'internal' ? 0 : 1].classList.add('active');
+  document.getElementById('internalTable').style.display = tab === 'internal' ? 'block' : 'none';
+  document.getElementById('externalTable').style.display = tab === 'external' ? 'block' : 'none';
+  if (tab === 'external') loadExternalOrders();
+  else loadOrders();
+}
 
 async function loadOrders() {
   try {
-    const platform = document.getElementById('platformFilter').value;
+    const source = document.getElementById('sourceFilter').value;
     const status = document.getElementById('statusFilter').value;
     const params = new URLSearchParams();
-    if (platform) params.set('platform', platform);
+    if (source) params.set('platform', source);
     if (status) params.set('status', status);
     const res = await fetch(`${apiBase}/api/hq/orders?${params}`);
     const data = (await res.json()).data || [];
@@ -75,15 +103,60 @@ async function loadOrders() {
   }
 }
 
-async function loadPlatforms() {
+async function loadExternalOrders() {
+  try {
+    const source = document.getElementById('sourceFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const params = new URLSearchParams();
+    if (source) params.set('platform', source);
+    if (status) params.set('status', status);
+    const res = await fetch(`${apiBase}/api/hq/external-orders?${params}`);
+    const data = (await res.json()).data || [];
+
+    const tbody = document.getElementById('extOrderTable');
+    tbody.innerHTML = data.map(o => {
+      const budget = o.budget_min ? `¥${o.budget_min}~${o.budget_max || '?'} ${o.currency}` : '—';
+      const score = o.score != null ? `<span style="color:${o.score >= 6 ? '#4ade80' : o.score >= 4 ? '#facc15' : '#f87171'}">${o.score}/10</span>` : '—';
+      const badgeColor = o.status === 'accepted' ? '#4ade80' : o.status === 'evaluated' ? '#facc15' : o.status === 'scanned' ? '#60a5fa' : '#94a3b8';
+      return `<tr>
+        <td>${o.title || '未命名'}</td>
+        <td><span class="badge" style="background:${o.platform === 'upwork' ? '#6f42c1' : o.platform === 'fiverr' ? '#1dbf73' : '#f59e0b'}20;color:${o.platform === 'upwork' ? '#6f42c1' : o.platform === 'fiverr' ? '#1dbf73' : '#f59e0b'}">${o.platform || '—'}</span></td>
+        <td style="font-size:13px;">${budget}</td>
+        <td style="font-size:13px;font-weight:600;">${score}</td>
+        <td><span class="badge" style="background:${badgeColor}20;color:${badgeColor}">${o.status}</span></td>
+        <td style="font-size:12px;color:#94a3b8;">${o.assigned_agent || '—'}</td>
+        <td style="color:#94a3b8;font-size:12px;">${o.created_at ? new Date(o.created_at).toLocaleDateString('zh-CN') : '-'}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" class="empty">暂无外部订单</td></tr>';
+  } catch (e) {
+    document.getElementById('extOrderTable').innerHTML = `<tr><td colspan="7" class="empty">Error: ${e.message}</td></tr>`;
+  }
+}
+
+async function scanPlatform(platform) {
+  try {
+    const res = await fetch(`http://localhost:8001/api/v1/orders/external/scan/${platform}`, {
+      headers: { 'X-API-Key': 'dev-key' },
+    });
+    const result = await res.json();
+    if (result.new_orders > 0) {
+      await fetch(`${apiBase}/api/hq/sync`);
+    }
+    alert(`扫描 ${platform} 完成，发现 ${result.new_orders} 个新订单！`);
+    loadExternalOrders();
+  } catch (e) {
+    alert(`扫描失败: ${e.message}`);
+  }
+}
+
+function loadPlatforms() {
   const platforms = [
     { name: '内部系统', status: 'connected', desc: 'Polsia Fork 任务' },
-    { name: 'Upwork', status: 'disconnected', desc: 'MCP 集成' },
-    { name: 'Fiverr', status: 'disconnected', desc: 'Apify 集成' },
-    { name: '猪八戒', status: 'disconnected', desc: '抢单宝 API' },
+    { name: 'Upwork', status: 'disconnected', desc: '按需扫描' },
+    { name: 'Fiverr', status: 'disconnected', desc: '按需扫描' },
+    { name: '猪八戒', status: 'disconnected', desc: '按需扫描' },
   ];
-  const grid = document.getElementById('platformGrid');
-  grid.innerHTML = platforms.map(p => `
+  document.getElementById('platformGrid').innerHTML = platforms.map(p => `
     <div class="platform-card">
       <div class="platform-name">${p.name}</div>
       <div class="platform-status ${p.status}">${p.status === 'connected' ? '已连接' : '未连接'}</div>
@@ -92,9 +165,14 @@ async function loadPlatforms() {
   `).join('');
 }
 
+function loadAll() {
+  if (currentTab === 'external') loadExternalOrders();
+  else loadOrders();
+}
+
 loadOrders();
 loadPlatforms();
-setInterval(loadOrders, 30000);
+setInterval(() => { if (currentTab === 'external') loadExternalOrders(); else loadOrders(); }, 30000);
 </script>
 </body>
 </html>
