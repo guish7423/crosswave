@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>部署进度 | CrossDeploy</title>
+  <style>
+    :root {
+      --bg: oklch(0.985 0.003 260);
+      --surface: oklch(0.96 0.005 260);
+      --border: oklch(0.90 0.008 260);
+      --ink: oklch(0.15 0.02 260);
+      --ink-dim: oklch(0.50 0.025 260);
+      --ink-muted: oklch(0.65 0.02 260);
+      --accent: oklch(0.55 0.28 280);
+      --accent-soft: oklch(0.55 0.28 280 / 0.08);
+      --green: oklch(0.55 0.20 160);
+      --green-soft: oklch(0.55 0.20 160 / 0.08);
+      --amber: oklch(0.70 0.20 80);
+      --amber-soft: oklch(0.70 0.20 80 / 0.12);
+      --red: oklch(0.60 0.20 20);
+      --font: 'Inter', system-ui, sans-serif;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.7;font-size:15px;min-height:100vh;display:flex;flex-direction:column}
+    .container{max-width:720px;margin:0 auto;padding:0 24px;flex:1}
+
+    header{padding:32px 0 16px;text-align:center}
+    .brand{font-weight:800;font-size:20px;background:linear-gradient(135deg,var(--accent),oklch(0.60 0.25 300));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .brand span{-webkit-text-fill-color:var(--ink-dim);font-weight:400}
+
+    .card{border:1px solid var(--border);border-radius:var(--radius);padding:32px;margin:24px 0;background:var(--surface)}
+
+    .order-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+    .order-title{font-size:22px;font-weight:700}
+    .order-meta{font-size:14px;color:var(--ink-dim)}
+    .status-badge{padding:6px 16px;border-radius:9999px;font-size:13px;font-weight:600}
+    .status-badge.pending{background:var(--amber-soft);color:var(--amber)}
+    .status-badge.accepted,.status-badge.in_progress,.status-badge.deploying,.status-badge.testing{background:var(--accent-soft);color:var(--accent)}
+    .status-badge.completed,.status-badge.delivered{background:var(--green-soft);color:var(--green)}
+    .status-badge.failed,.status-badge.rejected{background:oklch(0.60 0.20 20 / 0.08);color:var(--red)}
+    .status-badge.cancelled{background:var(--border);color:var(--ink-muted)}
+
+    .progress-track{display:flex;gap:4px;margin:32px 0;padding:0}
+    .progress-step{flex:1;text-align:center;padding:12px 4px;border-radius:var(--radius-sm);font-size:11px;font-weight:600;color:var(--ink-muted);background:var(--border);position:relative;transition:all .3s}
+    .progress-step.done{background:var(--green-soft);color:var(--green)}
+    .progress-step.active{background:var(--accent-soft);color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+    .progress-step .dot{display:block;width:12px;height:12px;border-radius:50%;margin:0 auto 6px;background:var(--border)}
+    .progress-step.done .dot{background:var(--green)}
+    .progress-step.active .dot{background:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+
+    .deploy-plan{border-top:1px solid var(--border);padding-top:20px;margin-top:20px}
+    .deploy-plan h3{font-size:15px;margin-bottom:12px}
+    .plan-step{padding:10px 12px;border-left:3px solid var(--border);margin-bottom:8px;font-size:13px;border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+    .plan-step.done{border-color:var(--green);background:var(--green-soft)}
+    .plan-step.pending{border-color:var(--ink-muted)}
+    .plan-step .step-label{font-weight:600;display:block}
+    .plan-step .step-detail{color:var(--ink-dim);font-size:12px;margin-top:2px}
+
+    .shares-section{text-align:center;margin:32px 0}
+    .shares-section p{font-size:13px;color:var(--ink-dim);margin-bottom:8px}
+    .share-link{font-size:12px;color:var(--accent);word-break:break-all;background:var(--accent-soft);padding:8px 16px;border-radius:var(--radius-sm);display:inline-block}
+    .copied-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 24px;border-radius:9999px;font-size:14px;opacity:0;transition:opacity .3s}
+    .copied-toast.show{opacity:1}
+
+    .loading{text-align:center;padding:80px 20px;color:var(--ink-dim)}
+    .loading .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .error-state{text-align:center;padding:60px 20px}
+    .error-state h2{font-size:24px;margin-bottom:8px}
+    .error-state p{color:var(--ink-dim)}
+
+    footer{padding:24px 0;text-align:center;font-size:13px;color:var(--ink-muted);border-top:1px solid var(--border);margin-top:48px}
+
+    @media(max-width:600px){
+      .progress-step{font-size:10px;padding:8px 2px}
+      .progress-step .dot{width:8px;height:8px}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="brand">✦ CrossDeploy <span>by CrossWave</span></div>
+  </div>
+</header>
+
+<div class="container" id="app">
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Loading deployment status...</p>
+  </div>
+  <div class="error-state" id="error" style="display:none">
+    <h2>🔍 Order Not Found</h2>
+    <p>We couldn't find this deployment order. The link may be invalid.</p>
+    <br>
+    <a href="/" style="color:var(--accent);text-decoration:none;font-weight:600">Back to CrossWave →</a>
+  </div>
+  <div id="content" style="display:none"></div>
+</div>
+
+<footer>
+  <div class="container">
+    Powered by CrossWave AI · © 2026 CrossWave
+  </div>
+</footer>
+
+<div class="copied-toast" id="toast">Link copied!</div>
+
+<script>
+const orderId = window.location.pathname.split('/').pop();
+
+async function loadOrder() {
+  try {
+    const resp = await fetch('/api/portal/order/' + orderId);
+    if (!resp.ok) throw new Error('Not found');
+    const order = await resp.json();
+    renderOrder(order);
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display = 'block';
+  }
+}
+
+function renderOrder(order) {
+  document.getElementById('loading').style.display = 'none';
+  const content = document.getElementById('content');
+  content.style.display = 'block';
+
+  const statusLabel = {
+    pending: 'Pending Review', scanned: 'Scanned', accepted: 'Accepted',
+    in_progress: 'In Progress', deploying: 'Deploying', testing: 'Testing',
+    completed: 'Completed', delivered: 'Delivered', failed: 'Failed',
+    rejected: 'Rejected', cancelled: 'Cancelled',
+  };
+
+  const progressSteps = order.stages || [];
+  const currentIdx = order.progress_idx || 0;
+
+  content.innerHTML = `
+    <div class="card">
+      <div class="order-header">
+        <div>
+          <div class="order-title">${esc(order.title)}</div>
+          <div class="order-meta">Order #${order.id} · ${esc(order.platform)}</div>
+          <div class="order-meta">Created: ${order.created_at ? order.created_at.slice(0,10) : 'N/A'}</div>
+        </div>
+        <span class="status-badge ${order.status}">${statusLabel[order.status] || order.status}</span>
+      </div>
+
+      <div class="progress-track">
+        ${progressSteps.map((s, i) => `
+          <div class="progress-step ${i < currentIdx ? 'done' : i === currentIdx ? 'active' : ''}">
+            <span class="dot"></span>
+            ${s.replace(/_/g, ' ')}
+          </div>
+        `).join('')}
+      </div>
+
+      ${order.deployment_plan ? renderPlan(order.deployment_plan) : ''}
+    </div>
+
+    <div class="shares-section">
+      <p>Share this page with your team to track deployment progress:</p>
+      <div class="share-link" onclick="copyLink()">${esc(window.location.href)}</div>
+    </div>
+  `;
+}
+
+function renderPlan(plan) {
+  if (!plan || !plan.steps) return '';
+  const steps = Array.isArray(plan.steps) ? plan.steps : [];
+  return `
+    <div class="deploy-plan">
+      <h3>🚀 Deployment Plan</h3>
+      ${steps.map((s, i) => `
+        <div class="plan-step pending">
+          <span class="step-label">${i+1}. ${esc(s.step || s.title || 'Step ' + (i+1))}</span>
+          ${s.detail || s.command ? `<span class="step-detail">${esc(s.detail || s.command || '')}</span>` : ''}
+          ${s.expected_result ? `<span class="step-detail">→ ${esc(s.expected_result)}</span>` : ''}
+        </div>
+      `).join('')}
+      ${plan.estimated_hours ? `<p style="margin-top:12px;font-size:13px;color:var(--ink-dim)">⏱ Estimated: ${plan.estimated_hours} hours</p>` : ''}
+    </div>
+  `;
+}
+
+function esc(s) {
+  if (!s) return '';
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  });
+}
+
+loadOrder();
+</script>
+</body>
+</html>

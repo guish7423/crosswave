@@ -280,5 +280,40 @@ async def reports_page():
 async def deploy_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "deploy.html"))
 
+# ─── Public Customer Portal ──────────────────────────────────────────────────
+@app.get("/api/portal/order/{order_id}")
+async def portal_order(order_id: int):
+    """Public endpoint — returns order details for customer portal display."""
+    orders = CACHE.get("external_orders", [])
+    order = next((o for o in orders if o["id"] == order_id), None)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    stage_order = ["pending", "scanned", "accepted", "in_progress", "deploying", "testing", "completed", "delivered"]
+    stage_idx = {"pending": 0, "scanned": 1, "accepted": 2, "in_progress": 3, "deploying": 4, "testing": 5, "completed": 6, "delivered": 7}
+    status = order.get("status", "pending")
+    progress_idx = stage_idx.get(status, 0)
+    deployment_plan = None
+    if "deployment_plan" in order:
+        try:
+            deployment_plan = json.loads(order["deployment_plan"]) if isinstance(order["deployment_plan"], str) else order["deployment_plan"]
+        except (json.JSONDecodeError, TypeError):
+            deployment_plan = None
+    return {
+        "id": order["id"],
+        "title": order.get("title", "CrossDeploy Project"),
+        "status": status,
+        "progress_idx": min(progress_idx, len(stage_order) - 1),
+        "total_stages": len(stage_order),
+        "stages": stage_order,
+        "score": order.get("score"),
+        "platform": order.get("platform", "direct"),
+        "created_at": order.get("created_at", ""),
+        "deployment_plan": deployment_plan,
+    }
+
+@app.get("/portal/{order_id}")
+async def portal_page(order_id: int):
+    return FileResponse(os.path.join(os.path.dirname(__file__), "portal.html"))
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)
