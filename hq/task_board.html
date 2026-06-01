@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>任务管理 · CrossWave HQ</title>
+<link rel="stylesheet" href="/static/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+.filter-bar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+.filter-bar select, .filter-bar input { padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg-card); color:var(--text); font-size:13px; }
+.filter-bar input { flex:1; min-width:180px; }
+.stat-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr)); gap:12px; margin-bottom:20px; }
+.stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:14px; text-align:center; }
+.stat-card .num { font-size:24px; font-weight:700; }
+.stat-card .lbl { font-size:11px; color:var(--text-secondary); margin-top:2px; }
+.stat-card.pending .num { color:var(--orange); }
+.stat-card.completed .num { color:var(--green); }
+.stat-card.failed .num { color:var(--red); }
+.stat-card.in_progress .num { color:var(--blue); }
+.task-table { width:100%; border-collapse:collapse; font-size:13px; }
+.task-table th { background:var(--bg-card); padding:10px 12px; text-align:left; border-bottom:2px solid var(--border); color:var(--text-secondary); font-weight:600; position:sticky; top:0; }
+.task-table td { padding:10px 12px; border-bottom:1px solid var(--border); }
+.task-table tr:hover td { background:rgba(255,255,255,0.03); }
+.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+.badge-pending { background:rgba(255,159,67,0.15); color:var(--orange); }
+.badge-completed { background:rgba(46,213,115,0.15); color:var(--green); }
+.badge-failed { background:rgba(255,71,87,0.15); color:var(--red); }
+.badge-in_progress { background:rgba(54,162,235,0.15); color:var(--blue); }
+.badge-cancelled { background:rgba(150,150,150,0.15); color:#999; }
+.agent-tag { display:inline-block; padding:2px 6px; border-radius:4px; font-size:11px; background:var(--bg-card); border:1px solid var(--border); }
+.detail-row { display:none; }
+.detail-row td { padding:12px 20px; background:rgba(255,255,255,0.02); }
+.detail-row.open { display:table-row; }
+.detail-inner { max-width:700px; }
+.detail-inner p { margin:4px 0; line-height:1.5; color:var(--text-secondary); font-size:12px; }
+.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.chart-card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:16px; }
+.chart-card h3 { margin:0 0 12px; font-size:14px; color:var(--text-secondary); }
+@media(max-width:768px){ .chart-row { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+<script>fetch('/nav.html').then(r=>r.text()).then(h=>{document.getElementById('nav-placeholder').innerHTML=h;document.querySelector(`[href="/task-board"]`)?.classList.add('active');});</script>
+
+<main style="max-width:1200px;margin:0 auto;padding:20px;">
+<h1 style="margin-bottom:4px;">📋 任务管理看板</h1>
+<p style="color:var(--text-secondary);font-size:13px;margin:0 0 20px;">全平台任务监控 · 按 Agent/状态筛选 · 详情展开</p>
+
+<!-- Charts -->
+<div class="chart-row">
+  <div class="chart-card"><h3>📊 状态分布</h3><canvas id="statusChart" height="200"></canvas></div>
+  <div class="chart-card"><h3>🤖 Agent 任务量</h3><canvas id="agentChart" height="200"></canvas></div>
+</div>
+
+<!-- Stats -->
+<div class="stat-cards" id="statCards">
+  <div class="stat-card pending"><div class="num" id="sPending">-</div><div class="lbl">待处理</div></div>
+  <div class="stat-card in_progress"><div class="num" id="sInProgress">-</div><div class="lbl">进行中</div></div>
+  <div class="stat-card completed"><div class="num" id="sCompleted">-</div><div class="lbl">已完成</div></div>
+  <div class="stat-card failed"><div class="num" id="sFailed">-</div><div class="lbl">失败</div></div>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+  <select id="filterStatus" onchange="loadTasks()">
+    <option value="">全部状态</option>
+    <option value="pending">待处理</option>
+    <option value="in_progress">进行中</option>
+    <option value="completed">已完成</option>
+    <option value="failed">失败</option>
+    <option value="cancelled">已取消</option>
+  </select>
+  <select id="filterAgent" onchange="loadTasks()">
+    <option value="">全部 Agent</option>
+  </select>
+  <input id="filterSearch" placeholder="🔍 搜索任务标题/描述..." oninput="debounceSearch()">
+  <span style="font-size:12px;color:var(--text-secondary);" id="resultCount"></span>
+</div>
+
+<!-- Table -->
+<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;">
+<table class="task-table">
+<thead><tr>
+  <th style="width:40px"></th>
+  <th>标题</th>
+  <th style="width:90px">状态</th>
+  <th style="width:100px">Agent</th>
+  <th style="width:80px">优先级</th>
+  <th style="width:140px">创建时间</th>
+</tr></thead>
+<tbody id="taskBody"></tbody>
+</table>
+</div>
+</main>
+
+<script>
+let statusChart=null, agentChart=null;
+let debounceTimer=null;
+function debounceSearch(){ clearTimeout(debounceTimer); debounceTimer=setTimeout(loadTasks,300); }
+
+async function loadTasks(){
+  const status=document.getElementById('filterStatus').value;
+  const agent=document.getElementById('filterAgent').value;
+  const search=document.getElementById('filterSearch').value;
+  const params=new URLSearchParams();
+  if(status) params.set('status',status);
+  if(agent) params.set('agent',agent);
+  if(search) params.set('search',search);
+  const [tasksRes, summaryRes]=await Promise.all([
+    fetch(`/api/hq/tasks?${params}`).then(r=>r.json()),
+    fetch('/api/hq/tasks/summary').then(r=>r.json()),
+  ]);
+  renderTasks(tasksRes, summaryRes);
+}
+
+function renderTasks(tasksRes, summary){
+  const {tasks, total, filtered}=tasksRes;
+  const byStatus=summary.by_status||{};
+  const byAgent=summary.by_agent||{};
+
+  // Stat cards
+  document.getElementById('sPending').textContent=byStatus.pending||0;
+  document.getElementById('sInProgress').textContent=byStatus.in_progress||0;
+  document.getElementById('sCompleted').textContent=byStatus.completed||0;
+  document.getElementById('sFailed').textContent=byStatus.failed||0;
+  document.getElementById('resultCount').textContent=`${filtered} / ${total} 任务`;
+
+  // Agent filter dropdown
+  const sel=document.getElementById('filterAgent');
+  const curVal=sel.value;
+  const agents=Object.keys(byAgent).sort();
+  sel.innerHTML='<option value="">全部 Agent</option>'+agents.map(a=>`<option value="${a}">${a}</option>`).join('');
+  sel.value=curVal;
+
+  // Table
+  const tbody=document.getElementById('taskBody');
+  tbody.innerHTML=tasks.map(t=>{
+    const statusClass=t.status||'pending';
+    const statusLabels={pending:'待处理',in_progress:'进行中',completed:'已完成',failed:'失败',cancelled:'已取消'};
+    return `<tr onclick="toggleDetail(${t.id})" style="cursor:pointer">
+      <td>▶</td>
+      <td><strong>${esc(t.title)}</strong></td>
+      <td><span class="badge badge-${statusClass}">${statusLabels[statusClass]||statusClass}</span></td>
+      <td><span class="agent-tag">${esc(t.agent_type||'—')}</span></td>
+      <td>${esc(t.priority||'—')}</td>
+      <td style="font-size:12px;color:var(--text-secondary)">${t.created_at||'—'}</td>
+    </tr>
+    <tr class="detail-row" id="detail-${t.id}">
+      <td colspan="6">
+        <div class="detail-inner">
+          <p><strong>描述：</strong>${esc(t.description||'无')}</p>
+          <p><strong>结果：</strong>${esc(t.result||'无')}</p>
+          <p><strong>分配给：</strong>${esc(t.assigned_to||'—')} · <strong>更新：</strong>${t.updated_at||'—'}</p>
+          ${t.metadata&&Object.keys(t.metadata).length ? '<p><strong>元数据：</strong>'+esc(JSON.stringify(t.metadata))+'</p>' : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Charts
+  drawCharts(byStatus, byAgent);
+}
+
+function drawCharts(byStatus, byAgent){
+  // Status donut
+  const statusCtx=document.getElementById('statusChart').getContext('2d');
+  const statusLabels={pending:'待处理',in_progress:'进行中',completed:'已完成',failed:'失败',cancelled:'已取消'};
+  const statusColors={pending:'#FF9F43',in_progress:'#36A2EB',completed:'#2ED573',failed:'#FF4757',cancelled:'#999'};
+  const labels=Object.keys(byStatus);
+  const data=labels.map(l=>byStatus[l]);
+  const colors=labels.map(l=>statusColors[l]||'#666');
+
+  if(statusChart) statusChart.destroy();
+  statusChart=new Chart(statusCtx,{
+    type:'doughnut',
+    data:{labels:labels.map(l=>statusLabels[l]||l), datasets:[{data, backgroundColor:colors, borderWidth:0}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{color:'#ccc',padding:12}}}},
+  });
+
+  // Agent bar
+  const agentCtx=document.getElementById('agentChart').getContext('2d');
+  const agentNames=Object.keys(byAgent).sort();
+  const agentStatuses=agentNames.map(a=>{
+    const s=byAgent[a];
+    return [s.completed||0, s.pending||0, s.in_progress||0, s.failed||0];
+  });
+
+  if(agentChart) agentChart.destroy();
+  agentChart=new Chart(agentCtx,{
+    type:'bar',
+    data:{
+      labels:agentNames,
+      datasets:[
+        {label:'已完成', data:agentStatuses.map(s=>s[0]), backgroundColor:'#2ED573', borderRadius:3},
+        {label:'待处理', data:agentStatuses.map(s=>s[1]), backgroundColor:'#FF9F43', borderRadius:3},
+        {label:'进行中', data:agentStatuses.map(s=>s[2]), backgroundColor:'#36A2EB', borderRadius:3},
+        {label:'失败', data:agentStatuses.map(s=>s[3]), backgroundColor:'#FF4757', borderRadius:3},
+      ],
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{color:'#ccc',boxWidth:12,padding:8}}},
+      scales:{x:{stacked:true, ticks:{color:'#999'}, grid:{display:false}},
+              y:{stacked:true, beginAtZero:true, ticks:{color:'#999'}, grid:{color:'rgba(255,255,255,0.05)'}}},
+    },
+  });
+}
+
+function toggleDetail(id){
+  const row=document.getElementById('detail-'+id);
+  if(!row) return;
+  row.classList.toggle('open');
+}
+
+function esc(s){ if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// Auto-refresh
+loadTasks();
+setInterval(loadTasks, 30000);
+</script>
+</body>
+</html>

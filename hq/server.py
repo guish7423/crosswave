@@ -28,7 +28,7 @@ POLSIA_PORT = int(os.environ.get("POLSIA_PORT", "8001"))
 HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
 HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
 
-CACHE = {"employees": [], "lines": [], "orders": [], "leads": [], "external_orders": [], "expenses": [], "revenue_history": [], "last_sync": None}
+CACHE = {"employees": [], "lines": [], "orders": [], "leads": [], "external_orders": [], "expenses": [], "revenue_history": [], "last_sync": None, "tasks": []}
 
 async def polsia_sync():
     if not os.path.exists(DB_PATH):
@@ -54,6 +54,9 @@ async def polsia_sync():
             )
             lead_rows = await db.execute_fetchall(
                 "SELECT id, name, email, company, product_interest, budget_range, message, status, source_page, created_at FROM leads ORDER BY created_at DESC LIMIT 100"
+            )
+            task_rows = await db.execute_fetchall(
+                "SELECT id, title, description, agent_type, priority, status, source, scheduled_date, result_summary, error_message, metadata_json, created_at, updated_at FROM tasks ORDER BY created_at DESC LIMIT 200"
             )
     except Exception as e:
         print(f"[bridge] DB read error: {e}")
@@ -127,7 +130,18 @@ async def polsia_sync():
         provider_notes_raw = row[12] if len(row) > 12 else None
         ext_orders.append({"id": row[0], "title": row[1] or "", "platform": row[2] or "", "external_id": row[3] or "", "status": row[4] or "scanned", "budget_min": row[5], "budget_max": row[6], "currency": row[7] or "USD", "score": row[8], "score_reason": row[9] or "", "assigned_agent": row[10] or "", "created_at": row[11] or "", "deployment_plan": provider_notes_raw})
     CACHE["external_orders"] = ext_orders
-    print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks, {len(leads)} leads, {len(ext_orders)} ext orders, {len(exps)} expenses, {len(revs)} rev months")
+    full_tasks = []
+    for r in task_rows:
+        full_tasks.append({
+            "id": r[0], "title": r[1] or "", "description": r[2] or "",
+            "agent_type": r[3] or "", "priority": r[4] or 3,
+            "status": r[5] or "pending", "source": r[6] or "",
+            "scheduled_date": r[7] or "", "result_summary": r[8] or "",
+            "error_message": r[9] or "", "metadata_json": r[10] or "",
+            "created_at": r[11] or "", "updated_at": r[12] or "",
+        })
+    CACHE["tasks"] = full_tasks
+    print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks, {len(leads)} leads, {len(ext_orders)} ext orders, {len(exps)} expenses, {len(revs)} rev months, {len(full_tasks)} full tasks")
 
 async def periodic_sync():
     while True:
@@ -985,6 +999,83 @@ async def hq_sandbox_cleanup(hours: int = 72):
             return r.json()
     except Exception as e:
         return {"error": str(e)}
+
+
+# ─── Task Board (任务管理) ──────────────────────────────────────────────────
+@app.get("/api/hq/tasks")
+async def get_tasks(status: str = "", agent: str = "", search: str = ""):
+    """Return tasks from Polsia DB with optional filters."""
+    if not os.path.exists(DB_PATH):
+        return {"tasks": [], "total": 0, "filtered": 0}
+    try:
+        import aiosqlite
+        async with aiosqlite.connect(DB_PATH) as db:
+            import json
+            rows = await db.execute_fetchall(
+                "SELECT id, title, description, status, priority, agent_type, "
+                "created_at, updated_at, assigned_to, result, metadata_json, "
+                "due_date, parent_task_id FROM tasks ORDER BY created_at DESC"
+            )
+            tasks = []
+            for r in rows:
+                t = {
+                    "id": r[0], "title": r[1], "description": r[2],
+                    "status": r[3], "priority": r[4], "agent_type": r[5],
+                    "created_at": r[6], "updated_at": r[7],
+                    "assigned_to": r[8], "result": r[9],
+                    "metadata": json.loads(r[10]) if r[10] else {},
+                    "due_date": r[11], "parent_task_id": r[12],
+                }
+                tasks.append(t)
+        total = len(tasks)
+        # Apply filters
+        if status:
+            statuses = [s.strip() for s in status.split(",")]
+            tasks = [t for t in tasks if t["status"] in statuses]
+        if agent:
+            agents = [a.strip() for a in agent.split(",")]
+            tasks = [t for t in tasks if t["agent_type"] in agents]
+        if search:
+            sl = search.lower()
+            tasks = [t for t in tasks if
+                     sl in (t["title"] or "").lower() or
+                     sl in (t["description"] or "").lower()]
+        return {"tasks": tasks, "total": total, "filtered": len(tasks)}
+    except Exception as e:
+        return {"error": str(e), "tasks": [], "total": 0, "filtered": 0}
+
+
+@app.get("/api/hq/tasks/summary")
+async def get_tasks_summary():
+    """Return task summary (counts per status, per agent)."""
+    if not os.path.exists(DB_PATH):
+        return {"by_status": {}, "by_agent": {}, "total": 0}
+    try:
+        import aiosqlite
+        async with aiosqlite.connect(DB_PATH) as db:
+            status_rows = await db.execute_fetchall(
+                "SELECT status, COUNT(*) as cnt FROM tasks GROUP BY status"
+            )
+            agent_rows = await db.execute_fetchall(
+                "SELECT agent_type, status, COUNT(*) as cnt FROM tasks "
+                "GROUP BY agent_type, status ORDER BY agent_type"
+            )
+        by_status = {r[0]: r[1] for r in status_rows}
+        by_agent = {}
+        for r in agent_rows:
+            a = r[0] or "unknown"
+            if a not in by_agent:
+                by_agent[a] = {"completed": 0, "pending": 0, "failed": 0, "in_progress": 0, "cancelled": 0}
+            s = r[1] or "pending"
+            by_agent[a][s] = by_agent[a].get(s, 0) + r[2]
+        return {"by_status": by_status, "by_agent": by_agent, "total": sum(by_status.values())}
+    except Exception as e:
+        return {"error": str(e), "by_status": {}, "by_agent": {}, "total": 0}
+
+
+@app.get("/task-board")
+async def task_board_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "task_board.html"))
 
 
 if __name__ == "__main__":
