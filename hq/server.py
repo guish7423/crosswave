@@ -210,6 +210,11 @@ async def trigger_sync():
 async def dashboard():
     return FileResponse(os.path.join(os.path.dirname(__file__), "dashboard.html"))
 
+@app.get("/dashboard")
+async def dashboard_redirect():
+    from starlette.responses import RedirectResponse
+    return RedirectResponse(url="/")
+
 @app.get("/orders")
 async def orders_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "orders.html"))
@@ -283,6 +288,11 @@ async def get_reports():
 @app.get("/finance")
 async def finance_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "finances.html"))
+
+@app.get("/finances")
+async def finances_redirect():
+    from starlette.responses import RedirectResponse
+    return RedirectResponse(url="/finance")
 
 @app.get("/reports")
 async def reports_page():
