@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrossWave HQ — 部署中心</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="header">
+  <h1>🌊 <span>CrossWave</span> HQ · 部署中心</h1>
+  <span class="nav">
+    <a href="/">战情室</a>
+    <a href="/employees">员工</a>
+    <a href="/orders">订单</a>
+    <a href="/leads">线索</a>
+    <a href="/deploy" class="active">部署</a>
+    <a href="/finance">财务</a>
+    <a href="/reports">报表</a>
+  </span>
+</div>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="section-tabs">
+  <button class="tab active" onclick="switchTab('packages')">📦 交付包</button>
+  <button class="tab" onclick="switchTab('orders')">📋 部署订单</button>
+  <button class="tab" onclick="switchTab('checklist')">✅ 交付清单</button>
+</div>
+
+<div id="packagesTab" style="display:block;padding:0 32px;">
+  <div class="health-grid" style="grid-template-columns:repeat(3,1fr);margin-top:16px;">
+    <div class="health-card healthy" style="cursor:pointer;border:2px solid #38bdf840;">
+      <div>
+        <div class="line-name">🟢 Basic</div>
+        <div class="line-meta">¥2,000 · 1-2 天</div>
+      </div>
+      <span class="line-status active">单服务</span>
+      <ul style="font-size:12px;color:#94a3b8;margin-top:8px;padding-left:16px;">
+        <li>FastAPI/Next.js 单服务部署</li>
+        <li>Docker 容器化</li>
+        <li>域名 + SSL</li>
+        <li>健康检查端点</li>
+      </ul>
+    </div>
+    <div class="health-card healthy" style="cursor:pointer;border:2px solid #4ade8040;">
+      <div>
+        <div class="line-name">🟡 Standard</div>
+        <div class="line-meta">¥3,000 · 2-4 天</div>
+      </div>
+      <span class="line-status active">多服务</span>
+      <ul style="font-size:12px;color:#94a3b8;margin-top:8px;padding-left:16px;">
+        <li>Docker Compose 多服务</li>
+        <li>PostgreSQL/Redis</li>
+        <li>CI/CD 流水线</li>
+        <li>30 天支持</li>
+      </ul>
+    </div>
+    <div class="health-card warning" style="cursor:pointer;border:2px solid #facc1540;">
+      <div>
+        <div class="line-name">🔴 Enterprise</div>
+        <div class="line-meta">¥5,000 · 5-7 天</div>
+      </div>
+      <span class="line-status warning">生产级</span>
+      <ul style="font-size:12px;color:#94a3b8;margin-top:8px;padding-left:16px;">
+        <li>K3s 集群</li>
+        <li>自动伸缩 + 负载均衡</li>
+        <li>监控 (Prometheus + Grafana)</li>
+        <li>7天 SLA</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section-card" style="margin-top:16px;">
+    <h3>📁 交付包文件</h3>
+    <ul style="font-size:13px;color:#94a3b8;line-height:1.8;margin-top:8px;">
+      <li><code>hq/crossdeploy/delivery-checklist.md</code> — 全流程 6 阶段检查清单</li>
+      <li><code>hq/crossdeploy/basic/template.md</code> — Basic 级模板 (Dockerfile + Nginx + Health)</li>
+      <li><code>hq/crossdeploy/standard/template.md</code> — Standard 级模板 (Compose + CI/CD + Backup)</li>
+      <li><code>hq/crossdeploy/enterprise/template.md</code> — Enterprise 级模板 (K3s + Monitoring + HPA)</li>
+      <li><code>hq/crossdeploy/README.md</code> — 交付流程说明</li>
+    </ul>
+  </div>
+</div>
+
+<div id="ordersTab" style="display:none;padding:0 32px;">
+  <div class="table-wrap" style="padding:16px 0;">
+    <table>
+      <thead><tr><th>订单</th><th>预算</th><th>评分</th><th>状态</th><th>已指派</th></tr></thead>
+      <tbody id="deployOrders"><tr><td colspan="5" class="empty">暂无部署订单</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="checklistTab" style="display:none;padding:0 32px;">
+  <div class="section-card" style="margin-top:16px;">
+    <h3>✅ 交付检查清单</h3>
+    <div id="checklistItems"></div>
+  </div>
+</div>
+
+<script>
+const apiBase = 'http://localhost:13001';
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const tabMap = { packages: 0, orders: 1, checklist: 2 };
+  document.querySelectorAll('.section-tabs .tab')[tabMap[tab]].classList.add('active');
+  document.getElementById('packagesTab').style.display = tab === 'packages' ? 'block' : 'none';
+  document.getElementById('ordersTab').style.display = tab === 'orders' ? 'block' : 'none';
+  document.getElementById('checklistTab').style.display = tab === 'checklist' ? 'block' : 'none';
+  if (tab === 'orders') loadDeployOrders();
+  if (tab === 'checklist') loadChecklist();
+}
+
+async function loadDeployOrders() {
+  try {
+    const res = await fetch(`${apiBase}/api/hq/external-orders`);
+    const data = (await res.json()).data || [];
+    const deployItems = data.filter(o =>
+      o.platform === 'internal' &&
+      (o.assigned_agent === 'deploy_agent' || o.title.toLowerCase().includes('deploy'))
+    );
+    const tbody = document.getElementById('deployOrders');
+    tbody.innerHTML = deployItems.map(o => `
+      <tr>
+        <td>${o.title}</td>
+        <td>¥${o.budget_min || '—'}</td>
+        <td>${o.score != null ? o.score + '/10' : '—'}</td>
+        <td><span class="badge" style="background:${o.status === 'completed' ? '#4ade80' : o.status === 'in_progress' ? '#60a5fa' : '#facc15'}20;color:${o.status === 'completed' ? '#4ade80' : o.status === 'in_progress' ? '#60a5fa' : '#facc15'}">${o.status}</span></td>
+        <td>${o.assigned_agent || '—'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" class="empty">暂无部署订单</td></tr>';
+  } catch (e) {
+    document.getElementById('deployOrders').innerHTML = `<tr><td colspan="5" class="empty">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function loadChecklist() {
+  const items = [
+    { phase: '前置准备', tasks: ['需求收集确认', '技术栈确认', 'VPS 凭证/域名指向', '支付确认'] },
+    { phase: '环境配置', tasks: ['SSH 验证', 'Docker + Compose 安装', '防火墙配置 80/443/22', 'Fail2ban 安装', 'Swap 配置 2GB'] },
+    { phase: '部署执行', tasks: ['代码克隆/上传', 'Dockerfile 创建', 'docker-compose.yml 创建', '.env 生成', '服务启动验证', '健康检查 200'] },
+    { phase: '域名 & SSL', tasks: ['Nginx/Caddy 反代配置', 'Let\'s Encrypt SSL', 'HTTPS 强制跳转', '域名解析验证'] },
+    { phase: 'CI/CD (Standard+)', tasks: ['GitHub Actions 配置', '自动部署触发', '回滚机制文档'] },
+    { phase: '交接', tasks: ['客户验收', '凭据安全传输', 'README 编写', '支持周期确认', '发票发送'] },
+  ];
+  const container = document.getElementById('checklistItems');
+  container.innerHTML = items.map(g => `
+    <div style="margin-bottom:12px;">
+      <h4 style="font-size:13px;color:#38bdf8;margin-bottom:4px;">${g.phase}</h4>
+      <ul style="font-size:12px;color:#94a3b8;line-height:1.8;padding-left:16px;">
+        ${g.tasks.map(t => `<li><label><input type="checkbox" style="margin-right:6px;">${t}</label></li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
+loadDeployOrders();
+</script>
+</body>
+</html>

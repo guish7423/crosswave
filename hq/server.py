@@ -276,5 +276,9 @@ async def finance_page():
 async def reports_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "reports.html"))
 
+@app.get("/deploy")
+async def deploy_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "deploy.html"))
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)
