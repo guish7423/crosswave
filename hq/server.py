@@ -637,6 +637,89 @@ async def global_search(q: str = ""):
     return {"data": results[:20], "total": len(results)}
 
 
+# ─── Analytics ──────────────────────────────────────────────────────────────
+@app.get("/api/hq/analytics/revenue-trend")
+async def revenue_trend():
+    """Revenue history with linear regression projection (next 30 days)."""
+    rev = CACHE["revenue_history"]
+    if not rev:
+        return {"history": [], "projection": [], "summary": {"current_mrr": 0, "next_month_projection": 0, "growth_rate": 0}}
+    points = [(i, r["amount"]) for i, r in enumerate(rev)]
+    n = len(points)
+    if n < 2:
+        return {"history": rev, "projection": [], "summary": {"current_mrr": rev[-1]["amount"], "next_month_projection": rev[-1]["amount"], "growth_rate": 0}}
+    sum_x = sum(i for i, _ in points)
+    sum_y = sum(v for _, v in points)
+    sum_xy = sum(i * v for i, v in points)
+    sum_xx = sum(i * i for i, _ in points)
+    slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x)
+    intercept = (sum_y - slope * sum_x) / n
+    projection = []
+    for i in range(n, n + 30):
+        projection.append({"day": i - n + 1, "projected_mrr": round(slope * i + intercept, 2)})
+    current_mrr = rev[-1]["amount"]
+    next_mrr = round(slope * (n + 29) + intercept, 2)
+    growth_rate = round((next_mrr - current_mrr) / current_mrr * 100, 1) if current_mrr > 0 else 0
+    return {
+        "history": [{"date": r["date"], "amount": r["amount"]} for r in rev],
+        "projection": projection,
+        "summary": {"current_mrr": current_mrr, "next_month_projection": next_mrr, "growth_rate": growth_rate, "slope_per_day": round(slope, 2)},
+    }
+
+@app.get("/api/hq/analytics/lead-funnel")
+async def lead_funnel():
+    """Lead status distribution + conversion rates."""
+    leads = CACHE["leads"]
+    total = len(leads)
+    stages = {"new": 0, "contacted": 0, "qualified": 0, "proposal": 0, "negotiation": 0, "won": 0, "lost": 0}
+    for l in leads:
+        s = l.get("status", "new")
+        if s in stages:
+            stages[s] += 1
+    won_stages = stages["won"] + stages["lost"]
+    conversion_rate = round(stages["won"] / total * 100, 1) if total > 0 else 0
+    return {
+        "total": total,
+        "stages": stages,
+        "conversion_rate": conversion_rate,
+        "won": stages["won"],
+        "lost": stages["lost"],
+    }
+
+@app.get("/api/hq/analytics/agent-performance")
+async def agent_performance():
+    """Per-agent metrics from tasks and activity log."""
+    orders = CACHE["orders"]
+    if not orders:
+        return {"agents": [], "summary": {"total_agents": 0, "avg_success_rate": 0}}
+    agent_stats = {}
+    for o in orders:
+        atype = o.get("agent_type", "unknown")
+        if atype not in agent_stats:
+            agent_stats[atype] = {"total": 0, "completed": 0, "failed": 0, "pending": 0}
+        agent_stats[atype]["total"] += 1
+        s = o.get("status", "pending")
+        if s in ("done", "completed"):
+            agent_stats[atype]["completed"] += 1
+        elif s == "failed":
+            agent_stats[atype]["failed"] += 1
+        else:
+            agent_stats[atype]["pending"] += 1
+    agents = []
+    for aname, stats in sorted(agent_stats.items()):
+        rate = round(stats["completed"] / stats["total"] * 100, 1) if stats["total"] > 0 else 0
+        agents.append({
+            "name": aname.replace("_", " ").title(),
+            "agent_type": aname,
+            "total": stats["total"],
+            "completed": stats["completed"],
+            "failed": stats["failed"],
+            "pending": stats["pending"],
+            "success_rate": rate,
+        })
+    avg_rate = round(sum(a["success_rate"] for a in agents) / len(agents), 1) if agents else 0
+    return {"agents": agents, "summary": {"total_agents": len(agents), "avg_success_rate": avg_rate}}
+
 # ─── Notifications ──────────────────────────────────────────────────────────
 @app.get("/api/hq/notifications")
 async def get_notifications():
@@ -660,6 +743,10 @@ async def timeline_page():
 @app.get("/agents")
 async def agents_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "agents.html"))
+
+@app.get("/analytics")
+async def analytics_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "analytics.html"))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)

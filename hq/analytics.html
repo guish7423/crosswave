@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrossWave HQ — 分析</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+  .analytics-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+  .analytics-card.full { grid-column: 1 / -1; }
+  .analytics-card h3 { margin: 0 0 16px; font-size: 15px; color: var(--text-muted); font-weight: 500; }
+  .chart-container { position: relative; height: 280px; }
+  .kpi-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .kpi-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; min-width: 140px; flex: 1; }
+  .kpi-card .label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-card .value { font-size: 24px; font-weight: 700; color: var(--text); }
+  .kpi-card .change { font-size: 12px; margin-top: 2px; }
+  .kpi-card .change.positive { color: #22c55e; }
+  .kpi-card .change.negative { color: #ef4444; }
+  .funnel-bar { display: flex; align-items: center; gap: 12px; margin: 6px 0; }
+  .funnel-bar .stage-label { width: 100px; font-size: 13px; color: var(--text); }
+  .funnel-bar .bar-track { flex: 1; height: 24px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+  .funnel-bar .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; display: flex; align-items: center; padding-left: 8px; font-size: 11px; color: #fff; font-weight: 600; }
+  .agent-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .agent-table th { text-align: left; font-size: 12px; color: var(--text-muted); padding: 8px 12px; border-bottom: 1px solid var(--border); font-weight: 500; }
+  .agent-table td { padding: 8px 12px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .agent-table .rate-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; width: 80px; display: inline-block; vertical-align: middle; margin-right: 8px; }
+  .agent-table .rate-fill { height: 100%; border-radius: 3px; }
+  .rate-high { background: #22c55e; }
+  .rate-mid { background: #eab308; }
+  .rate-low { background: #ef4444; }
+  .loading { text-align: center; padding: 60px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+<div style="max-width: 1200px; margin: 0 auto; padding: 24px;">
+  <h1 style="margin:0 0 4px; font-size: 22px; font-weight: 600;">📊 数据分析</h1>
+  <p style="margin:0 0 24px; color: var(--text-muted); font-size: 14px;">趋势 · 转化 · 性能</p>
+
+  <!-- KPI Row -->
+  <div class="kpi-row" id="kpi-row">
+    <div class="kpi-card"><div class="label">当前 MRR</div><div class="value" id="kpi-mrr">—</div></div>
+    <div class="kpi-card"><div class="label">30天后预测 MRR</div><div class="value" id="kpi-proj">—</div></div>
+    <div class="kpi-card"><div class="label">月增长率</div><div class="value" id="kpi-growth">—</div><div class="change" id="kpi-growth-change"></div></div>
+    <div class="kpi-card"><div class="label">线索转化率</div><div class="value" id="kpi-conversion">—</div></div>
+    <div class="kpi-card"><div class="label">Agent 平均成功率</div><div class="value" id="kpi-avg-rate">—</div></div>
+  </div>
+
+  <div class="analytics-grid">
+    <!-- Revenue Trend -->
+    <div class="analytics-card full">
+      <h3>📈 MRR 趋势与预测</h3>
+      <div class="kpi-row" style="margin-bottom:16px;">
+        <span style="font-size:12px; color:var(--text-muted);" id="trend-summary"></span>
+      </div>
+      <div class="chart-container"><canvas id="revenue-chart"></canvas></div>
+    </div>
+
+    <!-- Lead Funnel -->
+    <div class="analytics-card">
+      <h3>🔻 线索转化漏斗</h3>
+      <div id="funnel-container"><div class="loading">加载中...</div></div>
+    </div>
+
+    <!-- Agent Performance -->
+    <div class="analytics-card">
+      <h3>🤖 Agent 性能排行</h3>
+      <div id="agent-container"><div class="loading">加载中...</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOKEN = localStorage.getItem("hq_token") || "";
+const HEADERS = { "X-HQ-Token": TOKEN, "Content-Type": "application/json" };
+
+async function loadAnalytics() {
+  try {
+    const [revRes, leadRes, agentRes] = await Promise.all([
+      fetch("/api/hq/analytics/revenue-trend", { headers: HEADERS }),
+      fetch("/api/hq/analytics/lead-funnel", { headers: HEADERS }),
+      fetch("/api/hq/analytics/agent-performance", { headers: HEADERS }),
+    ]);
+    const rev = await revRes.json();
+    const lead = await leadRes.json();
+    const agent = await agentRes.json();
+
+    // KPI row
+    document.getElementById("kpi-mrr").textContent = "$" + rev.summary.current_mrr;
+    document.getElementById("kpi-proj").textContent = "$" + rev.summary.next_month_projection;
+    document.getElementById("kpi-growth").textContent = rev.summary.growth_rate + "%";
+    const growthEl = document.getElementById("kpi-growth-change");
+    growthEl.textContent = "+$" + rev.summary.slope_per_day + "/day";
+    growthEl.className = "change positive";
+    document.getElementById("kpi-conversion").textContent = lead.conversion_rate + "% (" + lead.won + "/" + lead.total + ")";
+    document.getElementById("kpi-avg-rate").textContent = agent.summary.avg_success_rate + "%";
+    document.getElementById("trend-summary").textContent =
+      "日增长 $" + rev.summary.slope_per_day + " · " +
+      rev.history.length + " 天数据 · 预测 " + lead.total + " 条线索 · " +
+      agent.summary.total_agents + " 个 Agent";
+
+    // Revenue chart
+    const ctx = document.getElementById("revenue-chart").getContext("2d");
+    const labels = rev.history.map(r => r.date.slice(5));
+    const amounts = rev.history.map(r => r.amount);
+    const projLabels = rev.projection.map(p => "D+" + p.day);
+    const projAmounts = rev.projection.map(p => p.projected_mrr);
+    const lastDate = rev.history.length > 0 ? rev.history[rev.history.length - 1].date.slice(5) : "";
+
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [...labels, ...projLabels],
+        datasets: [
+          {
+            label: "实际 MRR",
+            data: [...amounts, ...Array(projLabels.length).fill(null)],
+            borderColor: "#3b82f6",
+            backgroundColor: "rgba(59,130,246,0.1)",
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointBackgroundColor: "#3b82f6",
+          },
+          {
+            label: "预测 MRR",
+            data: [...Array(labels.length - 1).fill(null), amounts[amounts.length - 1], ...projAmounts],
+            borderColor: "#8b5cf6",
+            borderDash: [6, 3],
+            backgroundColor: "rgba(139,92,246,0.05)",
+            fill: true,
+            tension: 0,
+            pointRadius: 2,
+            pointBackgroundColor: "#8b5cf6",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: "index" },
+        plugins: { legend: { position: "top", labels: { color: "#94a3b8", font: { size: 12 } } } },
+        scales: {
+          x: { ticks: { color: "#64748b", maxTicksLimit: 15 }, grid: { color: "rgba(255,255,255,0.04)" } },
+          y: { ticks: { color: "#64748b", callback: v => "$" + v }, grid: { color: "rgba(255,255,255,0.04)" } },
+        },
+      },
+    });
+
+    // Lead funnel
+    const funnelColors = ["#64748b", "#3b82f6", "#8b5cf6", "#f59e0b", "#06b6d4", "#22c55e", "#ef4444"];
+    const stageLabels = ["new", "contacted", "qualified", "proposal", "negotiation", "won", "lost"];
+    const stageNames = { new: "新线索", contacted: "已联系", qualified: "已确认", proposal: "报价中", negotiation: "谈判中", won: "已成交", lost: "已流失" };
+    const stageColors = {
+      new: "#64748b", contacted: "#3b82f6", qualified: "#8b5cf6",
+      proposal: "#f59e0b", negotiation: "#06b6d4", won: "#22c55e", lost: "#ef4444"
+    };
+    const maxLeads = Math.max(...stageLabels.map(s => lead.stages[s] || 0), 1);
+    const funnelHtml = stageLabels.map(s => {
+      const count = lead.stages[s] || 0;
+      const pct = maxLeads > 0 ? (count / maxLeads * 100) : 0;
+      return `<div class="funnel-bar">
+        <span class="stage-label">${stageNames[s]}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${pct}%;background:${stageColors[s]}">${count}</div>
+        </div>
+      </div>`;
+    }).join("");
+    document.getElementById("funnel-container").innerHTML = funnelHtml;
+
+    // Agent performance table
+    if (agent.agents.length > 0) {
+      const rows = agent.agents.map(a => {
+        const rateClass = a.success_rate >= 70 ? "rate-high" : a.success_rate >= 40 ? "rate-mid" : "rate-low";
+        return `<tr>
+          <td>${a.name}</td>
+          <td>${a.total}</td>
+          <td style="color:#22c55e">${a.completed}</td>
+          <td style="color:#ef4444">${a.failed}</td>
+          <td><div class="rate-bar"><div class="rate-fill ${rateClass}" style="width:${a.success_rate}%"></div></div>${a.success_rate}%</td>
+        </tr>`;
+      }).join("");
+      document.getElementById("agent-container").innerHTML =
+        `<table class="agent-table"><thead><tr><th>Agent</th><th>任务数</th><th>完成</th><th>失败</th><th>成功率</th></tr></thead><tbody>${rows}</tbody></table>`;
+    } else {
+      document.getElementById("agent-container").innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px;">暂无任务数据</p>';
+    }
+  } catch (e) {
+    console.error("Analytics load error:", e);
+    document.querySelectorAll(".kpi-card .value").forEach(el => el.textContent = "—");
+    document.getElementById("funnel-container").innerHTML = '<p style="color:#ef4444;text-align:center;">加载失败</p>';
+  }
+}
+
+// Nav
+fetch("/static/nav.html").then(r => r.text()).then(h => {
+  document.getElementById("nav-placeholder").innerHTML = h;
+  document.querySelectorAll('[data-nav="analytics"]').forEach(el => el.classList.add("active"));
+});
+
+loadAnalytics();
+setInterval(loadAnalytics, 60000);
+</script>
+</body>
+</html>
