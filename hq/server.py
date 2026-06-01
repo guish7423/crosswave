@@ -144,6 +144,14 @@ async def polsia_sync():
     CACHE["tasks"] = full_tasks
     print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks, {len(leads)} leads, {len(ext_orders)} ext orders, {len(exps)} expenses, {len(revs)} rev months, {len(full_tasks)} full tasks")
 
+    # ── Optional: sync to NocoBase ─────────────────────────────
+    try:
+        from hq.polsia_bridge import sync as nocobase_sync
+        await nocobase_sync()
+        print("[bridge] NocoBase sync completed")
+    except Exception as nbe:
+        print(f"[bridge] NocoBase sync skipped: {nbe}")
+
 async def periodic_sync():
     while True:
         await polsia_sync()

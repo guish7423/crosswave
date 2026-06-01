@@ -1,134 +1,176 @@
-import os
-import json
-import asyncio
-import httpx
+#!/usr/bin/env python3
+"""
+polsia_bridge.py — Sync Polsia Fork SQLite → NocoBase REST API v2
+
+Syncs 4 collections (employees, business_lines, external_orders, platform_connections)
+with dedup by name/slug/external_id. Run standalone or integrated into bridge server.
+"""
+import os, sys, json, asyncio, time, aiosqlite, httpx
 from datetime import datetime, timezone
 
-DB_PATH = os.environ.get("POLSIA_DB", "../polsia.db")
-HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
-HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
+DB_PATH = os.environ.get("POLSIA_DB", "")
+if not DB_PATH:
+    # auto-detect relative to script location
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    DB_PATH = os.path.join(SCRIPT_DIR, "..", "..", "polsia-fork", "polsia.db")
 
-async def sync_employees(client):
-    import aiosqlite
-    async with aiosqlite.connect(DB_PATH) as db:
-        rows = await db.execute_fetchall(
-            "SELECT type, name, role, status FROM agents"
+NB_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
+NB_EMAIL = os.environ.get("NB_EMAIL", "admin@nocobase.com")
+NB_PASSWORD = os.environ.get("NB_PASSWORD", "CrossWave@2026")
+
+TOKEN = None
+TOKEN_EXPIRES = 0
+
+async def get_token(client: httpx.AsyncClient) -> str:
+    global TOKEN, TOKEN_EXPIRES
+    if TOKEN and time.time() < TOKEN_EXPIRES:
+        return TOKEN
+    r = await client.post(f"{NB_URL}/auth:signIn", json={"email": NB_EMAIL, "password": NB_PASSWORD}, timeout=10)
+    r.raise_for_status()
+    data = r.json()
+    TOKEN = data["data"]["token"]
+    TOKEN_EXPIRES = time.time() + 3600  # tokens last 1hr
+    return TOKEN
+
+async def list_collection(client: httpx.AsyncClient, collection: str, field: str = "id") -> set:
+    """Fetch all IDs/names from NocoBase collection to avoid duplicates."""
+    token = await get_token(client)
+    items = set()
+    page = 1
+    while True:
+        r = await client.get(
+            f"{NB_URL}/{collection}:list",
+            params={"page": page, "pageSize": 100},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
         )
+        if r.status_code != 200:
+            break
+        data = r.json()
+        rows = data.get("data", [])
+        if not rows:
+            break
         for row in rows:
-            payload = {
-                "name": row[1] or row[0],
-                "type": "ai",
-                "role": row[2] or row[0],
-                "status": row[3] or "idle",
-                "metadata": json.dumps({"agent_type": row[0]}),
-            }
-            try:
-                await client.post(
-                    f"{HQ_URL}/employees:create",
-                    json=payload,
-                    headers={"Authorization": f"Bearer {HQ_TOKEN}"},
-                    timeout=10,
-                )
-            except Exception as e:
-                print(f"  [skip] {payload['name']}: {e}")
+            val = row.get(field)
+            if val:
+                items.add(str(val))
+        if len(rows) < 100:
+            break
+        page += 1
+    return items
 
-async def sync_business_lines(client):
-    lines = [
-        {"name": "CrossBridge", "slug": "crossbridge", "status": "active"},
-        {"name": "CrossBlog", "slug": "crossblog", "status": "active"},
-        {"name": "CrossDeploy", "slug": "crossdeploy", "status": "active"},
-        {"name": "Polsia Fork", "slug": "polsia", "status": "active"},
-        {"name": "HiveMind", "slug": "hivemind", "status": "development"},
+async def create_record(client: httpx.AsyncClient, collection: str, payload: dict) -> bool:
+    token = await get_token(client)
+    try:
+        r = await client.post(
+            f"{NB_URL}/{collection}:create",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        if r.status_code in (200, 201):
+            return True
+        print(f"  [skip] {collection}: {r.status_code} {r.text[:200]}")
+        return False
+    except Exception as e:
+        print(f"  [error] {collection}: {e}")
+        return False
+
+async def ensure_platform_connections(client: httpx.AsyncClient):
+    """Seed platform connections if empty."""
+    existing = await list_collection(client, "platform_connections", "platform")
+    defaults = [
+        {"platform": "Upwork", "status": "active", "account_name": "CrossWave", "config": json.dumps({"api_type": "rss", "feed_url": "https://remoteok.com/api"})},
+        {"platform": "Fiverr", "status": "active", "account_name": "CrossWave", "config": json.dumps({"api_type": "scraper", "url": "https://www.fiverr.com"})},
+        {"platform": "猪八戒", "status": "active", "account_name": "CrossWave", "config": json.dumps({"api_type": "api", "endpoint": "https://open.zbj.com"})},
     ]
-    for line in lines:
-        try:
-            await client.post(
-                f"{HQ_URL}/business_lines:create",
-                json=line,
-                headers={"Authorization": f"Bearer {HQ_TOKEN}"},
-                timeout=10,
+    for d in defaults:
+        if d["platform"] not in existing:
+            await create_record(client, "platform_connections", d)
+
+async def sync():
+    print(f"[polsia_bridge] DB: {DB_PATH}  NB: {NB_URL}")
+    if not os.path.exists(DB_PATH):
+        print("  DB not found, skipping")
+        return
+
+    async with httpx.AsyncClient() as client:
+        token = await get_token(client)
+        print(f"  Authenticated: token={token[:16]}...")
+
+        # ── 1. Employees (from DISTINCT agent_type in tasks) ──────────
+        existing_emps = await list_collection(client, "employees", "name")
+        async with aiosqlite.connect(DB_PATH) as db:
+            rows = await db.execute_fetchall(
+                "SELECT DISTINCT agent_type FROM tasks ORDER BY agent_type"
             )
-        except Exception as e:
-            print(f"  [skip] {line['name']}: {e}")
+            known = ["orchestrator", "social_media", "customer_support", "competitor_research",
+                     "business_planning", "code_generation", "deployment",
+                     "finance", "email_outreach", "ads_management",
+                     "order_scanner", "order_fulfiller", "lead_nurturing",
+                     "deploy_agent", "monitor", "evolution", "market_intel"]
+            seen = set(r[0] for r in rows if r[0])
+            for at in known:
+                if at not in seen:
+                    seen.add(at)
+            for at in sorted(seen):
+                name = at.replace("_", " ").title()
+                if name in existing_emps:
+                    continue
+                await create_record(client, "employees", {
+                    "name": name,
+                    "type": "ai",
+                    "role": name,
+                    "status": "idle",
+                    "performance_score": 0,
+                    "metadata": json.dumps({"agent_type": at}),
+                })
 
-async def sync_orders(client):
-    import aiosqlite
-    async with aiosqlite.connect(DB_PATH) as db:
-        rows = await db.execute_fetchall(
-            "SELECT title, status, agent_type, created_at FROM tasks ORDER BY created_at DESC LIMIT 50"
-        )
-        for row in rows:
-            payload = {
-                "title": row[0] or f"task-{datetime.now(timezone.utc).isoformat()}",
-                "platform": "internal",
-                "status": row[1] or "pending",
-                "description": f"Agent: {row[2] or 'unknown'}",
-                "metadata": json.dumps({"agent_type": row[2], "created_at": row[3]}),
-            }
-            try:
-                await client.post(
-                    f"{HQ_URL}/external_orders:create",
-                    json=payload,
-                    headers={"Authorization": f"Bearer {HQ_TOKEN}"},
-                    timeout=10,
-                )
-            except Exception as e:
-                print(f"  [skip] {payload['title']}: {e}")
+        # ── 2. Business Lines ──────────────────────────────────────
+        existing_lines = await list_collection(client, "business_lines", "slug")
+        lines = [
+            {"name": "CrossBridge", "slug": "crossbridge", "status": "active"},
+            {"name": "CrossBlog", "slug": "crossblog", "status": "active"},
+            {"name": "CrossDeploy", "slug": "crossdeploy", "status": "active"},
+            {"name": "Polsia Fork", "slug": "polsia", "status": "active"},
+            {"name": "HiveMind", "slug": "hivemind", "status": "development"},
+        ]
+        for l in lines:
+            if l["slug"] in existing_lines:
+                continue
+            await create_record(client, "business_lines", l)
 
-async def sync_expenses(client):
-    import aiosqlite
-    async with aiosqlite.connect(DB_PATH) as db:
-        rows = await db.execute_fetchall(
-            "SELECT amount, category, description, date FROM expenses ORDER BY date"
-        )
-        for row in rows:
-            payload = {
-                "amount": row[0],
-                "category": row[1] or "other",
-                "description": row[2] or "",
-                "date": row[3] or "",
-            }
-            try:
-                await client.post(
-                    f"{HQ_URL}/expenses:create",
-                    json=payload,
-                    headers={"Authorization": f"Bearer {HQ_TOKEN}"},
-                    timeout=10,
-                )
-            except Exception as e:
-                print(f"  [skip] expense {payload['description']}: {e}")
+        # ── 3. External Orders ─────────────────────────────────────
+        existing_orders = await list_collection(client, "external_orders", "external_id")
+        async with aiosqlite.connect(DB_PATH) as db:
+            rows = await db.execute_fetchall(
+                "SELECT id, title, platform, external_id, status, budget_min, "
+                "budget_max, currency, score, score_reason, created_at "
+                "FROM external_orders ORDER BY created_at DESC LIMIT 200"
+            )
+            for r in rows:
+                eid = str(r[3] or r[0])  # external_id or local id
+                if eid in existing_orders:
+                    continue
+                await create_record(client, "external_orders", {
+                    "title": r[1] or f"Order-{r[0]}",
+                    "platform": r[2] or "unknown",
+                    "external_id": eid,
+                    "status": r[4] or "scanned",
+                    "budget_min": r[5] or 0,
+                    "budget_max": r[6] or 0,
+                    "currency": r[7] or "USD",
+                    "score": r[8] or 0,
+                    "description": r[9] or "",
+                })
 
-async def sync_revenue_history(client):
-    import aiosqlite
-    async with aiosqlite.connect(DB_PATH) as db:
-        rows = await db.execute_fetchall(
-            "SELECT date, amount, source FROM finance_records ORDER BY date"
-        )
-        for row in rows:
-            payload = {
-                "date": row[0] or "",
-                "amount": row[1] or 0,
-                "source": row[2] or "unknown",
-            }
-            try:
-                await client.post(
-                    f"{HQ_URL}/revenue_records:create",
-                    json=payload,
-                    headers={"Authorization": f"Bearer {HQ_TOKEN}"},
-                    timeout=10,
-                )
-            except Exception as e:
-                print(f"  [skip] revenue {payload['date']}: {e}")
+        # ── 4. Platform Connections (seed if empty) ────────────────
+        await ensure_platform_connections(client)
+
+        print("[polsia_bridge] sync complete")
 
 async def main():
-    print(f"[polsia_bridge] DB: {DB_PATH}  HQ: {HQ_URL}")
-    async with httpx.AsyncClient() as client:
-        await sync_employees(client)
-        await sync_business_lines(client)
-        await sync_orders(client)
-        await sync_expenses(client)
-        await sync_revenue_history(client)
-    print("[polsia_bridge] sync complete")
+    await sync()
 
 if __name__ == "__main__":
     asyncio.run(main())
