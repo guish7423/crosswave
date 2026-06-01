@@ -77,25 +77,65 @@ pip3 install -q -r "$CROSSWAVE_DIR/requirements.txt" 2>/dev/null || {
     exit 1
 }
 
-# ── 4. Start services ──
-log "Starting services..."
+# ── 4. Start services (order: dependencies first) ──
+log "Starting services (dependencies first)..."
 
-# 4a. HQ Bridge (CrossWave HQ)
+# 4a. NocoBase HQ Backend (via Docker Compose)
+if [ -f "$CROSSWAVE_DIR/hq/docker-compose.yml" ]; then
+    log "  → NocoBase HQ Backend (port 13000)..."
+    cd "$CROSSWAVE_DIR/hq"
+    docker compose up -d 2>/dev/null || docker-compose up -d 2>/dev/null || log "  ⚠️  Docker Compose not available, skipping NocoBase"
+    cd "$CROSSWAVE_DIR"
+    log "  ✅ NocoBase stack started (PostgreSQL + NocoBase)"
+fi
+
+# 4b. Polsia Fork API (first — HQ bridge depends on its DB)
+POLSIA_DIR="$CROSSWAVE_DIR/../polsia-fork"
+if [ -d "$POLSIA_DIR" ]; then
+    log "  → Polsia Fork API (port 8001)..."
+    pkill -f "uvicorn.*8001" 2>/dev/null || true
+    sleep 1
+    cd "$POLSIA_DIR"
+    DATABASE_URL="sqlite+aiosqlite:///./polsia.db" \
+    setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8001 > /tmp/polsia.log 2>&1 &
+    sleep 4
+    if curl -sf http://127.0.0.1:8001/api/v1/health > /dev/null 2>&1; then
+        log "  ✅ Polsia Fork running (port 8001)"
+    else
+        log "  ⚠️  Polsia Fork may still be starting (check /tmp/polsia.log)"
+    fi
+
+    if [ "$CELERY" = true ]; then
+        log "  → Celery Worker..."
+        setsid celery -A celery_app worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance > /tmp/celery-worker.log 2>&1 &
+        sleep 2
+        log "  ✅ Celery Worker started"
+
+        log "  → Celery Beat..."
+        setsid celery -A celery_app beat --loglevel=info > /tmp/celery-beat.log 2>&1 &
+        sleep 1
+        log "  ✅ Celery Beat started"
+    fi
+else
+    log "  ⏭️  Polsia Fork not found at $POLSIA_DIR, skipping"
+fi
+
+# 4c. HQ Bridge (CrossWave HQ — depends on Polsia Fork DB)
 log "  → HQ Bridge (port 13001)..."
 pkill -f "uvicorn hq.server:app" 2>/dev/null || true
 sleep 1
 cd "$CROSSWAVE_DIR"
 setsid python3 -m uvicorn hq.server:app --host 0.0.0.0 --port 13001 > /tmp/hq-bridge.log 2>&1 &
-sleep 2
+sleep 3
 if curl -sf http://127.0.0.1:13001/api/hq/summary > /dev/null 2>&1; then
-    log "  ✅ HQ Bridge running"
+    log "  ✅ HQ Bridge running (port 13001)"
 else
     log "  ⚠️  HQ Bridge may still be starting (check /tmp/hq-bridge.log)"
 fi
 
-# 4b. CrossWave (Website)
+# 4d. CrossWave (Website)
 log "  → CrossWave Website (port 9999)..."
-pkill -f "uvicorn app.main:app" 2>/dev/null || true
+pkill -f "uvicorn app.main:app.*9999" 2>/dev/null || true
 sleep 1
 cd "$CROSSWAVE_DIR"
 setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 9999 > /tmp/crosswave.log 2>&1 &
@@ -110,7 +150,7 @@ fi
 BLOG_DIR="$CROSSWAVE_DIR/../ai-blog-engine"
 if [ -d "$BLOG_DIR" ]; then
     log "  → CrossBlog (port 8002)..."
-    pkill -f "uvicorn app.main:app" 2>/dev/null || true
+    pkill -f "uvicorn.*8002" 2>/dev/null || true
     sleep 1
     cd "$BLOG_DIR"
     setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8002 > /tmp/crossblog.log 2>&1 &
@@ -122,38 +162,6 @@ if [ -d "$BLOG_DIR" ]; then
     fi
 else
     log "  ⏭️  CrossBlog not found at $BLOG_DIR, skipping"
-fi
-
-# 4d. Polsia Fork (if exists)
-POLSIA_DIR="$CROSSWAVE_DIR/../polsia-fork"
-if [ -d "$POLSIA_DIR" ]; then
-    log "  → Polsia Fork API (port 8001)..."
-    pkill -f "uvicorn app.main:app" 2>/dev/null || true
-    sleep 1
-    cd "$POLSIA_DIR"
-    DATABASE_URL="sqlite+aiosqlite:///./polsia.db" \
-    setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8001 > /tmp/polsia.log 2>&1 &
-    sleep 3
-    if curl -sf http://127.0.0.1:8001/api/v1/health > /dev/null 2>&1; then
-        log "  ✅ Polsia Fork running"
-    else
-        log "  ⚠️  Polsia Fork may still be starting (check /tmp/polsia.log)"
-    fi
-
-    if [ "$CELERY" = true ]; then
-        log "  → Celery Worker..."
-        cd "$POLSIA_DIR"
-        setsid celery -A celery_app worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance > /tmp/celery-worker.log 2>&1 &
-        sleep 2
-        log "  ✅ Celery Worker started"
-
-        log "  → Celery Beat..."
-        setsid celery -A celery_app beat --loglevel=info > /tmp/celery-beat.log 2>&1 &
-        sleep 1
-        log "  ✅ Celery Beat started"
-    fi
-else
-    log "  ⏭️  Polsia Fork not found at $POLSIA_DIR, skipping"
 fi
 
 # ── 5. Health Check ──

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 app = FastAPI(title="CrossWave HQ Bridge")
 app.mount("/static", StaticFiles(directory=os.path.dirname(__file__)), name="hq_static")
 
-DB_PATH = os.environ.get("POLSIA_DB", os.path.expanduser("~/.opencode-workspace/projects/polsia-fork/polsia.db"))
+DB_PATH = os.environ.get("POLSIA_DB", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "polsia-fork", "polsia.db"))
 HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
 HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
 
