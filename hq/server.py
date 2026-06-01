@@ -368,5 +368,97 @@ async def get_monitor():
 async def monitor_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "monitor.html"))
 
+
+# ─── Evolution Office (进化办) ──────────────────────────────────────────────
+@app.get("/api/hq/evolution")
+async def get_evolution():
+    """Return evolution analysis from Polsia DB.
+
+    Reads activity_log and task data to produce agent performance metrics.
+    """
+    if not os.path.exists(DB_PATH):
+        return {
+            "error": "Polsia DB not found — run Polsia Fork first",
+            "agent_metrics": [],
+            "suggestions": ["启动 Polsia Fork 后再查看进化分析"],
+            "total_activities": 0,
+        }
+    try:
+        import aiosqlite
+        async with aiosqlite.connect(DB_PATH) as db:
+            # Activity log counts per agent_type
+            act_rows = await db.execute_fetchall(
+                "SELECT agent_type, level, COUNT(*) as cnt FROM activity_log "
+                "WHERE created_at >= datetime('now', '-7 days') "
+                "GROUP BY agent_type, level ORDER BY agent_type"
+            )
+            # Task counts per agent_type
+            task_rows = await db.execute_fetchall(
+                "SELECT agent_type, status, COUNT(*) as cnt FROM tasks "
+                "WHERE created_at >= datetime('now', '-7 days') "
+                "GROUP BY agent_type, status ORDER BY agent_type"
+            )
+            # Total counts
+            total_activities = (await db.execute_fetchall(
+                "SELECT COUNT(*) FROM activity_log WHERE created_at >= datetime('now', '-7 days')"
+            ))[0][0] or 0
+            total_tasks = (await db.execute_fetchall(
+                "SELECT COUNT(*) FROM tasks WHERE created_at >= datetime('now', '-7 days')"
+            ))[0][0] or 0
+    except Exception as e:
+        return {"error": f"DB read error: {e}", "agent_metrics": [], "suggestions": []}
+
+    # Build per-agent metrics
+    agent_data = {}
+    for row in act_rows:
+        at = row[0] or "unknown"
+        level = row[1] or "info"
+        cnt = row[2] or 0
+        if at not in agent_data:
+            agent_data[at] = {"agent_type": at, "total": 0, "errors": 0, "warnings": 0}
+        agent_data[at]["total"] += cnt
+        if level == "error":
+            agent_data[at]["errors"] += cnt
+        elif level == "warning":
+            agent_data[at]["warnings"] += cnt
+
+    # Merge task data
+    for row in task_rows:
+        at = row[0] or "unknown"
+        status = row[1] or "pending"
+        cnt = row[2] or 0
+        if at not in agent_data:
+            agent_data[at] = {"agent_type": at, "total": 0, "errors": 0, "warnings": 0}
+        agent_data[at]["total"] += cnt
+        if status == "failed":
+            agent_data[at]["errors"] += cnt
+
+    metrics = []
+    suggestions = []
+    for at, d in sorted(agent_data.items()):
+        success_rate = round((d["total"] - d["errors"]) / d["total"] * 100, 1) if d["total"] else 100.0
+        d["success_rate"] = success_rate
+        metrics.append(d)
+        if d["errors"] > 0 and d["total"] >= 3:
+            suggestions.append(
+                f"{at}: 成功率 {success_rate}% ({d['errors']}/{d['total']} 错误)"
+            )
+
+    if not suggestions:
+        suggestions.append("所有 Agent 运行正常，无需优化")
+
+    return {
+        "agent_metrics": metrics,
+        "suggestions": suggestions,
+        "total_activities": total_activities,
+        "total_tasks": total_tasks,
+        "analyzed_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/evolution")
+async def evolution_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "evolution.html"))
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)

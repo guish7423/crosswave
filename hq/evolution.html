@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>进化办 — CrossWave HQ</title>
+<link rel="stylesheet" href="/static/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  .evo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .agent-row { display: flex; justify-content: space-between; align-items: center; padding: .75rem 0; border-bottom: 1px solid var(--border); }
+  .agent-row:last-child { border-bottom: none; }
+  .agent-name { font-weight: 600; }
+  .agent-status { font-size: .8rem; padding: .2rem .6rem; border-radius: 999px; }
+  .rate-excellent { background: #10b981; color: #fff; }
+  .rate-good { background: #34d399; color: #fff; }
+  .rate-warning { background: #f59e0b; color: #fff; }
+  .rate-critical { background: #ef4444; color: #fff; }
+  .sugg-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; margin-bottom: .5rem; }
+  .sugg-card.warning { border-left: 3px solid #f59e0b; }
+  .sugg-card.info { border-left: 3px solid #3b82f6; }
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  .chart-box { background: var(--bg-card); border-radius: var(--radius-md); padding: 1.25rem; border: 1px solid var(--border); }
+  .chart-box h3 { margin: 0 0 .75rem; font-size: .95rem; color: var(--text-secondary); }
+  .empty-state { text-align: center; padding: 3rem; color: var(--text-secondary); }
+  .evolution-verdict { display: inline-block; padding: .3rem 1rem; border-radius: 999px; font-weight: 700; font-size: .9rem; }
+  .verdict-healthy { background: #10b981; color: #fff; }
+  .verdict-needs-attention { background: #f59e0b; color: #fff; }
+  .verdict-critical { background: #ef4444; color: #fff; }
+  .meta-tip { font-size: .8rem; color: var(--text-secondary); margin-top: .25rem; }
+  @media (max-width: 768px) { .chart-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <span class="nav-brand">🏛️ CrossWave HQ</span>
+    <div class="nav-links">
+      <a href="/">战情室</a>
+      <a href="/employees">员工</a>
+      <a href="/orders">订单</a>
+      <a href="/leads">线索</a>
+      <a href="/deploy">部署</a>
+      <a href="/finance">财务</a>
+      <a href="/reports">报表</a>
+      <a href="/monitor">监控</a>
+      <a href="/evolution" class="active">进化办</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>🧬 进化办 <span id="verdictBadge"></span></h1>
+    <p>Agent 生态自我进化分析 — 每日自动评估，驱动持续改进</p>
+  </div>
+
+  <!-- KPI row -->
+  <div class="kpi-row">
+    <div class="kpi-card"><span class="kpi-value" id="actCount">0</span><span class="kpi-label">7日活动</span></div>
+    <div class="kpi-card"><span class="kpi-value" id="taskCount">0</span><span class="kpi-label">7日任务</span></div>
+    <div class="kpi-card"><span class="kpi-value" id="agentCount">0</span><span class="kpi-label">活跃 Agent</span></div>
+    <div class="kpi-card"><span class="kpi-value" id="suggCount">0</span><span class="kpi-label">改进建议</span></div>
+  </div>
+
+  <!-- Chart row -->
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3>📊 Agent 成功率分布</h3>
+      <canvas id="successChart" height="200"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>📊 错误/警告分布</h3>
+      <canvas id="errorChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Agent detail list -->
+  <div class="card">
+    <h2 style="margin:0 0 1rem; font-size:1.1rem;">🤖 Agent 性能明细</h2>
+    <div id="agentList"><p class="loading">加载中...</p></div>
+  </div>
+
+  <!-- Suggestions -->
+  <div class="card" style="margin-top:1rem;">
+    <h2 style="margin:0 0 1rem; font-size:1.1rem;">💡 改进建议</h2>
+    <div id="suggestionList"><p class="loading">加载中...</p></div>
+  </div>
+
+  <div class="last-refresh">最后刷新: <span id="refreshTime">-</span></div>
+</div>
+
+<script>
+async function loadEvolution() {
+  try {
+    const resp = await fetch('/api/hq/evolution');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    document.getElementById('actCount').textContent = data.total_activities ?? 0;
+    document.getElementById('taskCount').textContent = data.total_tasks ?? 0;
+    document.getElementById('agentCount').textContent = (data.agent_metrics || []).length;
+    document.getElementById('suggCount').textContent = (data.suggestions || []).length;
+
+    // Verdict
+    const errors = (data.agent_metrics || []).reduce((s, a) => s + (a.errors || 0), 0);
+    const total = (data.agent_metrics || []).reduce((s, a) => s + (a.total || 0), 0);
+    const overallRate = total > 0 ? round(errors / total * 100) : 0;
+    const badge = document.getElementById('verdictBadge');
+    if (overallRate > 50) {
+      badge.textContent = '⚠️ 需关注';
+      badge.className = 'evolution-verdict verdict-needs-attention';
+    } else if (overallRate > 20) {
+      badge.textContent = '🔍 需要优化';
+      badge.className = 'evolution-verdict verdict-needs-attention';
+    } else {
+      badge.textContent = '✅ 健康';
+      badge.className = 'evolution-verdict verdict-healthy';
+    }
+
+    // Agent list
+    const agentMetrics = data.agent_metrics || [];
+    const listEl = document.getElementById('agentList');
+    if (agentMetrics.length === 0) {
+      listEl.innerHTML = '<p class="empty-state">暂无 Agent 活动数据 — Agent 运行后将自动生成分析</p>';
+    } else {
+      listEl.innerHTML = agentMetrics.map(a => {
+        const rate = a.success_rate ?? 100;
+        const rateClass = rate >= 90 ? 'rate-excellent' : rate >= 70 ? 'rate-good' : rate >= 50 ? 'rate-warning' : 'rate-critical';
+        const errorInfo = a.errors > 0 ? ` (${a.errors} 错误)` : '';
+        return `<div class="agent-row">
+          <div>
+            <span class="agent-name">${a.agent_type}</span>
+            <span class="meta-tip"> — ${a.total} 运行${errorInfo}</span>
+          </div>
+          <span class="agent-status ${rateClass}">${rate}%</span>
+        </div>`;
+      }).join('');
+    }
+
+    // Suggestions
+    const suggs = data.suggestions || [];
+    const suggEl = document.getElementById('suggestionList');
+    if (suggs.length === 0 || (suggs.length === 1 && suggs[0].includes('运行正常'))) {
+      suggEl.innerHTML = '<p style="color:var(--text-secondary);">✅ 所有 Agent 运行正常，无需优化</p>';
+    } else {
+      suggEl.innerHTML = suggs.map(s => `<div class="sugg-card warning">💡 ${s}</div>`).join('');
+    }
+
+    // Charts
+    renderCharts(agentMetrics);
+
+    document.getElementById('refreshTime').textContent = new Date().toLocaleString('zh-CN');
+  } catch (e) {
+    document.getElementById('agentList').innerHTML = `<p class="empty-state">⛔ 加载失败: ${e.message}</p>`;
+  }
+}
+
+function renderCharts(metrics) {
+  const labels = metrics.map(a => a.agent_type);
+  const successRates = metrics.map(a => a.success_rate ?? 100);
+  const errors = metrics.map(a => a.errors ?? 0);
+  const warnings = metrics.map(a => a.warnings ?? 0);
+
+  // Success rate chart
+  const ctx1 = document.getElementById('successChart').getContext('2d');
+  if (window._successChart) window._successChart.destroy();
+  window._successChart = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '成功率 %',
+        data: successRates,
+        backgroundColor: successRates.map(r => r >= 90 ? '#10b981' : r >= 70 ? '#f59e0b' : '#ef4444'),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,.05)' } },
+        x: { ticks: { maxRotation: 45, font: { size: 10 } } }
+      }
+    }
+  });
+
+  // Error/warning chart
+  const ctx2 = document.getElementById('errorChart').getContext('2d');
+  if (window._errorChart) window._errorChart.destroy();
+  window._errorChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: '错误', data: errors, backgroundColor: '#ef4444', borderRadius: 4 },
+        { label: '警告', data: warnings, backgroundColor: '#f59e0b', borderRadius: 4 },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top', labels: { color: '#94a3b8', font: { size: 11 } } } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,.05)' } },
+        x: { ticks: { maxRotation: 45, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function round(n) { return Math.round(n * 10) / 10; }
+
+// Load on page load, then refresh every 60s
+loadEvolution();
+setInterval(loadEvolution, 60000);
+</script>
+</body>
+</html>
