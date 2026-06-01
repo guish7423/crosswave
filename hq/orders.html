@@ -48,7 +48,7 @@
     <button class="action-btn" onclick="scanPlatform('zhubajie')">🔍 扫描 猪八戒</button>
   </div>
   <table>
-    <thead><tr><th>标题</th><th>平台</th><th>预算</th><th>评分</th><th>状态</th><th>指派</th><th>时间</th></tr></thead>
+    <thead><tr><th>标题</th><th>平台</th><th>预算</th><th>评分</th><th>状态</th><th>指派</th><th>操作</th><th>时间</th></tr></thead>
     <tbody id="extOrderTable"></tbody>
   </table>
 </div>
@@ -118,6 +118,7 @@ async function loadExternalOrders() {
       const budget = o.budget_min ? `¥${o.budget_min}~${o.budget_max || '?'} ${o.currency}` : '—';
       const score = o.score != null ? `<span style="color:${o.score >= 6 ? '#4ade80' : o.score >= 4 ? '#facc15' : '#f87171'}">${o.score}/10</span>` : '—';
       const badgeColor = o.status === 'accepted' ? '#4ade80' : o.status === 'evaluated' ? '#facc15' : o.status === 'scanned' ? '#60a5fa' : '#94a3b8';
+      const actionBtn = o.status === 'accepted' ? `<button class="mini-btn" onclick="fulfillOrder(${o.id})">▶ 执行</button>` : o.status === 'scanned' ? `<button class="mini-btn" onclick="evalOrder(${o.id})">🔍 评估</button>` : '—';
       return `<tr>
         <td>${o.title || '未命名'}</td>
         <td><span class="badge" style="background:${o.platform === 'upwork' ? '#6f42c1' : o.platform === 'fiverr' ? '#1dbf73' : '#f59e0b'}20;color:${o.platform === 'upwork' ? '#6f42c1' : o.platform === 'fiverr' ? '#1dbf73' : '#f59e0b'}">${o.platform || '—'}</span></td>
@@ -125,9 +126,10 @@ async function loadExternalOrders() {
         <td style="font-size:13px;font-weight:600;">${score}</td>
         <td><span class="badge" style="background:${badgeColor}20;color:${badgeColor}">${o.status}</span></td>
         <td style="font-size:12px;color:#94a3b8;">${o.assigned_agent || '—'}</td>
+        <td style="font-size:12px;">${actionBtn}</td>
         <td style="color:#94a3b8;font-size:12px;">${o.created_at ? new Date(o.created_at).toLocaleDateString('zh-CN') : '-'}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="7" class="empty">暂无外部订单</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="empty">暂无外部订单</td></tr>';
   } catch (e) {
     document.getElementById('extOrderTable').innerHTML = `<tr><td colspan="7" class="empty">Error: ${e.message}</td></tr>`;
   }
@@ -146,6 +148,36 @@ async function scanPlatform(platform) {
     loadExternalOrders();
   } catch (e) {
     alert(`扫描失败: ${e.message}`);
+  }
+}
+
+async function evalOrder(orderId) {
+  try {
+    const res = await fetch(`http://localhost:8001/api/v1/orders/external/${orderId}/evaluate`, {
+      method: 'POST',
+      headers: { 'X-API-Key': 'dev-key' },
+    });
+    const result = await res.json();
+    await fetch(`${apiBase}/api/hq/sync`);
+    alert(`评估完成 — 评分: ${result.score}/10\n${result.reason}`);
+    loadExternalOrders();
+  } catch (e) {
+    alert(`评估失败: ${e.message}`);
+  }
+}
+
+async function fulfillOrder(orderId) {
+  try {
+    const res = await fetch(`http://localhost:8001/api/v1/orders/external/${orderId}/fulfill`, {
+      method: 'POST',
+      headers: { 'X-API-Key': 'dev-key' },
+    });
+    const result = await res.json();
+    await fetch(`${apiBase}/api/hq/sync`);
+    alert(`执行完成！已创建 ${result.subtasks_created} 个子任务。`);
+    loadExternalOrders();
+  } catch (e) {
+    alert(`执行失败: ${e.message}`);
   }
 }
 
