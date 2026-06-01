@@ -58,8 +58,46 @@
     <div class="empty-state">加载中...</div>
   </div>
 
+  <!-- Integration status -->
+  <h2 style="margin-top:2rem;">🔗 执行集成状态</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:.75rem;margin-bottom:1.5rem;">
+    <div class="rule-card" style="border-left:3px solid #22c55e;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong>Celery 任务队列</strong>
+        <span class="rule-level level-approval" style="background:#22c55e;">✅ 已集成</span>
+      </div>
+      <p style="font-size:.85rem;color:var(--text-muted);margin-top:.5rem;">
+        <code>run_agent()</code> 在执行 Agent 前先过沙盒验证
+      </p>
+    </div>
+    <div class="rule-card" style="border-left:3px solid #22c55e;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong>HTTP API 触发</strong>
+        <span class="rule-level level-approval" style="background:#22c55e;">✅ 已集成</span>
+      </div>
+      <p style="font-size:.85rem;color:var(--text-muted);margin-top:.5rem;">
+        <code>POST /agents/{type}/trigger</code> 先过沙盒再执行
+      </p>
+    </div>
+    <div class="rule-card" style="border-left:3px solid #6366f1;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong>Celery Beat 定时任务</strong>
+        <span class="rule-level level-warn">通过 run_agent()</span>
+      </div>
+      <p style="font-size:.85rem;color:var(--text-muted);margin-top:.5rem;">
+        8 个定时任务全部经沙盒统一入口
+      </p>
+    </div>
+  </div>
+
+  <!-- Agent Protection Map -->
+  <h2 style="margin-top:2rem;">🛡️ Agent 保护映射</h2>
+  <div class="rule-grid" id="agentMap">
+    <div class="empty-state">加载中...</div>
+  </div>
+
   <!-- Safety rules -->
-  <h2 style="margin-top:2rem;">📋 安全规则</h2>
+  <h2 style="margin-top:2rem;">📋 安全规则配置</h2>
   <div class="rule-grid">
     <div class="rule-card">
       <span class="rule-level level-block">BLOCK</span>
@@ -90,7 +128,43 @@
 </div>
 
 <script>
-let pendingChart = null;
+// Agent → Rule mapping (mirrors base.py _AGENT_SANDBOX_RULES)
+const AGENT_RULES = {
+  'finance': { rule: 'finance_change', level: 'approval', label: '财务变更审批' },
+  'deployment': { rule: 'finance_change', level: 'approval', label: '财务变更审批' },
+  'deploy_agent': { rule: 'finance_change', level: 'approval', label: '财务变更审批' },
+  'email_outreach': { rule: 'external_comms', level: 'approval', label: '外部通信审批' },
+  'social_media': { rule: 'external_comms', level: 'approval', label: '外部通信审批' },
+  'ads_management': { rule: 'external_comms', level: 'approval', label: '外部通信审批' },
+  'customer_support': { rule: 'external_comms', level: 'approval', label: '外部通信审批' },
+  'lead_nurturing': { rule: 'external_comms', level: 'approval', label: '外部通信审批' },
+  'order_fulfiller': { rule: 'order_fulfill', level: 'approval', label: '订单执行审批' },
+  'order_scanner': { rule: 'warn_trigger', level: 'warn', label: '触发审计日志' },
+  'orchestrator': { rule: null, level: 'allow', label: '无限制' },
+  'competitor_research': { rule: null, level: 'allow', label: '无限制' },
+  'business_planning': { rule: null, level: 'allow', label: '无限制' },
+  'code_generation': { rule: null, level: 'allow', label: '无限制' },
+  'market_intel': { rule: null, level: 'allow', label: '无限制' },
+  'monitor': { rule: null, level: 'allow', label: '无限制' },
+  'evolution': { rule: null, level: 'allow', label: '无限制' },
+};
+
+const LEVEL_COLORS = { approval: '#f59e0b', block: '#ef4444', warn: '#6366f1', allow: '#22c55e' };
+
+function renderAgentMap() {
+  const el = document.getElementById('agentMap');
+  el.innerHTML = Object.entries(AGENT_RULES).map(([type, cfg]) => {
+    const color = LEVEL_COLORS[cfg.level] || '#888';
+    const levelLabel = cfg.level === 'allow' ? 'ALLOW' : cfg.level.toUpperCase();
+    return `<div class="rule-card" style="border-left:3px solid ${color};">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong style="text-transform:capitalize;">${type.replace(/_/g, ' ')}</strong>
+        <span class="rule-level" style="background:${color};color:white;">${levelLabel}</span>
+      </div>
+      <p style="font-size:.85rem;color:var(--text-muted);margin-top:.5rem;">${cfg.label}</p>
+    </div>`;
+  }).join('');
+}
 
 async function fetchData() {
   try {
@@ -170,6 +244,7 @@ function refreshData() { fetchData(); }
     const nr = await fetch('/api/hq/notifications');
     if (nr.ok) { const nd = await nr.json(); const nb = document.getElementById('notifBadge'); if (nd.new_leads > 0) { nb.textContent = nd.new_leads; nb.style.display = 'inline'; } }
   } catch(e) {}
+  renderAgentMap();
   refreshData();
   setInterval(refreshData, 30000);
 })();
