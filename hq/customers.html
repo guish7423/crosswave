@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客户管理 — CrossWave HQ</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .crm-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:var(--spacing-md); margin-bottom:var(--spacing-lg); }
+  .crm-card { background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:var(--spacing-md); }
+  .crm-card .num { font-size:1.8rem; font-weight:700; color:var(--primary); }
+  .crm-card .label { font-size:.85rem; color:var(--text-muted); margin-top:4px; }
+  .search-bar { display:flex; gap:var(--spacing-sm); margin-bottom:var(--spacing-md); flex-wrap:wrap; }
+  .search-bar input,.search-bar select { padding:8px 14px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--input-bg); color:var(--text); font-size:.9rem; }
+  .search-bar input { flex:1; min-width:200px; }
+  .search-bar select { min-width:120px; }
+  .cust-table { width:100%; border-collapse:collapse; }
+  .cust-table th { text-align:left; padding:10px 12px; border-bottom:2px solid var(--border); color:var(--text-muted); font-size:.8rem; text-transform:uppercase; letter-spacing:.5px; }
+  .cust-table td { padding:12px; border-bottom:1px solid var(--border); font-size:.9rem; }
+  .cust-table tr:hover { background:var(--hover-bg); }
+  .cust-table tr { cursor:pointer; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:.8rem; font-weight:500; }
+  .badge-new { background:rgba(59,130,246,.15); color:#60a5fa; }
+  .badge-contacted { background:rgba(251,191,36,.15); color:#fbbf24; }
+  .badge-qualified { background:rgba(139,92,246,.15); color:#a78bfa; }
+  .badge-proposal { background:rgba(52,211,153,.15); color:#34d399; }
+  .badge-negotiation { background:rgba(251,146,60,.15); color:#fb923c; }
+  .badge-won { background:rgba(34,197,94,.15); color:#22c55e; }
+  .badge-lost { background:rgba(239,68,68,.15); color:#ef4444; }
+  .order-count { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:var(--border); font-size:.8rem; font-weight:600; }
+  .empty-state { text-align:center; padding:60px 20px; color:var(--text-muted); }
+</style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+<main class="container">
+  <h1>👥 客户管理</h1>
+  <p style="color:var(--text-muted);margin-bottom:var(--spacing-lg);">统一客户视图 — 线索→订单→全生命周期管理</p>
+
+  <div class="crm-grid" id="kpiGrid">
+    <div class="crm-card"><div class="num" id="totalCust">—</div><div class="label">总客户数</div></div>
+    <div class="crm-card"><div class="num" id="totalLeads">—</div><div class="label">线索数</div></div>
+    <div class="crm-card"><div class="num" id="totalValue">—</div><div class="label">订单总额 (¥)</div></div>
+    <div class="crm-card"><div class="num" id="avgValue">—</div><div class="label">平均订单额 (¥)</div></div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="搜索客户名称、邮箱、公司..." oninput="loadCustomers()">
+    <select id="statusFilter" onchange="loadCustomers()">
+      <option value="">全部状态</option>
+      <option value="new">新线索</option>
+      <option value="contacted">已联系</option>
+      <option value="qualified">已确认</option>
+      <option value="proposal">已报价</option>
+      <option value="negotiation">谈判中</option>
+      <option value="won">已成交</option>
+      <option value="lost">已流失</option>
+    </select>
+  </div>
+
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);overflow:auto;">
+    <table class="cust-table">
+      <thead><tr>
+        <th>客户</th><th>公司</th><th>产品意向</th><th>线索状态</th><th>订单数</th><th>订单总额</th><th>最后联系</th>
+      </tr></thead>
+      <tbody id="custBody"></tbody>
+    </table>
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <div style="font-size:3rem;margin-bottom:12px;">📭</div>
+      <div>无匹配客户</div>
+    </div>
+  </div>
+</main>
+
+<script>
+async function loadNav(){ const r=await fetch('/nav.html'); document.getElementById('nav-placeholder').innerHTML=await r.text(); }
+async function loadCustomers(){
+  const q=document.getElementById('searchInput').value;
+  const s=document.getElementById('statusFilter').value;
+  const token=localStorage.getItem('hq_token');
+  const headers={'X-HQ-Token':token};
+
+  try {
+    const r=await fetch(`/api/hq/customers?q=${encodeURIComponent(q)}&status=${s}`,{headers});
+    const d=await r.json();
+    const body=document.getElementById('custBody');
+    const empty=document.getElementById('emptyState');
+
+    document.getElementById('totalCust').textContent=d.summary.total_customers;
+    document.getElementById('totalLeads').textContent=d.summary.total_leads;
+    document.getElementById('totalValue').textContent='¥'+d.summary.total_order_value.toLocaleString();
+    document.getElementById('avgValue').textContent='¥'+d.summary.avg_order_value.toLocaleString();
+
+    if(!d.data||d.data.length===0){ body.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display='none';
+    body.innerHTML=d.data.map(c=>`<tr onclick="window.location='/customer/${c.id}'">
+      <td><strong>${esc(c.name)}</strong><br><small style="color:var(--text-muted)">${esc(c.email)}</small></td>
+      <td>${esc(c.company||'-')}</td>
+      <td>${esc(c.product_interest||'-')}</td>
+      <td><span class="badge badge-${c.lead_status}">${statusLabel(c.lead_status)}</span></td>
+      <td><span class="order-count">${c.order_count}</span></td>
+      <td>¥${(c.total_order_value||0).toLocaleString()}</td>
+      <td><small style="color:var(--text-muted)">${c.last_contact ? new Date(c.last_contact).toLocaleDateString() : '-'}</small></td>
+    </tr>`).join('');
+  } catch(e){ console.error('CRM load error:',e); }
+}
+function esc(s){ return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'-'; }
+function statusLabel(s){
+  const m={'new':'新线索','contacted':'已联系','qualified':'已确认','proposal':'已报价','negotiation':'谈判中','won':'已成交','lost':'已流失'};
+  return m[s]||s;
+}
+loadNav();
+loadCustomers();
+setInterval(loadCustomers,30000);
+</script>
+</body>
+</html>

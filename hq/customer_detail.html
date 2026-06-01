@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客户详情 — CrossWave HQ</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-lg); }
+  @media(max-width:768px){ .detail-grid{grid-template-columns:1fr;} }
+  .info-card { background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:var(--spacing-lg); }
+  .info-card h3 { margin:0 0 var(--spacing-md); font-size:1rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; }
+  .info-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:.9rem; }
+  .info-row:last-child { border-bottom:none; }
+  .info-row .val { color:var(--text); font-weight:500; text-align:right; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:.8rem; font-weight:500; }
+  .badge-new { background:rgba(59,130,246,.15); color:#60a5fa; }
+  .badge-contacted { background:rgba(251,191,36,.15); color:#fbbf24; }
+  .badge-qualified { background:rgba(139,92,246,.15); color:#a78bfa; }
+  .badge-proposal { background:rgba(52,211,153,.15); color:#34d399; }
+  .badge-negotiation { background:rgba(251,146,60,.15); color:#fb923c; }
+  .badge-won { background:rgba(34,197,94,.15); color:#22c55e; }
+  .badge-lost { background:rgba(239,68,68,.15); color:#ef4444; }
+  .timeline { position:relative; padding-left:24px; }
+  .timeline::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:2px; background:var(--border); }
+  .tl-item { position:relative; padding:0 0 20px 16px; }
+  .tl-item::before { content:''; position:absolute; left:-20px; top:4px; width:12px; height:12px; border-radius:50%; border:2px solid var(--primary); background:var(--card-bg); }
+  .tl-item.order::before { border-color:#f59e0b; }
+  .tl-item.lead::before { border-color:#3b82f6; }
+  .tl-item .time { font-size:.8rem; color:var(--text-muted); }
+  .tl-item .title { font-weight:500; margin:2px 0; }
+  .tl-item .detail { font-size:.85rem; color:var(--text-muted); }
+  .order-card { background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:var(--spacing-md); margin-bottom:var(--spacing-sm); }
+  .order-card .meta { display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-muted); }
+  .back-link { display:inline-flex; align-items:center; gap:6px; color:var(--primary); text-decoration:none; margin-bottom:var(--spacing-lg); font-size:.9rem; }
+  .back-link:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div id="nav-placeholder"></div>
+<main class="container">
+  <a href="/customers" class="back-link">← 返回客户管理</a>
+  <h1 id="customerName">客户详情</h1>
+
+  <div class="detail-grid">
+    <div>
+      <div class="info-card">
+        <h3>📋 基本信息</h3>
+        <div id="basicInfo"></div>
+      </div>
+      <div class="info-card" style="margin-top:var(--spacing-md);">
+        <h3>📦 关联订单 (<span id="orderCount">0</span>)</h3>
+        <div id="ordersList"></div>
+      </div>
+    </div>
+    <div>
+      <div class="info-card">
+        <h3>📅 交互时间线</h3>
+        <div class="timeline" id="timelineList"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const customerId = window.location.pathname.split('/').pop();
+async function loadNav(){ const r=await fetch('/nav.html'); document.getElementById('nav-placeholder').innerHTML=await r.text(); }
+async function loadDetail(){
+  const token=localStorage.getItem('hq_token');
+  try {
+    const r=await fetch(`/api/hq/customers/${customerId}`,{headers:{'X-HQ-Token':token}});
+    const d=await r.json();
+    const c=d.customer;
+    document.getElementById('customerName').textContent=`👤 ${esc(c.name)}`;
+    document.getElementById('basicInfo').innerHTML=
+      `<div class="info-row"><span>邮箱</span><span class="val">${esc(c.email)}</span></div>`+
+      `<div class="info-row"><span>公司</span><span class="val">${esc(c.company||'-')}</span></div>`+
+      `<div class="info-row"><span>电话</span><span class="val">${esc(c.phone||'-')}</span></div>`+
+      `<div class="info-row"><span>产品意向</span><span class="val">${esc(c.product_interest||'-')}</span></div>`+
+      `<div class="info-row"><span>线索状态</span><span class="val"><span class="badge badge-${c.lead_status}">${st(c.lead_status)}</span></span></div>`+
+      `<div class="info-row"><span>来源</span><span class="val">${esc(c.source_url||'直接')}</span></div>`+
+      `<div class="info-row"><span>创建时间</span><span class="val">${new Date(c.created_at).toLocaleString()}</span></div>`;
+    document.getElementById('orderCount').textContent=d.orders.length;
+    document.getElementById('ordersList').innerHTML=d.orders.length===0?'<div style="color:var(--text-muted);text-align:center;padding:20px;">暂无订单</div>':
+      d.orders.map(o=>`<div class="order-card">
+        <strong>${esc(o.title)}</strong>
+        <div class="meta"><span>${esc(o.platform)}</span><span>${st2(o.status)} | Score: ${o.score||'N/A'}</span></div>
+        <div class="meta"><span>¥${Math.round(((o.budget_min||0)+(o.budget_max||0))/2).toLocaleString()}</span><span>${new Date(o.created_at).toLocaleDateString()}</span></div>
+      </div>`).join('');
+    document.getElementById('timelineList').innerHTML=d.timeline.length===0?'<div style="color:var(--text-muted);padding:20px;">暂无记录</div>':
+      d.timeline.map(t=>`<div class="tl-item ${t.type}"><div class="time">${new Date(t.time).toLocaleString()}</div><div class="title">${esc(t.title)}</div><div class="detail">${esc(t.detail)}</div></div>`).join('');
+  } catch(e){ console.error('Detail load error:',e); }
+}
+function esc(s){ return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'-'; }
+function st(s){ const m={'new':'新线索','contacted':'已联系','qualified':'已确认','proposal':'已报价','negotiation':'谈判中','won':'已成交','lost':'已流失'}; return m[s]||s; }
+function st2(s){ const m={'scanned':'已扫描','evaluating':'评估中','accepted':'已接单','completed':'已完成','cancelled':'已取消'}; return m[s]||s; }
+loadNav();
+loadDetail();
+</script>
+</body>
+</html>

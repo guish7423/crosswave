@@ -629,6 +629,11 @@ async def global_search(q: str = ""):
         if ql in o.get("title", "").lower() or ql in o.get("platform", "").lower():
             results.append({"module": "external_orders", "label": f"Order: {o['title'][:60]} ({o.get('platform','')})",
                             "url": "/orders", "status": o.get("status", "")})
+    # Customers (leads)
+    for l in CACHE["leads"]:
+        if ql in l.get("name", "").lower() or ql in l.get("email", "").lower() or ql in l.get("company", "").lower():
+            results.append({"module": "customers", "label": f"Customer: {l['name']} ({l.get('company','')})",
+                            "url": f"/customer/{l['id']}", "status": l.get("status", "")})
     # Employees
     for e in CACHE["employees"]:
         if ql in e.get("name", "").lower() or ql in e.get("role", "").lower():
@@ -735,6 +740,69 @@ async def get_notifications():
     }
 
 
+# ─── CRM (Customer Relationship Management) ─────────────────────────────────
+
+@app.get("/api/hq/customers")
+async def get_customers(q: str = "", status: str = ""):
+    """Unified customer view: leads + linked orders."""
+    leads = CACHE["leads"]
+    orders = CACHE.get("external_orders", [])
+    customers = []
+    for l in leads:
+        lid = l.get("id", 0)
+        lname = l.get("name", "Unknown")
+        lemail = l.get("email", "")
+        customer_orders = [o for o in orders if
+                           lname.lower() in o.get("title", "").lower() or
+                           lemail.lower() in o.get("title", "").lower()]
+        total_value = sum((o.get("budget_min", 0) or 0) + (o.get("budget_max", 0) or 0) for o in customer_orders) // 2
+        customers.append({
+            "id": lid, "name": lname, "email": lemail,
+            "company": l.get("company", ""), "phone": l.get("phone", ""),
+            "product_interest": l.get("product_interest", ""),
+            "lead_status": l.get("status", "new"),
+            "created_at": l.get("created_at", ""),
+            "order_count": len(customer_orders),
+            "total_order_value": total_value,
+            "last_contact": max([o.get("created_at", "") for o in customer_orders] + [l.get("created_at", "")]),
+        })
+    if status:
+        customers = [c for c in customers if c["lead_status"] == status]
+    if q:
+        ql = q.lower()
+        customers = [c for c in customers if ql in c["name"].lower() or ql in c["email"].lower() or ql in c["company"].lower()]
+    customers.sort(key=lambda c: c.get("last_contact", ""), reverse=True)
+    total_v = sum(c["total_order_value"] for c in customers)
+    return {"data": customers, "total": len(customers),
+            "summary": {"total_customers": len(customers), "total_leads": len(leads),
+                        "total_order_value": total_v, "avg_order_value": round(total_v / len(customers), 2) if customers else 0}}
+
+
+@app.get("/api/hq/customers/{customer_id}")
+async def get_customer_detail(customer_id: int):
+    """Detailed customer view with orders and activity timeline."""
+    leads = CACHE["leads"]
+    orders = CACHE.get("external_orders", [])
+    l = next((x for x in leads if x.get("id") == customer_id), None)
+    if not l:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    lname = l.get("name", "Unknown")
+    lemail = l.get("email", "")
+    customer_orders = [o for o in orders if lname.lower() in o.get("title", "").lower() or lemail.lower() in o.get("title", "").lower()]
+    timeline = []
+    for o in customer_orders:
+        timeline.append({"type": "order", "title": f"Order {o['status']}: {o['title']}",
+                         "time": o.get("created_at", ""), "detail": f"{o.get('platform','')} | Score: {o.get('score','N/A')}"})
+    timeline.append({"type": "lead", "title": f"Lead created ({l.get('product_interest','')})",
+                     "time": l.get("created_at", ""), "detail": f"Status: {l.get('status','new')}"})
+    timeline.sort(key=lambda e: e.get("time", ""), reverse=True)
+    return {"customer": {"id": l.get("id"), "name": lname, "email": lemail, "company": l.get("company",""),
+                         "phone": l.get("phone",""), "product_interest": l.get("product_interest",""),
+                         "lead_status": l.get("status","new"), "source_url": l.get("source_url",""),
+                         "created_at": l.get("created_at","")},
+            "orders": customer_orders, "timeline": timeline}
+
+
 # ─── New HTML Pages ─────────────────────────────────────────────────────────
 @app.get("/timeline")
 async def timeline_page():
@@ -747,6 +815,14 @@ async def agents_page():
 @app.get("/analytics")
 async def analytics_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "analytics.html"))
+
+@app.get("/customers")
+async def customers_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "customers.html"))
+
+@app.get("/customer/{customer_id}")
+async def customer_detail_page(customer_id: int):
+    return FileResponse(os.path.join(os.path.dirname(__file__), "customer_detail.html"))
 
 # ─── Market Intelligence Briefing ────────────────────────────────────────────
 
