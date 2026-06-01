@@ -136,7 +136,7 @@ start_celery_beat() {
     cd "$dir"
     setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
-        exec \"$python\" -m celery -A celery_app beat --loglevel=info
+        exec \"$python\" -m celery -A celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     " > "$logf" 2>&1 &
     write_pid "celery-beat" $!
     sleep 2
