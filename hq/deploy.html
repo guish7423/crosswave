@@ -86,9 +86,13 @@
 <div id="ordersTab" style="display:none;padding:0 32px;">
   <div class="table-wrap" style="padding:16px 0;">
     <table>
-      <thead><tr><th>订单</th><th>预算</th><th>评分</th><th>状态</th><th>已指派</th></tr></thead>
-      <tbody id="deployOrders"><tr><td colspan="5" class="empty">暂无部署订单</td></tr></tbody>
+      <thead><tr><th>订单</th><th>预算</th><th>评分</th><th>状态</th><th>已指派</th><th>操作</th></tr></thead>
+      <tbody id="deployOrders"><tr><td colspan="6" class="empty">暂无部署订单</td></tr></tbody>
     </table>
+  </div>
+  <div id="deployPlan" style="display:none;margin-top:16px;background:var(--bg-card);border-radius:12px;padding:20px;">
+    <h3 style="margin-bottom:12px;color:#4ade80;">🚀 部署计划</h3>
+    <div id="planContent"></div>
   </div>
 </div>
 
@@ -127,13 +131,57 @@ async function loadDeployOrders() {
         <td>${o.title}</td>
         <td>¥${o.budget_min || '—'}</td>
         <td>${o.score != null ? o.score + '/10' : '—'}</td>
-        <td><span class="badge" style="background:${o.status === 'completed' ? '#4ade80' : o.status === 'in_progress' ? '#60a5fa' : '#facc15'}20;color:${o.status === 'completed' ? '#4ade80' : o.status === 'in_progress' ? '#60a5fa' : '#facc15'}">${o.status}</span></td>
+        <td><span class="badge" style="background:${o.status === 'completed' ? '#4ade80' : o.status === 'in_progress' ? '#60a5fa' : o.status === 'accepted' ? '#a78bfa' : '#facc15'}20;color:${o.status === 'completed' ? '#4ade80' : o.status === 'in_progress' ? '#60a5fa' : o.status === 'accepted' ? '#a78bfa' : '#facc15'}">${o.status}</span></td>
         <td>${o.assigned_agent || '—'}</td>
+        <td>
+          ${o.status === 'accepted' ? `<button class="action-btn" onclick="demoDeploy(${o.id})">🚀 Demo 部署</button>` : ''}
+          ${o.status === 'in_progress' ? `<button class="action-btn" onclick="showPlan(${o.id},'${o.title.replace(/'/g, "\\'")}')">📋 查看计划</button>` : ''}
+        </td>
       </tr>
-    `).join('') || '<tr><td colspan="5" class="empty">暂无部署订单</td></tr>';
+    `).join('') || '<tr><td colspan="6" class="empty">暂无部署订单</td></tr>';
   } catch (e) {
-    document.getElementById('deployOrders').innerHTML = `<tr><td colspan="5" class="empty">Error: ${e.message}</td></tr>`;
+    document.getElementById('deployOrders').innerHTML = `<tr><td colspan="6" class="empty">Error: ${e.message}</td></tr>`;
   }
+}
+
+async function demoDeploy(orderId) {
+  const btn = event.target;
+  btn.textContent = '⏳ ...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`http://localhost:8001/api/v1/orders/external/${orderId}/demo-deploy`, {
+      headers: { 'X-API-Key': 'dev-key' },
+    });
+    const result = await res.json();
+    if (result.status === 'in_progress') {
+      await fetch(`${apiBase}/api/hq/sync`);
+      loadDeployOrders();
+      document.getElementById('deployPlan').style.display = 'block';
+      const plan = result.plan || {};
+      document.getElementById('planContent').innerHTML = `
+        <p style="color:#4ade80;font-size:14px;"><strong>${plan.tier || 'Basic'} 部署方案</strong> — 预估 ${plan.estimated_hours || 2}h</p>
+        <p style="color:#94a3b8;font-size:13px;margin-top:8px;">${plan.plan_summary || '部署计划已生成'}</p>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">${(plan.deliverables||[]).map(d => `<span style="background:#1e293b;border:1px solid #334155;border-radius:4px;padding:2px 8px;font-size:12px;color:#94a3b8;">${d}</span>`).join('')}</div>
+        <div style="margin-top:16px;">
+          <h4 style="color:#facc15;font-size:13px;margin-bottom:8px;">📋 部署步骤</h4>
+          ${(plan.steps||[]).map((s,i) => `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #1e293b;font-size:13px;"><span style="color:#60a5fa;min-width:24px;">${i+1}.</span><span style="color:#cbd5e1;">${typeof s === 'string' ? s : s.description || s.step || JSON.stringify(s)}</span></div>`).join('')}
+        </div>`;
+      document.getElementById('deployPlan').scrollIntoView({ behavior: 'smooth' });
+    }
+  } catch (e) {
+    alert('❌ Demo 失败: ' + e.message);
+    btn.textContent = '🚀 Demo 部署';
+    btn.disabled = false;
+  }
+}
+
+function showPlan(orderId, title) {
+  document.getElementById('deployPlan').style.display = 'block';
+  document.getElementById('planContent').innerHTML = `
+    <p style="color:#94a3b8;">订单: <strong>${title}</strong></p>
+    <p style="color:#60a5fa;">部署计划已生成，点击同步刷新查看最新状态。</p>
+    <button class="action-btn" onclick="(async()=>{await fetch('${apiBase}/api/hq/sync');loadDeployOrders();})()">🔄 同步刷新</button>`;
+  document.getElementById('deployPlan').scrollIntoView({ behavior: 'smooth' });
 }
 
 function loadChecklist() {
