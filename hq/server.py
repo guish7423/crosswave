@@ -773,5 +773,42 @@ async def get_briefings(limit: int = 10):
 async def briefing_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "briefing.html"))
 
+# ─── Model Routing Gateway ────────────────────────────────────────────────────
+
+MODEL_PROFILES = [
+    {"name":"DeepSeek V4 Flash","env":"DEEPSEEK_API_KEY","base_url":"https://api.deepseek.com/v1","model":"deepseek-chat","capabilities":["analysis","content_gen","classification","summarization","conversation"],"priority":1},
+    {"name":"DeepSeek V4 Flash (via LLM_API_KEY)","env":"LLM_API_KEY","base_url":"https://api.deepseek.com/v1","model":"deepseek-chat","capabilities":["analysis","content_gen","classification","summarization","conversation"],"priority":2},
+    {"name":"Volc Engine Doubao-pro","env":"VOLC_ENGINE_API_KEY","base_url":"https://ark.cn-beijing.volces.com/api/v3","model":"doubao-pro-32k","capabilities":["content_gen","analysis","summarization","conversation"],"priority":3},
+    {"name":"Volc Engine Doubao-lite","env":"VOLC_ENGINE_API_KEY","base_url":"https://ark.cn-beijing.volces.com/api/v3","model":"doubao-lite-32k","capabilities":["classification","summarization"],"priority":4},
+    {"name":"Mock (no API key)","env":"","base_url":"","model":"mock","capabilities":["analysis","content_gen","code","classification","summarization","conversation"],"priority":99},
+]
+
+AGENT_MODEL_MAP = {
+    "orchestrator":"analysis","social_media":"content_gen","competitor_research":"analysis",
+    "business_planning":"analysis","deployment":"code","finance":"analysis",
+    "ads_management":"analysis","email_outreach":"conversation","code_generation":"code",
+    "customer_support":"conversation","order_scanner":"classification","order_fulfiller":"analysis",
+    "lead_nurturing":"conversation","deploy_agent":"code","monitor":"analysis",
+    "evolution":"analysis","market_intel":"summarization",
+}
+
+@app.get("/api/hq/models")
+async def hq_models():
+    """Return model profiles with live availability status."""
+    import os
+    result = []
+    for p in MODEL_PROFILES:
+        key = os.environ.get(p["env"], "") if p["env"] else "mock"
+        result.append({
+            **p,
+            "available": bool(key),
+            "key_preview": key[:8] + "…" if key and key != "mock" else ("mock" if not p["env"] else "❌"),
+        })
+    return {"profiles": result, "agent_mapping": AGENT_MODEL_MAP}
+
+@app.get("/models")
+async def models_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "model_router.html"))
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)
