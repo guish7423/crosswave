@@ -531,6 +531,30 @@
 </section>
 
 <script>
+// ── Stripe Payment Links (fill these in after creating Payment Links in Stripe Dashboard) ──
+const STRIPE_LINKS = {
+  basic: '',
+  standard: '',
+  enterprise: '',
+};
+const FALLBACK_EMAIL = 'hello@crosswave.app';
+
+function initPaymentButtons() {
+  const tiers = ['basic', 'standard', 'enterprise'];
+  tiers.forEach(tier => {
+    const btn = document.getElementById('pay-' + tier);
+    if (!btn) return;
+    if (STRIPE_LINKS[tier]) {
+      btn.href = STRIPE_LINKS[tier];
+      btn.target = '_blank';
+    } else {
+      btn.href = 'mailto:' + FALLBACK_EMAIL + '?subject=CrossDeploy%20' + tier.charAt(0).toUpperCase() + tier.slice(1);
+      btn.textContent = 'Contact Sales';
+    }
+  });
+}
+initPaymentButtons();
+
 (async function() {
   try {
     const resp = await fetch('/api/v1/_proxy/blog/latest');
@@ -616,16 +640,42 @@
       <span class="cn">免费起步，按需扩展。无隐藏费用。</span>
     </div>
     <div class="pricing">
-      <div class="pricing-card">
-        <div class="p-name">Free</div>
-        <div class="p-price">¥0<span>/mo</span></div>
+      <div class="pricing-card" id="deploy-basic">
+        <div class="p-name">Basic</div>
+        <div class="p-price">¥2,000<span>/project</span></div>
         <ul>
-          <li>1 product integration</li>
-          <li>Dashboard access</li>
-          <li>Community support</li>
-          <li>24h activity log</li>
+          <li>Single service deployment</li>
+          <li>Custom domain + HTTPS</li>
+          <li>Basic monitoring setup</li>
+          <li>7-day post-deploy support</li>
         </ul>
-        <a href="https://crossbridge.crosswave.app" class="btn btn-outline" style="text-align:center;display:block">Get Started</a>
+        <a id="pay-basic" class="btn btn-outline" style="text-align:center;display:block;cursor:pointer">Buy Now →</a>
+      </div>
+      <div class="pricing-card featured" id="deploy-standard">
+        <div class="p-name">Standard</div>
+        <div class="p-price">¥3,000<span>/project</span></div>
+        <ul>
+          <li>Multi-service deployment</li>
+          <li>Docker Compose 编排</li>
+          <li>PostgreSQL / Redis 配置</li>
+          <li>HTTPS + custom domain</li>
+          <li>CI/CD pipeline setup</li>
+          <li>30-day post-deploy support</li>
+        </ul>
+        <a id="pay-standard" class="btn btn-primary" style="text-align:center;display:block;cursor:pointer">Buy Now →</a>
+      </div>
+      <div class="pricing-card" id="deploy-enterprise">
+        <div class="p-name">Enterprise</div>
+        <div class="p-price">¥5,000<span>/project</span></div>
+        <ul>
+          <li>Full-stack deployment</li>
+          <li>Kubernetes / Docker Swarm</li>
+          <li>Auto-scaling + load balancing</li>
+          <li>Database migration management</li>
+          <li>Custom CI/CD + monitoring stack</li>
+          <li>90-day support + SLA</li>
+        </ul>
+        <a id="pay-enterprise" class="btn btn-outline" style="text-align:center;display:block;cursor:pointer">Contact Sales →</a>
       </div>
       <div class="pricing-card featured">
         <div class="p-name">Starter</div>
