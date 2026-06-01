@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CrossDeploy — 一键部署你的 SaaS 产品。从 Docker 到生产域名，全程管理。¥2K-¥5K 一口价。">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="CrossDeploy — 代部署服务 | CrossWave">
+  <meta property="og:description" content="从 Docker 到生产域名，¥2K 起。让你的 SaaS 产品快速上线。">
+  <title>CrossDeploy — 代部署服务 | CrossWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: oklch(0.985 0.003 260);
+      --surface: oklch(0.96 0.005 260);
+      --border: oklch(0.90 0.008 260);
+      --ink: oklch(0.15 0.02 260);
+      --ink-dim: oklch(0.50 0.025 260);
+      --ink-muted: oklch(0.65 0.02 260);
+      --accent: oklch(0.55 0.28 280);
+      --accent-soft: oklch(0.55 0.28 280 / 0.08);
+      --accent-glow: oklch(0.55 0.28 280 / 0.15);
+      --green: oklch(0.55 0.20 160);
+      --green-soft: oklch(0.55 0.20 160 / 0.08);
+      --amber: oklch(0.70 0.20 80);
+      --red: oklch(0.60 0.20 20);
+      --font: 'Inter', system-ui, sans-serif;
+      --font-cn: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.7;font-size:15px}
+    .cn{font-family:var(--font-cn)}
+    .container{max-width:1120px;margin:0 auto;padding:0 24px}
+
+    nav{position:sticky;top:0;z-index:100;background:oklch(0.985 0.003 260 / .85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+    nav .container{display:flex;align-items:center;justify-content:space-between;height:64px}
+    .nav-logo{font-weight:800;font-size:18px;text-decoration:none;background:linear-gradient(135deg,var(--accent),oklch(0.60 0.25 300));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .nav-links{display:flex;gap:4px;align-items:center}
+    .nav-links a{padding:6px 14px;border-radius:var(--radius-sm);color:var(--ink-dim);font-size:14px;font-weight:500;text-decoration:none;transition:all .2s}
+    .nav-links a:hover{background:var(--accent-soft);color:var(--accent)}
+    .nav-cta{padding:8px 18px;border-radius:9999px;background:linear-gradient(135deg,var(--accent),oklch(0.60 0.25 300));color:#fff!important;font-weight:600;font-size:13px;text-decoration:none}
+
+    .hero{padding:80px 0 60px;text-align:center}
+    .hero h1{font-size:clamp(32px,5vw,48px);font-weight:900;letter-spacing:-.03em;margin-bottom:16px}
+    .hero p{font-size:18px;color:var(--ink-dim);max-width:600px;margin:0 auto 32px}
+    .hero-badges{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
+    .badge{padding:6px 16px;border-radius:9999px;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:600}
+
+    .sec-header{text-align:center;margin-bottom:40px}
+    .sec-header h2{font-size:28px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px}
+    .sec-header p{color:var(--ink-dim);max-width:600px;margin:0 auto}
+
+    .pricing{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-bottom:48px}
+    .pricing-card{padding:28px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column}
+    .pricing-card.featured{border-color:var(--accent);box-shadow:0 4px 20px var(--accent-glow);position:relative}
+    .pricing-card.featured::before{content:'Popular';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:3px 14px;border-radius:9999px;font-size:12px;font-weight:600}
+    .p-name{font-size:14px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+    .p-price{font-size:36px;font-weight:900;margin-bottom:16px}
+    .p-price span{font-size:16px;font-weight:500;color:var(--ink-dim)}
+    .pricing-card ul{list-style:none;padding:0;flex:1;margin-bottom:20px}
+    .pricing-card ul li{padding:8px 0;border-bottom:1px solid var(--border);font-size:14px}
+    .pricing-card ul li:last-child{border-bottom:none}
+    .pricing-card ul li::before{content:'✓ ';color:var(--green);font-weight:700}
+    .btn{display:inline-block;padding:12px 28px;border-radius:9999px;text-decoration:none;font-weight:600;font-size:14px;transition:all .2s;border:none;cursor:pointer}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),oklch(0.60 0.25 300));color:#fff}
+    .btn-outline{border:1.5px solid var(--accent);color:var(--accent);background:transparent;text-align:center}
+    .btn-outline:hover{background:var(--accent-soft)}
+    .btn-large{padding:14px 36px;font-size:16px}
+
+    .calc-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px;margin-bottom:60px}
+    .calc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+    .calc-option{border:2px solid var(--border);border-radius:var(--radius-sm);padding:16px;cursor:pointer;transition:all .2s}
+    .calc-option:hover{border-color:var(--accent)}
+    .calc-option.selected{border-color:var(--accent);background:var(--accent-soft)}
+    .calc-option h4{font-size:14px;margin-bottom:4px}
+    .calc-option p{font-size:12px;color:var(--ink-muted)}
+    .calc-price{text-align:center;padding:20px;background:var(--bg);border-radius:var(--radius)}
+    .calc-price .amount{font-size:42px;font-weight:900;color:var(--accent)}
+    .calc-price .label{font-size:14px;color:var(--ink-dim);margin-top:4px}
+    .calc-cta{margin-top:20px;text-align:center}
+    .calc-detail{margin-top:16px;padding:16px;background:var(--bg);border-radius:var(--radius-sm);font-size:13px;color:var(--ink-dim)}
+    .calc-detail ul{list-style:none;padding:0}
+    .calc-detail li{padding:4px 0}
+    .calc-detail li::before{content:'• ';color:var(--accent)}
+
+    .deliverables-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-bottom:60px}
+    .deliverable-card{padding:24px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface)}
+    .deliverable-card .icon{font-size:32px;margin-bottom:12px}
+    .deliverable-card h3{font-size:16px;margin-bottom:8px}
+    .deliverable-card p{font-size:13px;color:var(--ink-dim)}
+
+    .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;margin-bottom:60px}
+    .step{text-align:center;padding:24px}
+    .step .num{width:48px;height:48px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+    .step h3{font-size:16px;margin-bottom:8px}
+    .step p{font-size:13px;color:var(--ink-dim)}
+
+    .faq-list{max-width:700px;margin:0 auto 60px}
+    .faq-item{border-bottom:1px solid var(--border);padding:20px 0}
+    .faq-q{font-weight:600;font-size:15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+    .faq-q::after{content:'+';font-size:20px;color:var(--ink-dim)}
+    .faq-q.open::after{content:'−'}
+    .faq-a{padding-top:12px;font-size:14px;color:var(--ink-dim);line-height:1.8;display:none}
+    .faq-a.open{display:block}
+
+    .case-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-bottom:60px}
+    .case-card{padding:24px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface)}
+    .case-card h3{font-size:16px;margin-bottom:4px}
+    .case-card .c-tag{font-size:12px;color:var(--accent);font-weight:600;margin-bottom:8px}
+    .case-card p{font-size:13px;color:var(--ink-dim);margin-bottom:8px}
+    .case-card .c-result{font-size:13px;color:var(--green);font-weight:600}
+
+    footer{padding:48px 0;border-top:1px solid var(--border)}
+    footer .container{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:24px}
+    .f-brand{font-weight:800;font-size:18px;margin-bottom:8px}
+    .f-desc{font-size:13px;color:var(--ink-dim);max-width:280px}
+    .f-col h4{font-size:14px;font-weight:600;margin-bottom:12px}
+    .f-col a{display:block;font-size:13px;color:var(--ink-dim);text-decoration:none;padding:4px 0}
+    .f-col a:hover{color:var(--accent)}
+    .f-bottom{grid-column:1/-1;padding-top:24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px;color:var(--ink-muted)}
+
+    .cta-section{text-align:center;padding:60px 20px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:40px}
+    .cta-section h2{font-size:28px;font-weight:800;margin-bottom:12px}
+    .cta-section p{color:var(--ink-dim);margin-bottom:24px}
+
+    .tech-tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:40px}
+    .tech-tag{padding:6px 14px;border-radius:var(--radius-sm);background:var(--green-soft);color:var(--green);font-size:13px;font-weight:500}
+
+    @media(max-width:600px){
+      nav .container{flex-wrap:wrap;height:auto;padding:12px 16px;gap:8px}
+      .nav-links{flex-wrap:wrap}
+      footer .container{grid-template-columns:1fr}
+      .calc-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a href="/" class="nav-logo">✦ CrossWave</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="https://blog.crosswave.app">Blog</a>
+      <a href="#faq">FAQ</a>
+      <a href="#pricing" class="nav-cta">Get Started</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-badges">
+      <span class="badge">从 ¥2,000 起</span>
+      <span class="badge">48h 内上线</span>
+      <span class="badge">SSL + 域名</span>
+      <span class="badge">30 天支持</span>
+    </div>
+    <h1>把你的产品想法<br class="cn">变成线上服务</h1>
+    <p>从 Docker 到生产域名，我们全程管理。你专注产品，我们搞定部署。<br class="cn">FastAPI / Next.js / Django / Express — 任何框架都行。</p>
+    <a href="#calculator" class="btn btn-primary btn-large">计算报价 →</a>
+  </div>
+</section>
+
+<div class="container">
+  <div class="tech-tags">
+    <span class="tech-tag">FastAPI</span>
+    <span class="tech-tag">Next.js</span>
+    <span class="tech-tag">Django</span>
+    <span class="tech-tag">Express</span>
+    <span class="tech-tag">PostgreSQL</span>
+    <span class="tech-tag">Redis</span>
+    <span class="tech-tag">Docker</span>
+    <span class="tech-tag">Kubernetes</span>
+    <span class="tech-tag">Railway</span>
+    <span class="tech-tag">VPS</span>
+  </div>
+</div>
+
+<!-- ═══ Quote Calculator ═══ -->
+<div class="container" id="calculator">
+  <div class="calc-section">
+    <div class="sec-header">
+      <h2>配置你的部署方案</h2>
+      <p>选择你的需求，即时获得报价</p>
+    </div>
+
+    <div class="calc-grid">
+      <div class="calc-option selected" data-tier="basic" onclick="selectTier('basic')">
+        <h4>Basic</h4>
+        <p>单服务部署<br>¥2,000</p>
+      </div>
+      <div class="calc-option" data-tier="standard" onclick="selectTier('standard')">
+        <h4>Standard</h4>
+        <p>多服务 + CI/CD<br>¥3,000</p>
+      </div>
+      <div class="calc-option" data-tier="enterprise" onclick="selectTier('enterprise')">
+        <h4>Enterprise</h4>
+        <p>K8s + 自动伸缩<br>¥5,000</p>
+      </div>
+    </div>
+
+    <div class="calc-grid">
+      <div class="calc-option selected" data-db="none" onclick="selectDB('none')">
+        <h4>No Database</h4>
+        <p>不需要数据库</p>
+      </div>
+      <div class="calc-option" data-db="sqlite" onclick="selectDB('sqlite')">
+        <h4>SQLite</h4>
+        <p>已内嵌</p>
+      </div>
+      <div class="calc-option" data-db="pg" onclick="selectDB('pg')">
+        <h4>PostgreSQL</h4>
+        <p>+¥500</p>
+      </div>
+      <div class="calc-option" data-db="redis" onclick="selectDB('redis')">
+        <h4>+ Redis</h4>
+        <p>+¥300</p>
+      </div>
+      <div class="calc-option" data-db="both" onclick="selectDB('both')">
+        <h4>PostgreSQL + Redis</h4>
+        <p>+¥700</p>
+      </div>
+    </div>
+
+    <div class="calc-price">
+      <div class="amount" id="calcAmount">¥2,000</div>
+      <div class="label">一口价，无隐藏费用</div>
+    </div>
+    <div class="calc-detail" id="calcDetail">
+      <strong>包含：</strong>
+      <ul id="calcIncludes">
+        <li>Single service deployment (Docker)</li>
+        <li>Health check endpoint</li>
+        <li>Custom domain + HTTPS</li>
+        <li>Basic monitoring</li>
+        <li>7-day post-deploy support</li>
+      </ul>
+    </div>
+    <div class="calc-cta">
+      <a id="calcCTA" class="btn btn-primary btn-large" onclick="handlePurchase('basic')">Buy Now — ¥2,000</a>
+      <br><br>
+      <a onclick="openInquiry('CrossDeploy')" style="color:var(--ink-dim);font-size:13px;cursor:pointer;text-decoration:underline">Need custom requirements? Contact Sales →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Deliverables ═══ -->
+<div class="container">
+  <div class="sec-header">
+    <h2>你会收到什么</h2>
+    <p>每个部署项目交付完整的生产就绪产物</p>
+  </div>
+  <div class="deliverables-grid">
+    <div class="deliverable-card">
+      <div class="icon">🐳</div>
+      <h3>Dockerfile</h3>
+      <p>生产级 Dockerfile，多阶段构建，最小化镜像体积。开箱即用。</p>
+    </div>
+    <div class="deliverable-card">
+      <div class="icon">⚙️</div>
+      <h3>docker-compose.yml</h3>
+      <p>编排配置文件，含数据库、缓存、队列等基础设施。一键启动。</p>
+    </div>
+    <div class="deliverable-card">
+      <div class="icon">🔒</div>
+      <h3>SSL / HTTPS</h3>
+      <p>Let's Encrypt 自动证书续签。自定义域名 + CDN 加速。</p>
+    </div>
+    <div class="deliverable-card">
+      <div class="icon">📊</div>
+      <h3>Health Check</h3>
+      <p>/health 端点，Uptime 监控，自动告警。停机即时通知。</p>
+    </div>
+    <div class="deliverable-card">
+      <div class="icon">🚀</div>
+      <h3>CI/CD Pipeline</h3>
+      <p>GitHub Actions 自动构建 + 测试 + 部署。Push 即上线。</p>
+    </div>
+    <div class="deliverable-card">
+      <div class="icon">📝</div>
+      <h3>部署文档</h3>
+      <p>完整上线记录，含架构图、环境变量说明、运维手册。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Process ═══ -->
+<div class="container">
+  <div class="sec-header">
+    <h2>协作流程</h2>
+    <p>从咨询到上线，全程透明</p>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="num">01</div>
+      <h3>需求沟通</h3>
+      <p>了解你的业务、技术栈和部署目标。确定方案和时间线。<br>（1-2h）</p>
+    </div>
+    <div class="step">
+      <div class="num">02</div>
+      <h3>环境搭建</h3>
+      <p>配置云服务器、数据库、缓存。搭建 CI/CD 流水线。<br>（4-8h）</p>
+    </div>
+    <div class="step">
+      <div class="num">03</div>
+      <h3>容器化部署</h3>
+      <p>编写 Dockerfile + Compose 编排。确保可复制的生产级配置。<br>（4-8h）</p>
+    </div>
+    <div class="step">
+      <div class="num">04</div>
+      <h3>监控上线</h3>
+      <p>配置监控告警、SSL 证书、域名 DNS。交付部署文档。<br>（2-4h）</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Pricing ═══ -->
+<div class="container" id="pricing">
+  <div class="sec-header">
+    <h2>服务方案</h2>
+    <p>选择最适合你的方案，也可以定制</p>
+  </div>
+  <div class="pricing">
+    <div class="pricing-card">
+      <div class="p-name">Basic</div>
+      <div class="p-price">¥2,000<span>/project</span></div>
+      <ul>
+        <li>Single service deployment</li>
+        <li>Docker + railway.toml 配置</li>
+        <li>Health check endpoint</li>
+        <li>Custom domain + HTTPS</li>
+        <li>Basic monitoring + alerts</li>
+        <li>7-day post-deploy support</li>
+      </ul>
+      <a id="pay-basic" class="btn btn-outline" style="text-align:center;display:block">Buy Now →</a>
+      <div style="text-align:center;margin-top:8px"><a onclick="openInquiry('CrossDeploy Basic')" style="font-size:13px;color:var(--ink-dim);cursor:pointer;text-decoration:underline">or inquire</a></div>
+    </div>
+    <div class="pricing-card featured">
+      <div class="p-name">Standard</div>
+      <div class="p-price">¥3,000<span>/project</span></div>
+      <ul>
+        <li>Multi-service deployment</li>
+        <li>Docker Compose 编排</li>
+        <li>PostgreSQL / Redis 配置</li>
+        <li>HTTPS + custom domain</li>
+        <li>CI/CD pipeline setup</li>
+        <li>30-day post-deploy support</li>
+      </ul>
+      <a id="pay-standard" class="btn btn-primary" style="text-align:center;display:block">Buy Now →</a>
+      <div style="text-align:center;margin-top:8px"><a onclick="openInquiry('CrossDeploy Standard')" style="font-size:13px;color:var(--ink-dim);cursor:pointer;text-decoration:underline">or inquire</a></div>
+    </div>
+    <div class="pricing-card">
+      <div class="p-name">Enterprise</div>
+      <div class="p-price">¥5,000<span>/project</span></div>
+      <ul>
+        <li>Full-stack deployment</li>
+        <li>Kubernetes / Docker Swarm</li>
+        <li>Auto-scaling + load balancing</li>
+        <li>Database migration management</li>
+        <li>Custom CI/CD + monitoring stack</li>
+        <li>90-day support + SLA</li>
+      </ul>
+      <a id="pay-enterprise" class="btn btn-outline" style="text-align:center;display:block">Contact Sales →</a>
+      <div style="text-align:center;margin-top:8px"><a onclick="openInquiry('CrossDeploy Enterprise')" style="font-size:13px;color:var(--ink-dim);cursor:pointer;text-decoration:underline">or inquire</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FAQ ═══ -->
+<div class="container" id="faq">
+  <div class="sec-header">
+    <h2>常见问题</h2>
+  </div>
+  <div class="faq-list">
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFAQ(this)">你们支持哪些技术栈？</div>
+      <div class="faq-a">任何基于 Docker 部署的应用。我们最擅长的：FastAPI、Next.js、Django、Express.js、Node.js、Go、Rust。只要你提供 Dockerfile 或代码库，我们就能部署到生产环境。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFAQ(this)">部署需要多长时间？</div>
+      <div class="faq-a">基础项目（单服务 + 数据库）通常在 48 小时内完成。复杂项目（K8s + 多个微服务）需要 3-5 个工作日。时间线在需求沟通阶段确认。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFAQ(this)">域名和服务器需要自己准备吗？</div>
+      <div class="faq-a">不需要。我们可以使用 Railway 自动部署（最快方案），也可以在你的 VPS 上部署。如果你有已有的域名和服务器，我们直接配置。没有的话我们帮你推荐和设置。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFAQ(this)">部署后谁负责维护？</div>
+      <div class="faq-a">我们会交付完整的部署文档和 CI/CD 流水线。Basic 方案含 7 天支持，Standard 含 30 天，Enterprise 含 90 天 + SLA。之后可以按需签约维护服务。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFAQ(this)">可以只升级方案吗？</div>
+      <div class="faq-a">可以。你可以从 Basic 开始，当需要扩展时升级到 Standard 或 Enterprise。补差价即可升级。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFAQ(this)">支付方式有哪些？</div>
+      <div class="faq-a">支持 Stripe 信用卡支付（美元/人民币），也支持银行转账。企业客户可开具发票。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CTA ═══ -->
+<div class="container">
+  <div class="cta-section">
+    <h2>准备好部署你的产品了吗？</h2>
+    <p>告诉我们你的项目，24 小时内给你详细方案和报价。</p>
+    <a href="#calculator" class="btn btn-primary btn-large">计算报价</a>
+    <br><br>
+    <a onclick="openInquiry('CrossDeploy')" style="cursor:pointer;color:var(--accent);text-decoration:none;font-weight:600">或直接告诉我们你的项目需求 →</a>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    <div>
+      <div class="f-brand">✦ CrossWave</div>
+      <p class="f-desc">AI-powered autonomous company platform. Three products, 14 agents, one dashboard.</p>
+    </div>
+    <div class="f-col">
+      <h4>Products</h4>
+      <a href="https://crossbridge.crosswave.app">CrossBridge</a>
+      <a href="https://blog.crosswave.app">CrossBlog</a>
+      <a href="/deploy">CrossDeploy</a>
+    </div>
+    <div class="f-col">
+      <h4>Company</h4>
+      <a href="/">Home</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="mailto:hello@crosswave.app">Contact</a>
+    </div>
+    <div class="f-col">
+      <h4>Contact</h4>
+      <a href="mailto:hello@crosswave.app">hello@crosswave.app</a>
+      <a href="https://github.com/guish7423/crosswave">GitHub</a>
+    </div>
+  </div>
+  <div class="container">
+    <div class="f-bottom">
+      <span>© 2026 CrossWave. All rights reserved.</span>
+      <span>AI-Powered Deployment</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── Quote Calculator ──
+let selectedTier = 'basic';
+let selectedDB = 'none';
+
+const TIER_PRICES = { basic: 2000, standard: 3000, enterprise: 5000 };
+const DB_ADDONS = { none: 0, sqlite: 0, pg: 500, redis: 300, both: 700 };
+const TIER_INCLUDES = {
+  basic: ['Single service deployment (Docker)', 'Health check endpoint', 'Custom domain + HTTPS', 'Basic monitoring', '7-day post-deploy support'],
+  standard: ['Multi-service deployment (Compose)', 'PostgreSQL / Redis 配置', 'HTTPS + custom domain', 'CI/CD pipeline setup', '30-day post-deploy support'],
+  enterprise: ['Full-stack deployment (K8s/Swarm)', 'Auto-scaling + load balancing', 'Database migration management', 'Custom CI/CD + monitoring stack', '90-day support + SLA'],
+};
+
+function selectTier(tier) {
+  selectedTier = tier;
+  document.querySelectorAll('[data-tier]').forEach(el => el.classList.toggle('selected', el.dataset.tier === tier));
+  updateCalc();
+}
+
+function selectDB(db) {
+  selectedDB = db;
+  document.querySelectorAll('[data-db]').forEach(el => el.classList.toggle('selected', el.dataset.db === db));
+  updateCalc();
+}
+
+function updateCalc() {
+  const total = TIER_PRICES[selectedTier] + DB_ADDONS[selectedDB];
+  document.getElementById('calcAmount').textContent = '¥' + total.toLocaleString();
+  document.getElementById('calcCTA').innerHTML = 'Buy Now — ¥' + total.toLocaleString();
+
+  const includes = [...TIER_INCLUDES[selectedTier]];
+  if (selectedDB === 'pg') includes.push('PostgreSQL 16 配置');
+  if (selectedDB === 'redis') includes.push('Redis 7 配置');
+  if (selectedDB === 'both') includes.push('PostgreSQL 16 配置', 'Redis 7 配置');
+  document.getElementById('calcIncludes').innerHTML = includes.map(i => '<li>' + i + '</li>').join('');
+}
+
+// ── Stripe Payment Links ──
+const STRIPE_LINKS = { basic: '', standard: '', enterprise: '' };
+const FALLBACK_EMAIL = 'hello@crosswave.app';
+
+function handlePurchase(tier) {
+  const link = STRIPE_LINKS[tier];
+  if (link) { window.open(link, '_blank'); return; }
+  openInquiry('CrossDeploy ' + tier.charAt(0).toUpperCase() + tier.slice(1));
+}
+
+function initPaymentButtons() {
+  ['basic','standard','enterprise'].forEach(tier => {
+    const btn = document.getElementById('pay-' + tier);
+    if (!btn) return;
+    if (STRIPE_LINKS[tier]) {
+      btn.href = STRIPE_LINKS[tier];
+      btn.target = '_blank';
+    } else {
+      btn.onclick = () => handlePurchase(tier);
+      btn.style.cursor = 'pointer';
+      btn.textContent = 'Inquire Now';
+    }
+  });
+}
+initPaymentButtons();
+
+// ── Inquiry Modal ──
+function openInquiry(product) {
+  window.parent.postMessage({ type: 'openInquiry', product: product }, '*');
+  // Fallback mailto
+  window.location.href = 'mailto:' + FALLBACK_EMAIL + '?subject=' + encodeURIComponent('CrossDeploy Inquiry: ' + product);
+}
+
+function toggleFAQ(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('open');
+}
+</script>
+</body>
+</html>

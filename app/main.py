@@ -46,6 +46,11 @@ async def landing(request: Request):
     return templates_root.TemplateResponse(request, "index.html", {"request": request})
 
 
+@app.get("/deploy", response_class=HTMLResponse)
+async def deploy_service(request: Request):
+    return templates.TemplateResponse(request, "deploy-service.html")
+
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     summary = await polsia_client.get_dashboard_summary()
