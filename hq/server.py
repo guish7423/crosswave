@@ -51,7 +51,7 @@ async def polsia_sync():
                 "SELECT snapshot_date, mrr_cents, active_subscribers FROM revenue_snapshots ORDER BY snapshot_date"
             )
             ext_order_rows = await db.execute_fetchall(
-                "SELECT id, title, platform, external_id, status, budget_min, budget_max, currency, score, score_reason, assigned_agent, created_at, provider_notes FROM external_orders ORDER BY created_at DESC LIMIT 100"
+                "SELECT id, title, platform, external_id, status, budget_min, budget_max, currency, score, score_reason, assigned_agent, created_at, provider_notes, deliverables, delivery_notes FROM external_orders ORDER BY created_at DESC LIMIT 100"
             )
             lead_rows = await db.execute_fetchall(
                 "SELECT id, name, email, company, product_interest, budget_range, message, status, source_page, created_at FROM leads ORDER BY created_at DESC LIMIT 100"
@@ -129,7 +129,9 @@ async def polsia_sync():
     ext_orders = []
     for row in ext_order_rows:
         provider_notes_raw = row[12] if len(row) > 12 else None
-        ext_orders.append({"id": row[0], "title": row[1] or "", "platform": row[2] or "", "external_id": row[3] or "", "status": row[4] or "scanned", "budget_min": row[5], "budget_max": row[6], "currency": row[7] or "USD", "score": row[8], "score_reason": row[9] or "", "assigned_agent": row[10] or "", "created_at": row[11] or "", "deployment_plan": provider_notes_raw})
+        deliverables_raw = row[13] if len(row) > 13 else None
+        delivery_notes_raw = row[14] if len(row) > 14 else None
+        ext_orders.append({"id": row[0], "title": row[1] or "", "platform": row[2] or "", "external_id": row[3] or "", "status": row[4] or "scanned", "budget_min": row[5], "budget_max": row[6], "currency": row[7] or "USD", "score": row[8], "score_reason": row[9] or "", "assigned_agent": row[10] or "", "created_at": row[11] or "", "deployment_plan": provider_notes_raw, "deliverables": json.loads(deliverables_raw) if isinstance(deliverables_raw, str) else (deliverables_raw or []), "delivery_notes": delivery_notes_raw or ""})
     CACHE["external_orders"] = ext_orders
     full_tasks = []
     for r in task_rows:
@@ -399,6 +401,7 @@ async def portal_order(order_id: int):
             deployment_plan = json.loads(order["deployment_plan"]) if isinstance(order["deployment_plan"], str) else order["deployment_plan"]
         except (json.JSONDecodeError, TypeError):
             deployment_plan = None
+    deliverables = order.get("deliverables", [])
     return {
         "id": order["id"],
         "title": order.get("title", "CrossDeploy Project"),
@@ -410,6 +413,8 @@ async def portal_order(order_id: int):
         "platform": order.get("platform", "direct"),
         "created_at": order.get("created_at", ""),
         "deployment_plan": deployment_plan,
+        "deliverables": deliverables,
+        "delivery_notes": order.get("delivery_notes", ""),
     }
 
 @app.get("/portal/{order_id}")

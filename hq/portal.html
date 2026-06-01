@@ -75,6 +75,9 @@
 
     footer{padding:24px 0;text-align:center;font-size:13px;color:var(--ink-muted);border-top:1px solid var(--border);margin-top:48px}
 
+    .preview-btn{transition:all .2s}
+    .preview-btn:hover{opacity:.8;transform:translateY(-1px)}
+    table tbody tr:hover{background:oklch(0.90 0.005 260 / 0.3)}
     @media(max-width:600px){
       .progress-step{font-size:10px;padding:8px 2px}
       .progress-step .dot{width:8px;height:8px}
@@ -162,6 +165,7 @@ function renderOrder(order) {
       </div>
 
       ${order.deployment_plan ? renderPlan(order.deployment_plan) : ''}
+      ${order.deliverables ? renderDeliverables(order.deliverables) : ''}
     </div>
 
     <div class="shares-section">
@@ -171,23 +175,58 @@ function renderOrder(order) {
   `;
 }
 
-function renderPlan(plan) {
-  if (!plan || !plan.steps) return '';
-  const steps = Array.isArray(plan.steps) ? plan.steps : [];
-  return `
-    <div class="deploy-plan">
-      <h3>🚀 Deployment Plan</h3>
-      ${steps.map((s, i) => `
-        <div class="plan-step pending">
-          <span class="step-label">${i+1}. ${esc(s.step || s.title || 'Step ' + (i+1))}</span>
-          ${s.detail || s.command ? `<span class="step-detail">${esc(s.detail || s.command || '')}</span>` : ''}
-          ${s.expected_result ? `<span class="step-detail">→ ${esc(s.expected_result)}</span>` : ''}
-        </div>
-      `).join('')}
-      ${plan.estimated_hours ? `<p style="margin-top:12px;font-size:13px;color:var(--ink-dim)">⏱ Estimated: ${plan.estimated_hours} hours</p>` : ''}
-    </div>
-  `;
-}
+  function renderPlan(plan) {
+    if (!plan || !plan.steps) return '';
+    const steps = Array.isArray(plan.steps) ? plan.steps : [];
+    return `
+      <div class="deploy-plan">
+        <h3>🚀 Deployment Plan</h3>
+        ${steps.map((s, i) => `
+          <div class="plan-step pending">
+            <span class="step-label">${i+1}. ${esc(s.step || s.title || 'Step ' + (i+1))}</span>
+            ${s.detail || s.command ? `<span class="step-detail">${esc(s.detail || s.command || '')}</span>` : ''}
+            ${s.expected_result ? `<span class="step-detail">→ ${esc(s.expected_result)}</span>` : ''}
+          </div>
+        `).join('')}
+        ${plan.estimated_hours ? `<p style="margin-top:12px;font-size:13px;color:var(--ink-dim)">⏱ Estimated: ${plan.estimated_hours} hours</p>` : ''}
+      </div>
+    `;
+  }
+
+  function renderDeliverables(items) {
+    if (!items || items.length === 0) return '';
+    return `
+      <div class="card" style="margin-top:16px">
+        <h3 style="margin-bottom:16px;font-size:16px">📦 Deliverable Artifacts</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="text-align:left;color:var(--ink-dim);border-bottom:1px solid var(--border)">
+              <th style="padding:8px 4px">File</th>
+              <th style="padding:8px 4px">Description</th>
+              <th style="padding:8px 4px">Preview</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(d => {
+              const bg = esc(d.content || '').slice(0, 200) + (d.content && d.content.length > 200 ? '...' : '');
+              return `
+                <tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:10px 4px;font-weight:600;font-family:monospace;font-size:12px">${esc(d.name)}</td>
+                  <td style="padding:10px 4px;color:var(--ink-dim)">${esc(d.description || '')}</td>
+                  <td style="padding:10px 4px">
+                    <button class="preview-btn" data-content="${esc(d.content || '')}" data-name="${esc(d.name)}"
+                      style="background:var(--accent-soft);color:var(--accent);border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">
+                      View
+                    </button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
 
 function esc(s) {
   if (!s) return '';
@@ -205,6 +244,34 @@ function copyLink() {
 }
 
 loadOrder();
+
+// ── Deliverable preview modal ─────────────────────────────────
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.preview-btn');
+  if (!btn) return;
+  const content = btn.dataset.content;
+  const name = btn.dataset.name;
+  showPreview(name, content);
+});
+
+function showPreview(name, content) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'background:#fff;border-radius:12px;max-width:720px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+
+  modal.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #eee">
+      <strong style="font-size:14px;font-family:monospace">${esc(name)}</strong>
+      <button style="background:none;border:none;font-size:18px;cursor:pointer;color:#666" onclick="this.closest('div[style]').parentElement.parentElement.remove()">✕</button>
+    </div>
+    <pre style="padding:20px;overflow:auto;font-size:13px;line-height:1.6;margin:0;white-space:pre-wrap;word-break:break-all">${esc(content)}</pre>
+  `;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
 </script>
 </body>
 </html>
