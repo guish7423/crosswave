@@ -104,21 +104,20 @@ start_polsia() {
 
 start_celery_worker() {
     local dir="$CROSSWAVE_DIR/../polsia-fork"
-    [ ! -d "$dir" ] && return 0
-
+    [ ! -d "$dir" ] && { echo "  ⏭️  Polsia Fork not found — can't start worker"; return 0; }
     local python; python=$(resolve_python "$dir")
     local logf; logf=$(log_file "celery-worker")
-
     if is_running "celery-worker"; then echo "  ✅ Celery Worker already running"; return 0; fi
-
+    mkdir -p "$PID_DIR"
     echo "  → Celery Worker (3 queues)..."
     cd "$dir"
     setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
+        export DATABASE_URL=sqlite+aiosqlite:///./polsia.db
         exec \"$python\" -m celery -A celery_app worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance
     " > "$logf" 2>&1 &
     write_pid "celery-worker" $!
-    sleep 3
+    sleep 2
     if is_running "celery-worker"; then echo "  ✅ Celery Worker started"; else echo "  ❌ Celery Worker failed to start"; fi
     cd "$CROSSWAVE_DIR"
 }
