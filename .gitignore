@@ -3,3 +3,10 @@ __pycache__/
 *.pyc
 .env
 .worktrees/
+.env.production
+
+# Backup files
+backups/
+
+# Planning docs (non-code)
+docs/superpowers/
