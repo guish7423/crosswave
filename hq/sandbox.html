@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>沙盒测试床 — CrossWave HQ</title>
+<link rel="stylesheet" href="/static/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  .rule-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1rem; margin:1rem 0; }
+  .rule-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; }
+  .rule-card .rule-level { display:inline-block; padding:2px 8px; border-radius:4px; font-size:.75rem; font-weight:600; }
+  .level-block { background:#ef4444; color:white; }
+  .level-approval { background:#f59e0b; color:white; }
+  .level-warn { background:#6366f1; color:white; }
+  .pending-queue { margin:1rem 0; }
+  .pending-item { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; margin-bottom:.75rem; display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; }
+  .pending-item .info { flex:1; }
+  .pending-item .meta { font-size:.8rem; color:var(--text-muted); margin-top:.25rem; }
+  .pending-item .actions { display:flex; gap:.5rem; flex-shrink:0; }
+  .btn-approve { background:#22c55e; color:white; border:none; padding:.4rem 1rem; border-radius:6px; cursor:pointer; font-weight:600; }
+  .btn-reject { background:#ef4444; color:white; border:none; padding:.4rem 1rem; border-radius:6px; cursor:pointer; font-weight:600; }
+  .btn-cleanup { background:var(--bg-card); color:var(--text); border:1px solid var(--border); padding:.4rem 1rem; border-radius:6px; cursor:pointer; }
+  .empty-state { text-align:center; padding:2rem; color:var(--text-muted); }
+  .sandbox-badge { display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .75rem; border-radius:999px; font-weight:700; font-size:.85rem; }
+  .badge-on { background:#22c55e20; color:#22c55e; border:1px solid #22c55e40; }
+  .badge-off { background:#ef444420; color:#ef4444; border:1px solid #ef444440; }
+  pre.payload { background:var(--bg); padding:.5rem; border-radius:4px; font-size:.8rem; max-height:120px; overflow:auto; margin:.5rem 0 0; }
+</style>
+</head>
+<body>
+<div id="nav"></div>
+<div class="container">
+  <h1>🛡️ 沙盒测试床</h1>
+  <p style="color:var(--text-muted);margin-bottom:1.5rem;">Agent 决策安全验证层 — 动作执行前先经过安全规则检查</p>
+
+  <!-- KPI row -->
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi-card"><div class="kpi-value" id="pendingCount">—</div><div class="kpi-label">待审批</div></div>
+    <div class="kpi-card"><div class="kpi-value" id="approvedCount">—</div><div class="kpi-label">已批准</div></div>
+    <div class="kpi-card"><div class="kpi-value" id="rejectedCount">—</div><div class="kpi-label">已拒绝</div></div>
+    <div class="kpi-card"><div class="kpi-value" id="sandboxStatus">—</div><div class="kpi-label">沙盒状态</div></div>
+    <div class="kpi-card"><div class="kpi-value" id="totalPending">—</div><div class="kpi-label">总记录</div></div>
+  </div>
+
+  <!-- Sandbox status + controls -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:1rem 0;">
+    <div>
+      <button class="btn-cleanup" onclick="triggerCleanup()">🧹 清理过期</button>
+      <button class="btn-cleanup" onclick="refreshData()" style="margin-left:.5rem;">🔄 刷新</button>
+      <span style="margin-left:1rem;font-size:.85rem;color:var(--text-muted);" id="lastSync"></span>
+    </div>
+  </div>
+
+  <!-- Pending actions queue -->
+  <h2>⏳ 待审批队列</h2>
+  <div class="pending-queue" id="pendingList">
+    <div class="empty-state">加载中...</div>
+  </div>
+
+  <!-- Safety rules -->
+  <h2 style="margin-top:2rem;">📋 安全规则</h2>
+  <div class="rule-grid">
+    <div class="rule-card">
+      <span class="rule-level level-block">BLOCK</span>
+      <h4 style="margin:.5rem 0 .25rem;">禁止删除</h4>
+      <p style="font-size:.85rem;color:var(--text-muted);">沙盒模式下阻止任何记录删除操作</p>
+    </div>
+    <div class="rule-card">
+      <span class="rule-level level-approval">APPROVAL</span>
+      <h4 style="margin:.5rem 0 .25rem;">财务变更审批</h4>
+      <p style="font-size:.85rem;color:var(--text-muted);">Finance/Deployment Agent 的操作需要人工审批</p>
+    </div>
+    <div class="rule-card">
+      <span class="rule-level level-approval">APPROVAL</span>
+      <h4 style="margin:.5rem 0 .25rem;">外部通信审批</h4>
+      <p style="font-size:.85rem;color:var(--text-muted);">社媒/邮件/广告 Agent 的外部通信需审批</p>
+    </div>
+    <div class="rule-card">
+      <span class="rule-level level-approval">APPROVAL</span>
+      <h4 style="margin:.5rem 0 .25rem;">高价值订单审批</h4>
+      <p style="font-size:.85rem;color:var(--text-muted);">订单 ¥5,000 及以上需要人工审批</p>
+    </div>
+    <div class="rule-card">
+      <span class="rule-level level-warn">WARN</span>
+      <h4 style="margin:.5rem 0 .25rem;">Agent 触发审计</h4>
+      <p style="font-size:.85rem;color:var(--text-muted);">所有 Agent 触发操作均被记录审计日志</p>
+    </div>
+  </div>
+</div>
+
+<script>
+let pendingChart = null;
+
+async function fetchData() {
+  try {
+    const resp = await fetch('/api/hq/sandbox');
+    if (resp.status === 401) { window.location.href='/login?redirect='+encodeURIComponent(window.location.pathname); return; }
+    const d = await resp.json();
+    document.getElementById('pendingCount').textContent = d.pending_count ?? 0;
+    document.getElementById('approvedCount').textContent = d.approved_count ?? 0;
+    document.getElementById('rejectedCount').textContent = d.rejected_count ?? 0;
+    document.getElementById('sandboxStatus').innerHTML = d.sandbox_enabled
+      ? '<span class="sandbox-badge badge-on">🟢 启用</span>'
+      : '<span class="sandbox-badge badge-off">🔴 禁用</span>';
+    document.getElementById('totalPending').textContent = d.total_pending ?? 0;
+    document.getElementById('lastSync').textContent = '更新: ' + new Date().toLocaleTimeString('zh-CN');
+
+    // Pending queue
+    const list = document.getElementById('pendingList');
+    if (!d.pending_actions || d.pending_actions.length === 0) {
+      list.innerHTML = '<div class="empty-state">✅ 没有待审批的 Action</div>';
+    } else {
+      list.innerHTML = d.pending_actions.map(a => {
+        const payload = a.payload ? JSON.stringify(a.payload, null, 2) : '';
+        return `<div class="pending-item">
+          <div class="info">
+            <strong>#${a.id}</strong> ${a.summary || a.action_type}
+            <span class="meta">${a.agent_type} · ${a.rule_id || '—'} · ${new Date(a.created_at).toLocaleString('zh-CN')}</span>
+            ${payload ? `<pre class="payload">${payload}</pre>` : ''}
+          </div>
+          <div class="actions">
+            <button class="btn-approve" onclick="approve(${a.id})">✓ 批准</button>
+            <button class="btn-reject" onclick="reject(${a.id})">✗ 拒绝</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  } catch(e) {
+    document.getElementById('pendingList').innerHTML = '<div class="empty-state">⚠️ 无法连接到沙盒服务</div>';
+  }
+}
+
+async function approve(id) {
+  await fetch(`/api/hq/sandbox/pending/${id}/approve`, {method:'POST'});
+  refreshData();
+}
+
+async function reject(id) {
+  const reason = prompt('拒绝原因（可选）:', '') || '';
+  await fetch(`/api/hq/sandbox/pending/${id}/reject?reason=${encodeURIComponent(reason)}`, {method:'POST'});
+  refreshData();
+}
+
+async function triggerCleanup() {
+  await fetch('/api/hq/sandbox/cleanup', {method:'POST'});
+  refreshData();
+}
+
+function refreshData() { fetchData(); }
+
+// Auth + nav injection
+(async function() {
+  const token = localStorage.getItem('hq_token');
+  if (!token) { window.location.href='/login?redirect='+encodeURIComponent(window.location.pathname); return; }
+  const navResp = await fetch('/nav.html');
+  const navHtml = await navResp.text();
+  document.getElementById('nav').innerHTML = navHtml;
+  // Mark active
+  document.querySelectorAll('#nav a').forEach(a => { if(a.getAttribute('href')==='/sandbox') a.classList.add('active'); });
+  // Set auth header for all fetches
+  const origFetch = window.fetch;
+  window.fetch = function(url, opts={}) {
+    if (!opts.headers) opts.headers = {};
+    opts.headers['X-HQ-Token'] = token;
+    return origFetch(url, opts);
+  };
+  // Load notif badge
+  try {
+    const nr = await fetch('/api/hq/notifications');
+    if (nr.ok) { const nd = await nr.json(); const nb = document.getElementById('notifBadge'); if (nd.new_leads > 0) { nb.textContent = nd.new_leads; nb.style.display = 'inline'; } }
+  } catch(e) {}
+  refreshData();
+  setInterval(refreshData, 30000);
+})();
+</script>
+</body>
+</html>

@@ -24,6 +24,7 @@ app = FastAPI(title="CrossWave HQ Bridge", dependencies=[Depends(require_token)]
 app.mount("/static", StaticFiles(directory=os.path.dirname(__file__)), name="hq_static")
 
 DB_PATH = os.environ.get("POLSIA_DB", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "polsia-fork", "polsia.db"))
+POLSIA_PORT = int(os.environ.get("POLSIA_PORT", "8001"))
 HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
 HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
 
@@ -885,6 +886,105 @@ async def hq_models():
 @app.get("/models")
 async def models_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "model_router.html"))
+
+
+@app.get("/sandbox")
+async def sandbox_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "sandbox.html"))
+
+
+# ─── Sandbox API ────────────────────────────────────────────────────────────
+
+
+@app.get("/api/hq/sandbox")
+async def hq_sandbox_summary():
+    """Sandbox dashboard data — read Polsia SQLite sandbox state."""
+    import json
+    import os as _os
+    sandbox_dir = _os.path.join(_os.path.dirname(DB_PATH), ".sandbox")
+    pending_file = _os.path.join(sandbox_dir, "pending_actions.json")
+    rejected_file = _os.path.join(sandbox_dir, "rejected_actions.json")
+
+    def _load(p: str) -> list:
+        if not _os.path.exists(p):
+            return []
+        try:
+            with open(p) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+
+    pending = _load(pending_file)
+    rejected = _load(rejected_file)
+    pending_active = [a for a in pending if a["status"] == "pending"]
+
+    # Enrich with Polsia sandbox summary
+    polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/sandbox/summary"
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(polsia_url)
+            polsia_data = r.json()
+    except Exception:
+        polsia_data = {"sandbox_enabled": False}
+
+    return {
+        "sandbox_enabled": polsia_data.get("sandbox_enabled", True),
+        "pending_count": len(pending_active),
+        "total_pending": len(pending),
+        "approved_count": sum(1 for a in pending if a["status"] == "approved"),
+        "rejected_count": len(rejected),
+        "pending_actions": pending_active,
+        "recent_actions": pending[:10] if pending else [],
+    }
+
+
+@app.get("/api/hq/sandbox/pending")
+async def hq_sandbox_pending():
+    """Proxy: get all pending actions from Polsia sandbox."""
+    polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/sandbox/pending"
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(polsia_url)
+            return r.json()
+    except Exception as e:
+        return {"error": str(e), "actions": []}
+
+
+@app.post("/api/hq/sandbox/pending/{action_id}/approve")
+async def hq_sandbox_approve(action_id: int):
+    """Proxy: approve a pending action."""
+    polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/sandbox/pending/{action_id}/approve"
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.post(polsia_url)
+            return r.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/hq/sandbox/pending/{action_id}/reject")
+async def hq_sandbox_reject(action_id: int, reason: str = ""):
+    """Proxy: reject a pending action."""
+    polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/sandbox/pending/{action_id}/reject"
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.post(polsia_url, params={"reason": reason})
+            return r.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/hq/sandbox/cleanup")
+async def hq_sandbox_cleanup(hours: int = 72):
+    """Proxy: cleanup expired pending actions."""
+    polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/sandbox/cleanup"
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.post(polsia_url, params={"hours": hours})
+            return r.json()
+    except Exception as e:
+        return {"error": str(e)}
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)
