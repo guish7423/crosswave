@@ -34,6 +34,23 @@ done
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 vlog() { $VERBOSE && echo "[DEBUG] $*" || true; }
 
+# ── Health wait: poll endpoint until ready or timeout ──
+wait_for_service() {
+    local name=$1 url=$2 timeout=${3:-30} interval=${4:-2}
+    log "  ⏳ Waiting for $name ($url)..."
+    local elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+        if curl -sf "$url" > /dev/null 2>&1; then
+            log "  ✅ $name ready after ${elapsed}s"
+            return 0
+        fi
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+    log "  ⚠️  $name not ready after ${timeout}s (check logs)"
+    return 1
+}
+
 # ── 1. Verify dependencies ──
 log "Checking prerequisites..."
 
@@ -98,12 +115,7 @@ if [ -d "$POLSIA_DIR" ]; then
     cd "$POLSIA_DIR"
     DATABASE_URL="sqlite+aiosqlite:///./polsia.db" \
     setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8001 > /tmp/polsia.log 2>&1 &
-    sleep 4
-    if curl -sf http://127.0.0.1:8001/api/v1/health > /dev/null 2>&1; then
-        log "  ✅ Polsia Fork running (port 8001)"
-    else
-        log "  ⚠️  Polsia Fork may still be starting (check /tmp/polsia.log)"
-    fi
+    wait_for_service "Polsia Fork" "http://127.0.0.1:8001/api/v1/health" 30 2 || true
 
     if [ "$CELERY" = true ]; then
         log "  → Celery Worker..."
@@ -126,12 +138,7 @@ pkill -f "uvicorn hq.server:app" 2>/dev/null || true
 sleep 1
 cd "$CROSSWAVE_DIR"
 setsid python3 -m uvicorn hq.server:app --host 0.0.0.0 --port 13001 > /tmp/hq-bridge.log 2>&1 &
-sleep 3
-if curl -sf http://127.0.0.1:13001/api/hq/summary > /dev/null 2>&1; then
-    log "  ✅ HQ Bridge running (port 13001)"
-else
-    log "  ⚠️  HQ Bridge may still be starting (check /tmp/hq-bridge.log)"
-fi
+wait_for_service "HQ Bridge" "http://127.0.0.1:13001/api/hq/summary" 30 2 || true
 
 # 4d. CrossWave (Website)
 log "  → CrossWave Website (port 9999)..."
@@ -139,14 +146,9 @@ pkill -f "uvicorn app.main:app.*9999" 2>/dev/null || true
 sleep 1
 cd "$CROSSWAVE_DIR"
 setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 9999 > /tmp/crosswave.log 2>&1 &
-sleep 2
-if curl -sf http://127.0.0.1:9999/health > /dev/null 2>&1; then
-    log "  ✅ CrossWave Website running"
-else
-    log "  ⚠️  CrossWave may still be starting (check /tmp/crosswave.log)"
-fi
+wait_for_service "CrossWave" "http://127.0.0.1:9999/health" 20 2 || true
 
-# 4c. CrossBlog (if ai-blog-engine exists)
+# 4e. CrossBlog (if ai-blog-engine exists)
 BLOG_DIR="$CROSSWAVE_DIR/../ai-blog-engine"
 if [ -d "$BLOG_DIR" ]; then
     log "  → CrossBlog (port 8002)..."
@@ -154,22 +156,16 @@ if [ -d "$BLOG_DIR" ]; then
     sleep 1
     cd "$BLOG_DIR"
     setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8002 > /tmp/crossblog.log 2>&1 &
-    sleep 2
-    if curl -sf http://127.0.0.1:8002/health > /dev/null 2>&1; then
-        log "  ✅ CrossBlog running"
-    else
-        log "  ⚠️  CrossBlog may still be starting (check /tmp/crossblog.log)"
-    fi
+    wait_for_service "CrossBlog" "http://127.0.0.1:8002/health" 20 2 || true
 else
     log "  ⏭️  CrossBlog not found at $BLOG_DIR, skipping"
 fi
 
-# ── 5. Health Check ──
+# ── 5. Final Health Summary ──
 log ""
 log "─────────────────────────────────"
-log "  HEALTH CHECK"
+log "  FINAL HEALTH SUMMARY"
 log "─────────────────────────────────"
-sleep 2
 check_endpoint() {
     local name=$1 url=$2
     if curl -sf "$url" > /dev/null 2>&1; then
