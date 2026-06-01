@@ -24,6 +24,7 @@ app = FastAPI(title="CrossWave HQ Bridge", dependencies=[Depends(require_token)]
 app.mount("/static", StaticFiles(directory=os.path.dirname(__file__)), name="hq_static")
 
 DB_PATH = os.environ.get("POLSIA_DB", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "polsia-fork", "polsia.db"))
+CROSSBRIDGE_DB = os.environ.get("CROSSBRIDGE_DB", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "ai-content-bridge", "content_bridge.db"))
 POLSIA_PORT = int(os.environ.get("POLSIA_PORT", "8001"))
 HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
 HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
@@ -181,7 +182,45 @@ async def summary():
         "customers": total_customers,
         "leads": {"total": len(CACHE["leads"]), "new": len([l for l in CACHE["leads"] if l["status"] == "new"])},
         "last_sync": CACHE["last_sync"],
+        "crossbridge": await get_crossbridge_summary(),
     }
+
+@app.get("/api/hq/crossbridge")
+async def get_crossbridge():
+    return await get_crossbridge_summary()
+
+async def get_crossbridge_summary():
+    """Read CrossBridge SQLite for user/conversion stats."""
+    if not os.path.exists(CROSSBRIDGE_DB):
+        return {"status": "unavailable", "db_path": CROSSBRIDGE_DB}
+    try:
+        import aiosqlite
+        async with aiosqlite.connect(CROSSBRIDGE_DB) as db:
+            users = await db.execute_fetchall(
+                "SELECT id, email, plan, monthly_usage, is_active, created_at FROM users ORDER BY created_at DESC"
+            )
+            conv = await db.execute_fetchall(
+                "SELECT COUNT(*) as cnt, MAX(created_at) as last FROM conversions"
+            )
+        total_users = len(users)
+        active_users = sum(1 for u in users if u[4] == 1)
+        total_conversions = conv[0][0] if conv else 0
+        last_conversion = conv[0][1] if conv and conv[0][1] else None
+        plan_dist = {}
+        for u in users:
+            p = u[2] or "free"
+            plan_dist[p] = plan_dist.get(p, 0) + 1
+        return {
+            "status": "available",
+            "total_users": total_users,
+            "active_users": active_users,
+            "total_conversions": total_conversions,
+            "last_conversion": last_conversion,
+            "plan_distribution": plan_dist,
+            "db_path": CROSSBRIDGE_DB,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 @app.get("/api/hq/employees")
 async def get_employees():
