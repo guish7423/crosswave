@@ -1,0 +1,13 @@
+# CrossWave Backup Configuration
+# Generated: 2026-06-01
+
+# Backup directory (absolute path)
+BACKUP_DIR=/home/guish/.opencode-workspace/projects/crosswave/backups
+
+# Retention period in days
+RETENTION_DAYS=7
+
+# Additional DB paths (one per line, absolute paths)
+# EXTRA_DBS=(
+#   /path/to/extra.db
+# )
