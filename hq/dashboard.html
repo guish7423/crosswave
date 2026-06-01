@@ -16,6 +16,7 @@
       <a href="/" class="active">战情室</a>
       <a href="/employees">员工</a>
       <a href="/orders">订单</a>
+      <a href="/leads">线索</a>
       <a href="/finance">财务</a>
       <a href="/reports">报表</a>
     </span>
@@ -28,6 +29,7 @@
   <div class="kpi-card" style="border-left-color:#4ade80"><div class="label">活跃订单</div><div class="value">—</div><div class="sub" id="orderBreakdown"></div></div>
   <div class="kpi-card" style="border-left-color:#facc15"><div class="label">月收入 (MRR)</div><div class="value">—</div><div class="sub">¥ ARR</div></div>
   <div class="kpi-card" style="border-left-color:#a78bfa"><div class="label">客户数</div><div class="value">—</div><div class="sub">跨业务线</div></div>
+  <div class="kpi-card" style="border-left-color:#60a5fa"><div class="label">线索 (Leads)</div><div class="value">—</div><div class="sub" id="leadBreakdown">新: —</div></div>
 </div>
 
 <div class="charts-row">
@@ -46,6 +48,10 @@
   <div class="section-card">
     <h3>📋 最新活动</h3>
     <div class="activity-feed" id="activityFeed"><div class="empty">加载中...</div></div>
+  </div>
+  <div class="section-card">
+    <h3>📩 最新询价</h3>
+    <div class="activity-feed" id="leadFeed"><div class="empty">加载中...</div></div>
   </div>
 </div>
 
@@ -73,6 +79,10 @@ async function loadSummary() {
     kpis[2].querySelector('.value').textContent = `¥${data.mrr.toLocaleString()}`;
     kpis[2].querySelector('.sub').textContent = `¥${(data.mrr * 12).toLocaleString()} ARR`;
     kpis[3].querySelector('.value').textContent = data.customers;
+    if (data.leads) {
+      kpis[4].querySelector('.value').textContent = data.leads.total;
+      document.getElementById('leadBreakdown').textContent = `新: ${data.leads.new}`;
+    }
 
     const empLabels = Object.keys(sd);
     const empValues = Object.values(sd);
@@ -149,8 +159,25 @@ async function loadActivity() {
   }
 }
 
-loadSummary(); loadEmployees(); loadActivity();
-setInterval(() => { loadSummary(); loadEmployees(); loadActivity(); }, 30000);
+async function loadLeads() {
+  try {
+    const res = await fetch(`${apiBase}/api/hq/leads`);
+    const data = await res.json();
+    const items = (data.data || []).slice(0, 10);
+    const feed = document.getElementById('leadFeed');
+    feed.innerHTML = items.map(l => `
+      <div class="activity-item">
+        <span><strong>${l.name || '?'}</strong> · ${l.product_interest || '—'}</span>
+        <span class="time">${l.status}${l.created_at ? ' · ' + new Date(l.created_at).toLocaleDateString('zh-CN') : ''}</span>
+      </div>
+    `).join('') || '<div class="empty">暂无询价</div>';
+  } catch (e) {
+    document.getElementById('leadFeed').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+loadSummary(); loadEmployees(); loadActivity(); loadLeads();
+setInterval(() => { loadSummary(); loadEmployees(); loadActivity(); loadLeads(); }, 30000);
 </script>
 </body>
 </html>

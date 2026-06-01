@@ -15,7 +15,7 @@ DB_PATH = os.environ.get("POLSIA_DB", os.path.expanduser("~/.opencode-workspace/
 HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
 HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
 
-CACHE = {"employees": [], "lines": [], "orders": [], "expenses": [], "revenue_history": [], "last_sync": None}
+CACHE = {"employees": [], "lines": [], "orders": [], "leads": [], "expenses": [], "revenue_history": [], "last_sync": None}
 
 async def polsia_sync():
     if not os.path.exists(DB_PATH):
@@ -35,6 +35,9 @@ async def polsia_sync():
             )
             rev_rows = await db.execute_fetchall(
                 "SELECT snapshot_date, mrr_cents, active_subscribers FROM revenue_snapshots ORDER BY snapshot_date"
+            )
+            lead_rows = await db.execute_fetchall(
+                "SELECT id, name, email, company, product_interest, budget_range, message, status, source_page, created_at FROM leads ORDER BY created_at DESC LIMIT 100"
             )
     except Exception as e:
         print(f"[bridge] DB read error: {e}")
@@ -99,7 +102,11 @@ async def polsia_sync():
     CACHE["lines"] = predef_lines
     CACHE["orders"] = orders
     CACHE["last_sync"] = datetime.now(timezone.utc).isoformat()
-    print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks, {len(exps)} expenses, {len(revs)} rev months")
+    leads = []
+    for row in lead_rows:
+        leads.append({"id": row[0], "name": row[1] or "", "email": row[2] or "", "company": row[3] or "", "product_interest": row[4] or "", "budget_range": row[5] or "", "message": row[6] or "", "status": row[7] or "new", "source_page": row[8] or "", "created_at": row[9] or ""})
+    CACHE["leads"] = leads
+    print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks, {len(leads)} leads, {len(exps)} expenses, {len(revs)} rev months")
 
 async def periodic_sync():
     while True:
@@ -137,6 +144,7 @@ async def summary():
         "orders": {"total": len(orders), "active": len(active_orders), "status_distribution": order_status},
         "mrr": total_mrr,
         "customers": total_customers,
+        "leads": {"total": len(CACHE["leads"]), "new": len([l for l in CACHE["leads"] if l["status"] == "new"])},
         "last_sync": CACHE["last_sync"],
     }
 
@@ -152,6 +160,13 @@ async def get_orders(platform: str = "", status: str = ""):
     if status:
         items = [o for o in items if o.get("status") == status]
     return {"data": items}
+
+@app.get("/api/hq/leads")
+async def get_leads(status: str = ""):
+    items = CACHE["leads"]
+    if status:
+        items = [l for l in items if l.get("status") == status]
+    return {"data": items, "total": len(items), "new_count": len([l for l in items if l.get("status") == "new"])}
 
 @app.get("/api/hq/lines")
 async def get_lines():
@@ -173,6 +188,10 @@ async def orders_page():
 @app.get("/employees")
 async def employees_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "employees.html"))
+
+@app.get("/leads")
+async def leads_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "leads.html"))
 
 @app.get("/api/hq/finances")
 async def get_finances():
