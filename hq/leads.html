@@ -38,13 +38,64 @@
 
 <div class="table-wrap">
   <table>
-    <thead><tr><th>姓名</th><th>邮箱</th><th>公司</th><th>产品</th><th>预算</th><th>状态</th><th>来源</th><th>时间</th></tr></thead>
+    <thead><tr><th>姓名</th><th>邮箱</th><th>公司</th><th>产品</th><th>预算</th><th>状态</th><th>来源</th><th>操作</th><th>时间</th></tr></thead>
     <tbody id="leadTable"></tbody>
   </table>
 </div>
 
+<!-- Convert Modal -->
+<div id="convertModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#1e293b;padding:24px;border-radius:12px;max-width:400px;margin:10% auto;">
+    <h3 style="margin:0 0 12px;">转为订单</h3>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;" id="convertLeadInfo"></p>
+    <select id="convertTier" style="width:100%;padding:8px;margin-bottom:12px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;">
+      <option value="basic">Basic — ¥2,000 (单服务部署)</option>
+      <option value="standard">Standard — ¥3,000 (Compose+CI/CD)</option>
+      <option value="enterprise">Enterprise — ¥5,000 (K8s+SLA)</option>
+    </select>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="closeConvert()" style="padding:8px 16px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;cursor:pointer;">取消</button>
+      <button onclick="doConvert()" style="padding:8px 16px;border-radius:6px;border:none;background:#4ade80;color:#0f172a;cursor:pointer;font-weight:600;">确认转化</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const apiBase = 'http://localhost:13001';
+const POLSIA_API = 'http://localhost:8001';
+let convertLeadId = null;
+
+function openConvert(leadId, name, product) {
+  convertLeadId = leadId;
+  document.getElementById('convertLeadInfo').textContent = `${name} · ${product || '—'}`;
+  document.getElementById('convertModal').style.display = 'flex';
+}
+
+function closeConvert() {
+  convertLeadId = null;
+  document.getElementById('convertModal').style.display = 'none';
+}
+
+async function doConvert() {
+  if (!convertLeadId) return;
+  const tier = document.getElementById('convertTier').value;
+  try {
+    const res = await fetch(`${POLSIA_API}/api/v1/leads/${convertLeadId}/convert`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-API-Key': 'dev-key'},
+      body: JSON.stringify({tier}),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'convert failed');
+    const result = await res.json();
+    // Trigger HQ sync
+    await fetch(`${apiBase}/api/hq/sync`);
+    closeConvert();
+    loadLeads();
+    alert(`✅ 订单已创建: ${result.title} (ID: ${result.order_id})`);
+  } catch (e) {
+    alert(`❌ 转化失败: ${e.message}`);
+  }
+}
 
 async function loadLeads() {
   try {
@@ -61,7 +112,6 @@ async function loadLeads() {
     kpiRow.innerHTML = `
       <div class="mini-kpi"><span class="val">${items.length}</span><span class="lbl">总线索</span></div>
       <div class="mini-kpi"><span class="val">${statuses['new'] || 0}</span><span class="lbl">新线索</span></div>
-      <div class="mini-kpi"><span class="val">${statuses['contacted'] || 0}</span><span class="lbl">已联系</span></div>
       <div class="mini-kpi"><span class="val">${statuses['won'] || 0}</span><span class="lbl">已成交</span></div>
       <div class="mini-kpi"><span class="val">${statuses['lost'] || 0}</span><span class="lbl">已流失</span></div>
     `;
@@ -81,11 +131,16 @@ async function loadLeads() {
         <td>${l.budget_range || '—'}</td>
         <td>${badge(l.status)}</td>
         <td>${l.source_page || '—'}</td>
+        <td>
+          ${l.status !== 'won' && l.status !== 'lost'
+            ? `<button class="action-btn" onclick="openConvert(${l.id},'${(l.name||'').replace(/'/g,"")}','${(l.product_interest||'').replace(/'/g,"")}')" title="转为订单">🛒 转订单</button>`
+            : '<span style="color:#64748b;font-size:11px;">—</span>'}
+        </td>
         <td style="white-space:nowrap;">${l.created_at ? new Date(l.created_at).toLocaleDateString('zh-CN') : '—'}</td>
       </tr>
-    `).join('') || '<tr><td colspan="8" style="text-align:center;color:#64748b;">暂无线索</td></tr>';
+    `).join('') || '<tr><td colspan="9" style="text-align:center;color:#64748b;">暂无线索</td></tr>';
   } catch (e) {
-    document.getElementById('leadTable').innerHTML = `<tr><td colspan="8" style="text-align:center;color:#ef4444;">Error: ${e.message}</td></tr>`;
+    document.getElementById('leadTable').innerHTML = `<tr><td colspan="9" style="text-align:center;color:#ef4444;">Error: ${e.message}</td></tr>`;
   }
 }
 
