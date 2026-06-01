@@ -6,16 +6,17 @@ set -euo pipefail
 # ═══════════════════════════════════════════
 # Prerequisites:
 #   1. Docker + Docker Compose installed
-#   2. Python 3.12+ with pip
+#   2. Python 3.12+ with virtual environment (.venv/)
 #   3. Redis running (systemd or Docker)
 #   4. Environment variables set (see .env.example)
 #
 # Usage:
-#   bash scripts/deploy-production.sh [--build] [--no-celery]
+#   bash scripts/deploy-production.sh [--build] [--no-celery] [--verbose]
 #
 # Flags:
 #   --build       Rebuild Docker images
 #   --no-celery   Skip Celery worker (agents won't run)
+#   --verbose     Debug output
 # ═══════════════════════════════════════════
 
 CROSSWAVE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -33,6 +34,33 @@ done
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 vlog() { $VERBOSE && echo "[DEBUG] $*" || true; }
+
+# ── Resolve Python: prefer .venv, fallback to system ──
+resolve_python() {
+    local project_dir=$1
+    if [ -f "$project_dir/.venv/bin/python3" ]; then
+        echo "$project_dir/.venv/bin/python3"
+    elif [ -f "$project_dir/venv/bin/python3" ]; then
+        echo "$project_dir/venv/bin/python3"
+    elif command -v python3 &>/dev/null; then
+        echo "$(command -v python3)"
+    else
+        echo ""
+    fi
+}
+
+resolve_pip() {
+    local python_bin=$1
+    local pip_bin="${python_bin/python3/pip}"
+    if [ -f "$pip_bin" ]; then
+        echo "$pip_bin"
+    elif [ -f "${python_bin%/*}/pip" ]; then
+        echo "${python_bin%/*}/pip"
+    else
+        # Fallback: use pip3 module
+        echo "$python_bin -m pip"
+    fi
+}
 
 # ── Health wait: poll endpoint until ready or timeout ──
 wait_for_service() {
@@ -54,50 +82,64 @@ wait_for_service() {
 # ── 1. Verify dependencies ──
 log "Checking prerequisites..."
 
-for cmd in docker docker-compose python3 pip3; do
+for cmd in docker docker-compose curl; do
     if ! command -v "$cmd" &>/dev/null; then
-        echo "ERROR: $cmd not found. Install it first."
-        exit 1
+        echo "WARNING: $cmd not found. Some features may be unavailable."
     fi
 done
 
-# Check Python version
-PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-if [ "$(echo "$PY_VER >= 3.12" | bc)" != "1" ]; then
-    echo "WARNING: Python $PY_VER detected. Recommended: 3.12+"
+# ── 2. Resolve Python for CrossWave project ──
+CW_PYTHON=$(resolve_python "$CROSSWAVE_DIR")
+if [ -z "$CW_PYTHON" ]; then
+    echo "ERROR: No Python interpreter found in $CROSSWAVE_DIR/.venv or system"
+    echo "Create one: cd $CROSSWAVE_DIR && python3 -m venv .venv"
+    exit 1
 fi
+CW_PIP=$(resolve_pip "$CW_PYTHON")
+log "Using Python: $CW_PYTHON"
 
-# ── 2. Check environment ──
+# Check Python version
+PY_VER=$("$CW_PYTHON" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+log "Python version: $PY_VER"
+
+# ── 3. Check environment ──
 log "Checking environment..."
-
-REQUIRED_VARS=(
-    "POLSIA_BASE_URL"
-    "POLSIA_API_KEY"
-)
 
 if [ -f "$CROSSWAVE_DIR/.env" ]; then
     set -a; source "$CROSSWAVE_DIR/.env"; set +a
     log "Loaded .env from $CROSSWAVE_DIR/.env"
 fi
 
+REQUIRED_VARS=("POLSIA_BASE_URL" "POLSIA_API_KEY")
 for var in "${REQUIRED_VARS[@]}"; do
     if [ -z "${!var:-}" ]; then
         echo "WARNING: $var not set. Using defaults (may fail at runtime)."
     fi
 done
 
-# ── 3. Install Python deps ──
+# ── 4. Install Python deps ──
 log "Installing Python dependencies..."
-pip3 install -q --upgrade pip
-pip3 install -q -r "$CROSSWAVE_DIR/requirements.txt" 2>/dev/null || {
-    echo "ERROR: pip install failed. Fix dependencies first."
+$CW_PIP install -q --upgrade pip 2>/dev/null || true
+$CW_PIP install -q -r "$CROSSWAVE_DIR/requirements.txt" 2>/dev/null || {
+    echo "ERROR: pip install failed in CROSSWAVE_DIR. Fix dependencies first."
     exit 1
 }
 
-# ── 4. Start services (order: dependencies first) ──
+# Also install deps in Polsia Fork and CrossBlog if they exist
+for dep_dir in "$CROSSWAVE_DIR/../polsia-fork" "$CROSSWAVE_DIR/../ai-blog-engine"; do
+    if [ -d "$dep_dir" ] && [ -f "$dep_dir/requirements.txt" ]; then
+        DEP_PY=$(resolve_python "$dep_dir")
+        if [ -n "$DEP_PY" ]; then
+            DEP_PIP=$(resolve_pip "$DEP_PY")
+            $DEP_PIP install -q -r "$dep_dir/requirements.txt" 2>/dev/null || log "  ⚠️  Dep install skipped for $(basename $dep_dir)"
+        fi
+    fi
+done
+
+# ── 5. Start services (order: dependencies first) ──
 log "Starting services (dependencies first)..."
 
-# 4a. NocoBase HQ Backend (via Docker Compose)
+# 5a. NocoBase HQ Backend (via Docker Compose)
 if [ -f "$CROSSWAVE_DIR/hq/docker-compose.yml" ]; then
     log "  → NocoBase HQ Backend (port 13000)..."
     cd "$CROSSWAVE_DIR/hq"
@@ -106,62 +148,75 @@ if [ -f "$CROSSWAVE_DIR/hq/docker-compose.yml" ]; then
     log "  ✅ NocoBase stack started (PostgreSQL + NocoBase)"
 fi
 
-# 4b. Polsia Fork API (first — HQ bridge depends on its DB)
+# 5b. Polsia Fork API (first — HQ bridge depends on its DB)
 POLSIA_DIR="$CROSSWAVE_DIR/../polsia-fork"
 if [ -d "$POLSIA_DIR" ]; then
-    log "  → Polsia Fork API (port 8001)..."
-    pkill -f "uvicorn.*8001" 2>/dev/null || true
-    sleep 1
-    cd "$POLSIA_DIR"
-    DATABASE_URL="sqlite+aiosqlite:///./polsia.db" \
-    setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8001 > /tmp/polsia.log 2>&1 &
-    wait_for_service "Polsia Fork" "http://127.0.0.1:8001/api/v1/health" 30 2 || true
-
-    if [ "$CELERY" = true ]; then
-        log "  → Celery Worker..."
-        setsid celery -A celery_app worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance > /tmp/celery-worker.log 2>&1 &
-        sleep 2
-        log "  ✅ Celery Worker started"
-
-        log "  → Celery Beat..."
-        setsid celery -A celery_app beat --loglevel=info > /tmp/celery-beat.log 2>&1 &
+    POLSIA_PY=$(resolve_python "$POLSIA_DIR")
+    if [ -z "$POLSIA_PY" ]; then
+        log "  ⚠️  No Python for Polsia Fork, skipping"
+    else
+        log "  → Polsia Fork API (port 8001)..."
+        pkill -f "uvicorn.*8001" 2>/dev/null || true
         sleep 1
-        log "  ✅ Celery Beat started"
+        cd "$POLSIA_DIR"
+        DATABASE_URL="sqlite+aiosqlite:///./polsia.db" \
+        "$POLSIA_PY" -m uvicorn app.main:app --host 0.0.0.0 --port 8001 > /tmp/polsia.log 2>&1 &
+        wait_for_service "Polsia Fork" "http://127.0.0.1:8001/api/v1/health" 30 2 || true
+
+        if [ "$CELERY" = true ]; then
+            CELERY_BIN="${POLSIA_PY%/*}/celery"
+            if [ -f "$CELERY_BIN" ]; then
+                log "  → Celery Worker..."
+                "$CELERY_BIN" -A celery_app worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance > /tmp/celery-worker.log 2>&1 &
+                sleep 2
+                log "  ✅ Celery Worker started"
+
+                log "  → Celery Beat..."
+                "$CELERY_BIN" -A celery_app beat --loglevel=info > /tmp/celery-beat.log 2>&1 &
+                sleep 1
+                log "  ✅ Celery Beat started"
+            else
+                log "  ⏭️  Celery binary not found, skipping"
+            fi
+        fi
     fi
 else
     log "  ⏭️  Polsia Fork not found at $POLSIA_DIR, skipping"
 fi
 
-# 4c. HQ Bridge (CrossWave HQ — depends on Polsia Fork DB)
+# 5c. HQ Bridge (CrossWave HQ — depends on Polsia Fork DB)
 log "  → HQ Bridge (port 13001)..."
 pkill -f "uvicorn hq.server:app" 2>/dev/null || true
 sleep 1
 cd "$CROSSWAVE_DIR"
-setsid python3 -m uvicorn hq.server:app --host 0.0.0.0 --port 13001 > /tmp/hq-bridge.log 2>&1 &
-wait_for_service "HQ Bridge" "http://127.0.0.1:13001/api/hq/summary" 30 2 || true
+"$CW_PYTHON" -m uvicorn hq.server:app --host 0.0.0.0 --port 13001 > /tmp/hq-bridge.log 2>&1 &
+wait_for_service "HQ Bridge" "http://127.0.0.1:13001/health" 30 2 || true
 
-# 4d. CrossWave (Website)
+# 5d. CrossWave (Website)
 log "  → CrossWave Website (port 9999)..."
 pkill -f "uvicorn app.main:app.*9999" 2>/dev/null || true
 sleep 1
 cd "$CROSSWAVE_DIR"
-setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 9999 > /tmp/crosswave.log 2>&1 &
+"$CW_PYTHON" -m uvicorn app.main:app --host 0.0.0.0 --port 9999 > /tmp/crosswave.log 2>&1 &
 wait_for_service "CrossWave" "http://127.0.0.1:9999/health" 20 2 || true
 
-# 4e. CrossBlog (if ai-blog-engine exists)
+# 5e. CrossBlog (if ai-blog-engine exists)
 BLOG_DIR="$CROSSWAVE_DIR/../ai-blog-engine"
 if [ -d "$BLOG_DIR" ]; then
-    log "  → CrossBlog (port 8002)..."
-    pkill -f "uvicorn.*8002" 2>/dev/null || true
-    sleep 1
-    cd "$BLOG_DIR"
-    setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8002 > /tmp/crossblog.log 2>&1 &
-    wait_for_service "CrossBlog" "http://127.0.0.1:8002/health" 20 2 || true
+    BLOG_PY=$(resolve_python "$BLOG_DIR")
+    if [ -n "$BLOG_PY" ]; then
+        log "  → CrossBlog (port 8002)..."
+        pkill -f "uvicorn.*8002" 2>/dev/null || true
+        sleep 1
+        cd "$BLOG_DIR"
+        "$BLOG_PY" -m uvicorn app.main:app --host 0.0.0.0 --port 8002 > /tmp/crossblog.log 2>&1 &
+        wait_for_service "CrossBlog" "http://127.0.0.1:8002/health" 20 2 || true
+    fi
 else
     log "  ⏭️  CrossBlog not found at $BLOG_DIR, skipping"
 fi
 
-# ── 5. Final Health Summary ──
+# ── 6. Final Health Summary ──
 log ""
 log "─────────────────────────────────"
 log "  FINAL HEALTH SUMMARY"
@@ -176,7 +231,7 @@ check_endpoint() {
 }
 
 check_endpoint "CrossWave" "http://127.0.0.1:9999/health"
-check_endpoint "HQ Bridge" "http://127.0.0.1:13001/api/hq/summary"
+check_endpoint "HQ Bridge" "http://127.0.0.1:13001/health"
 check_endpoint "CrossBlog" "http://127.0.0.1:8002/health" || true
 check_endpoint "Polsia Fork" "http://127.0.0.1:8001/api/v1/health" || true
 
