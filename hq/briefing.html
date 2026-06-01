@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>市场情报 — CrossWave HQ</title>
+<link rel="stylesheet" href="/static/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+.briefing-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.briefing-meta { color: var(--text-muted); font-size: 14px; }
+.briefing-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.briefing-card .time { color: var(--text-muted); font-size: 13px; margin-bottom: 8px; }
+.briefing-card .summary { white-space: pre-wrap; line-height: 1.7; font-size: 14px; color: var(--text); }
+.briefing-card .results { margin-top: 12px; }
+.briefing-card .result-item { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.briefing-card .result-item:last-child { border: 0; }
+.briefing-card .result-item .title { color: var(--accent); font-weight: 500; }
+.briefing-card .result-item .snippet { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+.empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+.empty-state h2 { font-size: 20px; margin-bottom: 8px; }
+.empty-state p { font-size: 14px; line-height: 1.6; }
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.kpi-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.kpi-card .value { font-size: 24px; font-weight: 700; color: var(--text); }
+.kpi-card .label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.kpi-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<div id="nav"></div>
+<script>fetch('/static/nav.html').then(r=>r.text()).then(h=>document.getElementById('nav').innerHTML=h);</script>
+
+<main style="max-width:1100px;margin:0 auto;padding:24px">
+
+<div class="briefing-header">
+  <h1>📡 市场情报</h1>
+  <div class="briefing-meta">
+    <span id="briefingCount">—</span> 条简报 · 每日 7:00 自动采集
+  </div>
+</div>
+
+<div class="kpi-row" id="kpiRow">
+  <div class="kpi-card"><div class="value" id="totalBriefings">—</div><div class="label">简报总数</div></div>
+  <div class="kpi-card"><div class="value" id="latestResults">—</div><div class="label">最新采集结果</div></div>
+  <div class="kpi-card"><div class="value" id="sourcesQueried">—</div><div class="label">查询源数</div></div>
+  <div class="kpi-card"><div class="value" id="nextSweep">07:00</div><div class="label">下次采集</div></div>
+</div>
+
+<div id="briefingList">
+  <div class="empty-state">
+    <h2>⏳ 等待首次采集</h2>
+    <p>市场情报采集组每日 7:00 自动运行，<br>扫描 10+ 搜索源，生成结构化行业简报。</p>
+    <p style="margin-top:12px;font-size:13px">你也可以手动触发：<code>POST /agents/market_intel/trigger</code></p>
+  </div>
+</div>
+
+</main>
+
+<script>
+const HEADERS = {"X-HQ-Token": localStorage.getItem("hq_token") || ""};
+
+async function loadBriefings() {
+  try {
+    const resp = await fetch("/api/hq/briefings?limit=10", { headers: HEADERS });
+    if (!resp.ok) { if (resp.status === 401) window.location.href = "/login"; return; }
+    const data = await resp.json();
+    const briefings = data.briefings || [];
+    renderBriefings(briefings);
+  } catch (e) {
+    console.error("Briefing load error:", e);
+  }
+}
+
+function renderBriefings(briefings) {
+  document.getElementById("totalBriefings").textContent = briefings.length;
+  document.getElementById("briefingCount").textContent = briefings.length;
+
+  const list = document.getElementById("briefingList");
+
+  if (briefings.length === 0) return;
+
+  const latest = briefings[0];
+  document.getElementById("latestResults").textContent = latest.total_results || "—";
+  document.getElementById("sourcesQueried").textContent = latest.total_sources || "—";
+
+  list.innerHTML = briefings.map(b => {
+    const time = new Date(b.timestamp).toLocaleString("zh-CN");
+    const summary = typeof b.summary === "string" ? b.summary : JSON.stringify(b.summary, null, 2);
+    const results = (b.top_results || []).map(r =>
+      `<div class="result-item"><div class="title">${esc(r.title)}</div><div class="snippet">${esc(r.snippet)}</div></div>`
+    ).join("");
+
+    return `<div class="briefing-card">
+      <div class="time">🕐 ${time} · ${b.total_results || 0} 条结果</div>
+      <div class="summary">${esc(summary)}</div>
+      ${results ? `<div class="results">${results}</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function esc(s) {
+  if (!s) return "";
+  const d = document.createElement("div");
+  d.textContent = typeof s === "string" ? s.slice(0, 500) : String(s).slice(0, 500);
+  return d.innerHTML;
+}
+
+document.querySelectorAll('[data-nav="briefing"]').forEach(el => el.classList.add("active"));
+loadBriefings();
+setInterval(loadBriefings, 60000);
+</script>
+</body>
+</html>

@@ -748,5 +748,30 @@ async def agents_page():
 async def analytics_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "analytics.html"))
 
+# ─── Market Intelligence Briefing ────────────────────────────────────────────
+
+BRIEFINGS_DIR = os.environ.get(
+    "BRIEFINGS_DIR",
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "polsia-fork", "data",
+    ),
+)
+
+@app.get("/api/hq/briefings")
+async def get_briefings(limit: int = 10):
+    """Return recent market intelligence briefings."""
+    import json
+    path = os.path.join(BRIEFINGS_DIR, "briefings.json")
+    if not os.path.exists(path):
+        return {"briefings": []}
+    with open(path) as f:
+        data = json.load(f)
+    return {"briefings": data[:limit]}
+
+@app.get("/briefing")
+async def briefing_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "briefing.html"))
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)
