@@ -193,6 +193,10 @@ async def summary():
         "crossbridge": await get_crossbridge_summary(),
     }
 
+@app.get("/crossbridge")
+async def crossbridge_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "crossbridge.html"))
+
 @app.get("/api/hq/crossbridge")
 async def get_crossbridge():
     return await get_crossbridge_summary()
@@ -210,14 +214,24 @@ async def get_crossbridge_summary():
             conv = await db.execute_fetchall(
                 "SELECT COUNT(*) as cnt, MAX(created_at) as last FROM conversions"
             )
+            daily_conv = await db.execute_fetchall(
+                "SELECT date(created_at) as d, COUNT(*) as c FROM conversions GROUP BY d ORDER BY d"
+            )
         total_users = len(users)
         active_users = sum(1 for u in users if u[4] == 1)
         total_conversions = conv[0][0] if conv else 0
         last_conversion = conv[0][1] if conv and conv[0][1] else None
         plan_dist = {}
+        user_list = []
         for u in users:
             p = u[2] or "free"
             plan_dist[p] = plan_dist.get(p, 0) + 1
+            user_list.append({
+                "id": u[0], "email": u[1], "plan": p,
+                "monthly_usage": u[3], "is_active": bool(u[4]),
+                "created_at": u[5],
+            })
+        daily_conversions = [{"date": r[0], "count": r[1]} for r in daily_conv]
         return {
             "status": "available",
             "total_users": total_users,
@@ -225,6 +239,8 @@ async def get_crossbridge_summary():
             "total_conversions": total_conversions,
             "last_conversion": last_conversion,
             "plan_distribution": plan_dist,
+            "users": user_list,
+            "daily_conversions": daily_conversions,
             "db_path": CROSSBRIDGE_DB,
         }
     except Exception as e:

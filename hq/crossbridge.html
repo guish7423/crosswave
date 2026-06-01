@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🌉 CrossBridge — CrossWave HQ</title>
+<link rel="stylesheet" href="/static/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+.kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center}
+.kpi-card .value{font-size:2rem;font-weight:700;color:var(--accent);margin:4px 0}
+.kpi-card .label{color:var(--fg-muted);font-size:.85rem}
+.kpi-card .sub{color:var(--fg-subtle);font-size:.75rem;margin-top:4px}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}
+.chart-box{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.chart-box h3{margin:0 0 12px;font-size:.95rem;color:var(--fg-muted)}
+.user-table{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;overflow-x:auto}
+.user-table table{width:100%;border-collapse:collapse;font-size:.85rem}
+.user-table th,.user-table td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+.user-table th{color:var(--fg-muted);font-weight:600;font-size:.8rem;text-transform:uppercase}
+.status-badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.75rem;font-weight:600}
+.status-active{background:rgba(52,199,89,.15);color:#34c759}
+.status-inactive{background:rgba(255,159,10,.15);color:#ff9f0a}
+.service-tag{display:inline-block;background:var(--accent);color:#fff;padding:2px 10px;border-radius:4px;font-size:.7rem;font-weight:600;letter-spacing:.3px}
+.mt-4{margin-top:24px}
+</style>
+</head>
+<body>
+  <!-- Nav -->
+  <div id="navPlaceholder"></div>
+  <script>fetch('/nav.html').then(r=>r.text()).then(h=>document.getElementById('navPlaceholder').innerHTML=h)</script>
+
+  <div class="container" style="max-width:1200px;margin:0 auto;padding:100px 24px 40px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <span class="service-tag">LIVE</span>
+      <h2 style="margin:0">🌉 CrossBridge — AI 翻译 SaaS</h2>
+    </div>
+    <p style="color:var(--fg-subtle);margin:0 0 24px;font-size:.9rem">
+      Railway 部署 · 中英互译 · 社交媒体发布 · Stripe 订阅
+    </p>
+
+    <!-- KPI row -->
+    <div class="kpi-grid" id="kpiRow">
+      <div class="kpi-card"><div class="value" id="kpiUsers">—</div><div class="label">总用户</div></div>
+      <div class="kpi-card"><div class="value" id="kpiActive">—</div><div class="label">活跃用户</div></div>
+      <div class="kpi-card"><div class="value" id="kpiConversions">—</div><div class="label">总转化</div></div>
+      <div class="kpi-card"><div class="value" id="kpiLastConv">—</div><div class="label">最近转化</div><div class="sub" id="kpiLastConvSub"></div></div>
+      <div class="kpi-card"><div class="value" id="kpiPlans">—</div><div class="label">计划数</div></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="chart-row">
+      <div class="chart-box"><h3>📊 计划分布</h3><canvas id="planChart" height="200"></canvas></div>
+      <div class="chart-box"><h3>📈 每日转化趋势</h3><canvas id="convChart" height="200"></canvas></div>
+    </div>
+
+    <!-- User table -->
+    <div class="user-table" id="userTableWrap">
+      <h3 style="margin:0 0 12px;font-size:.95rem;color:var(--fg-muted)">👤 用户列表</h3>
+      <div id="userTable"><p style="color:var(--fg-subtle)">加载中...</p></div>
+    </div>
+  </div>
+
+  <script>
+  const TOKEN = localStorage.getItem('hq_token');
+  const API = '/api/hq/crossbridge';
+  let planChart = null, convChart = null;
+
+  async function load(){
+    try{
+      const r = await fetch(API, {headers:{'X-HQ-Token':TOKEN||''}});
+      const d = await r.json();
+      if(d.status !== 'available'){ document.querySelector('.container').innerHTML = '<h2>❌ CrossBridge 不可用</h2>'; return; }
+
+      // KPI
+      document.getElementById('kpiUsers').textContent = d.total_users;
+      document.getElementById('kpiActive').textContent = d.active_users;
+      document.getElementById('kpiConversions').textContent = d.total_conversions;
+      document.getElementById('kpiLastConv').textContent = d.last_conversion ? new Date(d.last_conversion).toLocaleDateString('zh-CN') : '无';
+      document.getElementById('kpiLastConvSub').textContent = d.last_conversion ? new Date(d.last_conversion).toLocaleTimeString('zh-CN') : '';
+      const planKeys = Object.keys(d.plan_distribution);
+      document.getElementById('kpiPlans').textContent = planKeys.length;
+
+      // Plan doughnut
+      if(planChart) planChart.destroy();
+      const pCtx = document.getElementById('planChart').getContext('2d');
+      planChart = new Chart(pCtx, {
+        type: 'doughnut',
+        data: {
+          labels: planKeys.map(k => k === 'free' ? 'Free' : k.charAt(0).toUpperCase()+k.slice(1)),
+          datasets: [{
+            data: planKeys.map(k => d.plan_distribution[k]),
+            backgroundColor: ['#34c759','#007aff','#ff9f0a','#ff3b30','#5e5ce6'],
+            borderWidth: 0,
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#ccc', padding: 12 } } }
+        }
+      });
+
+      // Conversion trend line
+      if(convChart) convChart.destroy();
+      if(d.daily_conversions && d.daily_conversions.length){
+        const cCtx = document.getElementById('convChart').getContext('2d');
+        convChart = new Chart(cCtx, {
+          type: 'line',
+          data: {
+            labels: d.daily_conversions.map(r => r.date.slice(5)),
+            datasets: [{
+              label: '转化数',
+              data: d.daily_conversions.map(r => r.count),
+              borderColor: '#34c759',
+              backgroundColor: 'rgba(52,199,89,.1)',
+              fill: true,
+              tension: .4,
+              pointRadius: 4,
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false,
+            scales: { x: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,.05)' } },
+                     y: { ticks: { color: '#888', stepSize: 1 }, grid: { color: 'rgba(255,255,255,.05)' } } },
+            plugins: { legend: { display: false } }
+          }
+        });
+      } else {
+        document.getElementById('convChart').parentElement.innerHTML = '<h3>📈 每日转化趋势</h3><p style="color:var(--fg-subtle);text-align:center;padding:40px">暂无转化数据</p>';
+      }
+
+      // User table
+      if(d.users && d.users.length){
+        let html = `<table><thead><tr>
+          <th>邮箱</th><th>计划</th><th>月用量</th><th>状态</th><th>注册时间</th>
+        </tr></thead><tbody>`;
+        for(const u of d.users){
+          const active = u.is_active ? '<span class="status-badge status-active">活跃</span>' : '<span class="status-badge status-inactive">非活跃</span>';
+          const plan = u.plan === 'free' ? '免费' : u.plan.charAt(0).toUpperCase()+u.plan.slice(1);
+          html += `<tr><td>${u.email||'—'}</td><td>${plan}</td><td>${u.monthly_usage||0}</td><td>${active}</td><td>${u.created_at ? new Date(u.created_at).toLocaleDateString('zh-CN') : '—'}</td></tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('userTable').innerHTML = html;
+      } else {
+        document.getElementById('userTable').innerHTML = '<p style="color:var(--fg-subtle)">暂无用户</p>';
+      }
+    } catch(e){
+      document.querySelector('.container').innerHTML = '<h2>❌ 加载失败</h2><p style="color:var(--fg-subtle)">'+e.message+'</p>';
+    }
+  }
+
+  load();
+  setInterval(load, 30000);
+  </script>
+</body>
+</html>

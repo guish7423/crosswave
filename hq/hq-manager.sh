@@ -92,9 +92,13 @@ start_polsia() {
 
     echo "  → Polsia Fork (:8001)..."
     cd "$dir"
-    setsid bash -c "
+    env LLM_API_MOCK=false \
+        DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY:-}" \
+        VOLC_ENGINE_API_KEY="${VOLC_ENGINE_API_KEY:-}" \
+        setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
         export DATABASE_URL='sqlite+aiosqlite:///./polsia.db'
+        export LLM_API_MOCK=false
         exec \"$python\" -m uvicorn app.main:app --host 0.0.0.0 --port 8001
     " > "$logf" 2>&1 &
     write_pid "polsia" $!
@@ -111,9 +115,13 @@ start_celery_worker() {
     mkdir -p "$PID_DIR"
     echo "  → Celery Worker (3 queues)..."
     cd "$dir"
-    setsid bash -c "
+    env LLM_API_MOCK=false \
+        DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY:-}" \
+        VOLC_ENGINE_API_KEY="${VOLC_ENGINE_API_KEY:-}" \
+        setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
         export DATABASE_URL=sqlite+aiosqlite:///./polsia.db
+        export LLM_API_MOCK=false
         exec \"$python\" -m celery -A celery_app worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance
     " > "$logf" 2>&1 &
     write_pid "celery-worker" $!
@@ -133,8 +141,12 @@ start_celery_beat() {
 
     echo "  → Celery Beat (6 schedules)..."
     cd "$dir"
-    setsid bash -c "
+    env LLM_API_MOCK=false \
+        DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY:-}" \
+        VOLC_ENGINE_API_KEY="${VOLC_ENGINE_API_KEY:-}" \
+        setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
+        export LLM_API_MOCK=false
         exec \"$python\" -m celery -A celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     " > "$logf" 2>&1 &
     write_pid "celery-beat" $!
