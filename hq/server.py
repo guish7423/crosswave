@@ -29,7 +29,7 @@ POLSIA_PORT = int(os.environ.get("POLSIA_PORT", "8001"))
 HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
 HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
 
-CACHE = {"employees": [], "lines": [], "orders": [], "leads": [], "external_orders": [], "expenses": [], "revenue_history": [], "last_sync": None, "tasks": []}
+CACHE = {"employees": [], "lines": [], "orders": [], "leads": [], "external_orders": [], "proposals": [], "expenses": [], "revenue_history": [], "last_sync": None, "tasks": []}
 
 async def polsia_sync():
     if not os.path.exists(DB_PATH):
@@ -55,6 +55,9 @@ async def polsia_sync():
             )
             lead_rows = await db.execute_fetchall(
                 "SELECT id, name, email, company, product_interest, budget_range, message, status, source_page, created_at FROM leads ORDER BY created_at DESC LIMIT 100"
+            )
+            proposal_rows = await db.execute_fetchall(
+                "SELECT id, order_id, status, proposed_amount, currency, content, summary, proposal_metadata, created_at, updated_at FROM proposals ORDER BY created_at DESC LIMIT 100"
             )
             task_rows = await db.execute_fetchall(
                 "SELECT id, title, description, agent_type, priority, status, source, scheduled_date, result_summary, error_message, metadata_json, created_at, updated_at FROM tasks ORDER BY created_at DESC LIMIT 200"
@@ -133,6 +136,21 @@ async def polsia_sync():
         delivery_notes_raw = row[14] if len(row) > 14 else None
         ext_orders.append({"id": row[0], "title": row[1] or "", "platform": row[2] or "", "external_id": row[3] or "", "status": row[4] or "scanned", "budget_min": row[5], "budget_max": row[6], "currency": row[7] or "USD", "score": row[8], "score_reason": row[9] or "", "assigned_agent": row[10] or "", "created_at": row[11] or "", "deployment_plan": provider_notes_raw, "deliverables": json.loads(deliverables_raw) if isinstance(deliverables_raw, str) else (deliverables_raw or []), "delivery_notes": delivery_notes_raw or ""})
     CACHE["external_orders"] = ext_orders
+    proposals = []
+    for row in proposal_rows:
+        meta_raw = row[7] if len(row) > 7 else None
+        proposals.append({
+            "id": row[0], "order_id": row[1],
+            "status": row[2] or "draft",
+            "proposed_amount": row[3],
+            "currency": row[4] or "USD",
+            "content": row[5] or "",
+            "summary": row[6] or "",
+            "proposal_metadata": json.loads(meta_raw) if isinstance(meta_raw, str) else (meta_raw or {}),
+            "created_at": row[8] or "",
+            "updated_at": row[9] or "",
+        })
+    CACHE["proposals"] = proposals
     full_tasks = []
     for r in task_rows:
         full_tasks.append({
@@ -191,6 +209,7 @@ async def summary():
         "mrr": total_mrr,
         "customers": total_customers,
         "leads": {"total": len(CACHE["leads"]), "new": len([l for l in CACHE["leads"] if l["status"] == "new"])},
+        "proposals": {p["status"]: len([x for x in CACHE.get("proposals", []) if x["status"] == p["status"]]) for p in [{"status":s} for s in ("draft","sent","replied","negotiating","won","lost")]},
         "last_sync": CACHE["last_sync"],
         "crossbridge": await get_crossbridge_summary(),
     }
@@ -278,9 +297,37 @@ async def get_external_orders(platform: str = "", status: str = ""):
     return {"data": items, "total": len(items)}
 
 
+@app.get("/api/hq/proposals")
+async def get_proposals(status: str = ""):
+    items = CACHE.get("proposals", [])
+    if status:
+        items = [p for p in items if p.get("status") == status]
+    return {"data": items, "total": len(items)}
+
+
+@app.get("/proposals")
+async def proposals_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "proposals.html"))
+
+
 @app.get("/api/hq/lines")
 async def get_lines():
     return {"data": CACHE["lines"]}
+
+@app.post("/api/hq/proxy/patch")
+async def proxy_patch(request: Request):
+    """Proxy PATCH requests to Polsia Fork API (for status updates)."""
+    body = await request.json()
+    path = body.get("path", "")
+    params = body.get("params", {})
+    url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1{path}"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.patch(url, params=params, headers={"X-API-Key": "dev-key"})
+            return JSONResponse(content=resp.json(), status_code=resp.status_code)
+    except Exception as e:
+        raise HTTPException(502, f"Polsia proxy failed: {e}")
+
 
 @app.get("/api/hq/sync")
 async def trigger_sync():
@@ -723,6 +770,11 @@ async def global_search(q: str = ""):
         if ql in e.get("name", "").lower() or ql in e.get("role", "").lower():
             results.append({"module": "employees", "label": f"Employee: {e['name']} — {e.get('role','')}",
                             "url": "/employees", "status": e.get("status", "")})
+    # Proposals
+    for p in CACHE.get("proposals", []):
+        if ql in str(p.get("summary", "")).lower() or ql in str(p.get("status", "")).lower():
+            results.append({"module": "proposals", "label": f"Proposal #{p['id']}: {p.get('summary','')[:60]}",
+                            "url": "/proposals", "status": p.get("status", "")})
     return {"data": results[:20], "total": len(results)}
 
 
@@ -816,11 +868,13 @@ async def get_notifications():
     new_leads = len([l for l in CACHE["leads"] if l.get("status") == "new"])
     pending_orders = len([o for o in CACHE.get("external_orders", []) if o.get("status") in ("pending", "scanned")])
     active_internal = len([o for o in CACHE["orders"] if o.get("status") in ("pending", "in_progress")])
+    draft_proposals = len([p for p in CACHE.get("proposals", []) if p.get("status") in ("draft", "sent")])
     return {
         "new_leads": new_leads,
         "pending_external_orders": pending_orders,
         "active_tasks": active_internal,
-        "total": new_leads + pending_orders + active_internal,
+        "draft_proposals": draft_proposals,
+        "total": new_leads + pending_orders + active_internal + draft_proposals,
     }
 
 

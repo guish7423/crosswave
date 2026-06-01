@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proposals — CrossWave HQ</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="container">
+    <div class="page-header">
+      <h1>📋 Proposals</h1>
+      <div class="subtitle">AI-generated sales proposals for external orders</div>
+    </div>
+
+    <div class="kpi-row" id="kpi">
+      <div class="kpi-card"><div class="kpi-value" id="kpi-total">—</div><div class="kpi-label">Total</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi-draft">—</div><div class="kpi-label">Draft</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi-sent">—</div><div class="kpi-label">Sent</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi-replied">—</div><div class="kpi-label">Replied</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi-won" style="border-left-color:var(--green)">—</div><div class="kpi-label">Won</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi-lost" style="border-left-color:var(--red)">—</div><div class="kpi-label">Lost</div></div>
+    </div>
+
+    <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="filter-btn active" data-filter="">All</button>
+      <button class="filter-btn" data-filter="draft">Draft</button>
+      <button class="filter-btn" data-filter="sent">Sent</button>
+      <button class="filter-btn" data-filter="replied">Replied</button>
+      <button class="filter-btn" data-filter="negotiating">Negotiating</button>
+      <button class="filter-btn" data-filter="won">Won</button>
+      <button class="filter-btn" data-filter="lost">Lost</button>
+    </div>
+
+    <div id="content"><div class="loading">Loading...</div></div>
+  </div>
+  <script>
+  const TOKEN = localStorage.getItem('hq_token') || '';
+  let currentFilter = '';
+
+  async function load() {
+    try {
+      const [dataR, summaryR] = await Promise.all([
+        fetch('/api/hq/proposals' + (currentFilter ? '?status=' + currentFilter : ''), {headers:{'X-HQ-Token':TOKEN}}),
+        fetch('/api/hq/summary', {headers:{'X-HQ-Token':TOKEN}}),
+      ]);
+      const data = await dataR.json();
+      const summary = await summaryR.json();
+
+      document.getElementById('kpi-total').textContent = data.total;
+      const totals = summary.proposals || {};
+      document.getElementById('kpi-draft').textContent = totals.draft || 0;
+      document.getElementById('kpi-sent').textContent = totals.sent || 0;
+      document.getElementById('kpi-replied').textContent = totals.replied || 0;
+      document.getElementById('kpi-won').textContent = totals.won || 0;
+      document.getElementById('kpi-lost').textContent = totals.lost || 0;
+
+      const container = document.getElementById('content');
+      if (!data.data || data.data.length === 0) {
+        container.innerHTML = '<div class="empty-state">No proposals yet. <a href="/orders">Accept an order</a> to auto-generate a proposal.</div>';
+        return;
+      }
+      container.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Order</th><th>Status</th><th>Amount</th><th>Summary</th><th>Created</th><th>Actions</th></tr></thead><tbody>' +
+        data.data.map(p => {
+          const statusLabels = {draft:'Draft',sent:'Sent',replied:'Replied',negotiating:'Negotiating',won:'Won',lost:'Lost'};
+          const statusColors = {draft:'accent',sent:'accent',replied:'amber',negotiating:'amber',won:'green',lost:'red'};
+          return `<tr>
+            <td><a href="/orders" style="color:var(--accent);text-decoration:none;font-weight:600">Order #${p.order_id}</a></td>
+            <td><span class="badge-${statusColors[p.status]||'accent'}">${statusLabels[p.status]||p.status}</span></td>
+            <td>${p.currency || 'USD'} ${p.proposed_amount || '—'}</td>
+            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.summary || '')}</td>
+            <td>${p.created_at ? p.created_at.slice(0,10) : '—'}</td>
+            <td><button class="action-btn" onclick="viewProposal(${p.id})">View</button></td>
+          </tr>`;
+        }).join('') + '</tbody></table></div>';
+    } catch(e) {
+      document.getElementById('content').innerHTML = '<div class="error-state">Failed to load proposals</div>';
+    }
+  }
+
+  function viewProposal(id) {
+    const p = document.querySelector(`[data-proposal-id="${id}"]`);
+    // Fetch and show proposal detail in a modal
+    fetch(`/api/hq/proposals`, {headers:{'X-HQ-Token':TOKEN}})
+      .then(r => r.json())
+      .then(d => {
+        const prop = d.data.find(x => x.id === id);
+        if (!prop) return;
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px';
+        overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+        const modal = document.createElement('div');
+        modal.style.cssText = 'background:var(--surface);border-radius:var(--radius);max-width:720px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+        const statusLabels = {draft:'Draft',sent:'Sent',replied:'Replied',negotiating:'Negotiating',won:'Won',lost:'Lost'};
+        modal.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)">
+            <div><strong>Proposal #${prop.id}</strong> for Order #${prop.order_id} <span class="badge-${prop.status === 'won' ? 'green' : prop.status === 'lost' ? 'red' : 'accent'}">${statusLabels[prop.status]||prop.status}</span></div>
+            <button style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-dim)" onclick="this.closest('div[style]').parentElement.parentElement.remove()">✕</button>
+          </div>
+          <div style="padding:20px;overflow:auto;font-size:14px;line-height:1.7;white-space:pre-wrap">${esc(prop.content || 'No content')}</div>
+          <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+            ${prop.status === 'draft' ? `<button class="action-btn" onclick="quickAction(${prop.id},'sent')">Mark Sent</button>` : ''}
+            ${prop.status === 'sent' ? `<button class="action-btn" onclick="quickAction(${prop.id},'replied')">Mark Replied</button>` : ''}
+            ${prop.status === 'replied' || prop.status === 'negotiating' ? `<button class="action-btn" style="background:var(--green-soft);color:var(--green)" onclick="quickAction(${prop.id},'won')">Won 🎉</button><button class="action-btn" style="background:oklch(0.60 0.20 20 / 0.08);color:var(--red)" onclick="quickAction(${prop.id},'lost')">Lost</button>` : ''}
+            <button class="action-btn" onclick="this.closest('div[style]').parentElement.parentElement.remove()">Close</button>
+          </div>
+        `;
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+      });
+  }
+
+  async function quickAction(id, status) {
+    await fetch('/api/hq/proxy/patch', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-HQ-Token':TOKEN},
+      body: JSON.stringify({path:`/api/v1/proposals/${id}/status`, params:{status}})
+    });
+    load();
+    // Close any open modals
+    document.querySelectorAll('div[style*="position:fixed"]').forEach(el => el.remove());
+  }
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      currentFilter = this.dataset.filter;
+      load();
+    });
+  });
+
+  function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  load();
+  setInterval(load, 30000);
+  </script>
+</body>
+</html>
