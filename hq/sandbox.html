@@ -98,55 +98,51 @@
 
   <!-- Safety rules -->
   <h2 style="margin-top:2rem;">📋 安全规则配置</h2>
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;">
+    <p style="font-size:.9rem;color:var(--text-muted);">
+      🟢 <strong>生产模式</strong> — 仅保留核心风控规则，18/19 个 Agent 已释放自主运行
+    </p>
+  </div>
   <div class="rule-grid">
     <div class="rule-card">
       <span class="rule-level level-block">BLOCK</span>
       <h4 style="margin:.5rem 0 .25rem;">禁止删除</h4>
-      <p style="font-size:.85rem;color:var(--text-muted);">沙盒模式下阻止任何记录删除操作</p>
+      <p style="font-size:.85rem;color:var(--text-muted);">阻止任何记录删除操作（数据安全红线）</p>
     </div>
     <div class="rule-card">
       <span class="rule-level level-approval">APPROVAL</span>
       <h4 style="margin:.5rem 0 .25rem;">财务变更审批</h4>
-      <p style="font-size:.85rem;color:var(--text-muted);">Finance/Deployment Agent 的操作需要人工审批</p>
+      <p style="font-size:.85rem;color:var(--text-muted);">仅 Finance Agent 的预算操作需人工审批</p>
     </div>
     <div class="rule-card">
       <span class="rule-level level-approval">APPROVAL</span>
-      <h4 style="margin:.5rem 0 .25rem;">外部通信审批</h4>
-      <p style="font-size:.85rem;color:var(--text-muted);">社媒/邮件/广告 Agent 的外部通信需审批</p>
-    </div>
-    <div class="rule-card">
-      <span class="rule-level level-approval">APPROVAL</span>
-      <h4 style="margin:.5rem 0 .25rem;">高价值订单审批</h4>
-      <p style="font-size:.85rem;color:var(--text-muted);">订单 ¥5,000 及以上需要人工审批</p>
-    </div>
-    <div class="rule-card">
-      <span class="rule-level level-warn">WARN</span>
-      <h4 style="margin:.5rem 0 .25rem;">Agent 触发审计</h4>
-      <p style="font-size:.85rem;color:var(--text-muted);">所有 Agent 触发操作均被记录审计日志</p>
+      <h4 style="margin:.5rem 0 .25rem;">高价值订单(≥¥10K)</h4>
+      <p style="font-size:.85rem;color:var(--text-muted);">订单 ¥10,000 及以上需要人工审批</p>
     </div>
   </div>
 </div>
 
 <script>
-// Agent → Rule mapping (mirrors base.py _AGENT_SANDBOX_RULES)
+// Agent → Rule mapping (mirrors base.py _AGENT_SANDBOX_RULES — production mode)
+// 18/19 agents free. Only finance still guarded.
 const AGENT_RULES = {
-  'finance': { rule: 'finance_change', level: 'approval', label: '财务变更审批' },
-  'deployment': { rule: 'finance_change', level: 'approval', label: '财务变更审批' },
-  'deploy_agent': { rule: 'finance_change', level: 'approval', label: '财务变更审批' },
-  'email_outreach': { rule: 'external_comms', level: 'approval', label: '外部通信审批' },
-  'social_media': { rule: 'external_comms', level: 'approval', label: '外部通信审批' },
-  'ads_management': { rule: 'external_comms', level: 'approval', label: '外部通信审批' },
-  'customer_support': { rule: 'external_comms', level: 'approval', label: '外部通信审批' },
-  'lead_nurturing': { rule: 'external_comms', level: 'approval', label: '外部通信审批' },
-  'order_fulfiller': { rule: 'order_fulfill', level: 'approval', label: '订单执行审批' },
-  'order_scanner': { rule: 'warn_trigger', level: 'warn', label: '触发审计日志' },
-  'orchestrator': { rule: null, level: 'allow', label: '无限制' },
-  'competitor_research': { rule: null, level: 'allow', label: '无限制' },
-  'business_planning': { rule: null, level: 'allow', label: '无限制' },
-  'code_generation': { rule: null, level: 'allow', label: '无限制' },
-  'market_intel': { rule: null, level: 'allow', label: '无限制' },
-  'monitor': { rule: null, level: 'allow', label: '无限制' },
-  'evolution': { rule: null, level: 'allow', label: '无限制' },
+  'finance': { rule: 'finance_change', level: 'approval', label: '财务预算审批' },
+  'deployment': { rule: null, level: 'allow', label: '✅ 已释放 — 自主运行' },
+  'deploy_agent': { rule: null, level: 'allow', label: '✅ 已释放 — 自主运行' },
+  'email_outreach': { rule: null, level: 'allow', label: '✅ 已释放 — 自主运行' },
+  'social_media': { rule: null, level: 'allow', label: '✅ 已释放 — 自主运行' },
+  'ads_management': { rule: null, level: 'allow', label: '✅ 已释放 — 自主运行' },
+  'customer_support': { rule: null, level: 'allow', label: '✅ 已释放 — 自主运行' },
+  'lead_nurturing': { rule: null, level: 'allow', label: '✅ 已释放 — 自主运行' },
+  'order_fulfiller': { rule: null, level: 'allow', label: '✅ 已释放 — 自主运行' },
+  'order_scanner': { rule: null, level: 'allow', label: '✅ 已释放 — 自主运行' },
+  'orchestrator': { rule: null, level: 'allow', label: '✅ 自主运行' },
+  'competitor_research': { rule: null, level: 'allow', label: '✅ 自主运行' },
+  'business_planning': { rule: null, level: 'allow', label: '✅ 自主运行' },
+  'code_generation': { rule: null, level: 'allow', label: '✅ 自主运行' },
+  'market_intel': { rule: null, level: 'allow', label: '✅ 自主运行' },
+  'monitor': { rule: null, level: 'allow', label: '✅ 自主运行' },
+  'evolution': { rule: null, level: 'allow', label: '✅ 自主运行' },
 };
 
 const LEVEL_COLORS = { approval: '#f59e0b', block: '#ef4444', warn: '#6366f1', allow: '#22c55e' };
