@@ -1214,7 +1214,7 @@ async def hq_execute_deploy(order_id: int):
     polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/orders/external/{order_id}/execute-deploy"
     try:
         async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(polsia_url)
+            r = await client.post(polsia_url, headers={"X-API-Key": "dev-key"})
             return r.json()
     except Exception as e:
         return {"error": str(e)}
@@ -1226,7 +1226,7 @@ async def hq_execution_status(order_id: int):
     polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/orders/external/{order_id}/execution-status"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(polsia_url)
+            r = await client.get(polsia_url, headers={"X-API-Key": "dev-key"})
             return r.json()
     except Exception as e:
         return {"error": str(e)}
