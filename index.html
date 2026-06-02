@@ -225,20 +225,51 @@
     .f-bottom{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-dim)}
 
     /* ── Responsive ── */
+    /* Hamburger */
+    .hamburger{display:none;flex-direction:column;cursor:pointer;padding:4px;background:none;border:none;gap:5px}
+    .hamburger span{display:block;width:24px;height:2px;background:var(--ink);border-radius:2px;transition:.3s}
+    .nav-mobile-open{display:flex!important;flex-direction:column;position:absolute;top:64px;left:0;right:0;background:oklch(0.985 0.003 260 / .98);backdrop-filter:blur(12px);padding:16px 24px 24px;border-bottom:1px solid var(--border);gap:12px}
+
+    @media(max-width:900px){
+      .hero h1{font-size:clamp(28px,6vw,40px)}
+      .hero p{font-size:15px}
+      .hero-btns{flex-direction:column;align-items:stretch;gap:12px}
+      .hero-btns .btn{text-align:center}
+      .hero-metrics{grid-template-columns:repeat(3,1fr);gap:16px}
+      .hero-metrics span{font-size:22px}
+    }
     @media(max-width:768px){
+      .hamburger{display:flex}
+      .nav-links{display:none}
+      nav .container{height:56px}
       .steps,.products,.about-grid,.pricing{grid-template-columns:1fr}
       .polis-grid{grid-template-columns:repeat(3,1fr)}
       .dash-grid{grid-template-columns:repeat(3,1fr)}
       .hero-metrics{gap:24px}
-      nav .container{height:56px}
-      .nav-links{display:none}
       .about-values{grid-template-columns:1fr}
       footer .container{grid-template-columns:1fr 1fr}
       .dash-preview{padding:20px}
+      section{padding:48px 0}
+      section h2{font-size:24px}
+      .blog-grid{grid-template-columns:1fr}
+      .case-grid{grid-template-columns:1fr}
+      .deploy-sub .btn{width:100%;text-align:center}
+      .pricing-card{max-width:400px;margin:0 auto}
+    }
+    @media(max-width:600px){
+      .hero h1{font-size:24px}
+      .hero-sub{font-size:14px}
+      .hero-metrics{grid-template-columns:1fr 1fr;gap:12px}
+      .hero-metrics span{font-size:20px}
+      .hero-metrics label{font-size:11px}
+      footer .container{grid-template-columns:1fr;gap:24px}
+      .f-bottom{flex-direction:column;align-items:center;text-align:center}
+      .hero{padding:48px 0 32px}
     }
     @media(max-width:480px){
       .polis-grid,.dash-grid{grid-template-columns:repeat(2,1fr)}
       .pricing{grid-template-columns:1fr}
+      .nav-logo{font-size:16px}
     }
   </style>
   <script type="application/ld+json">
@@ -273,7 +304,10 @@
 <nav>
   <div class="container">
     <span class="nav-logo">✦ CrossWave</span>
-    <div class="nav-links">
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="navLinks">
       <a href="#products">Products</a>
       <a href="#how-it-works">How It Works</a>
       <a href="https://blog.crosswave.app">Blog</a>
@@ -989,6 +1023,25 @@ async function submitInquiry() {
     btn.disabled = false; btn.textContent = 'Send Inquiry →';
   }
 }
+
+// ── Hamburger toggle ──
+document.getElementById('hamburger')?.addEventListener('click', function() {
+  document.getElementById('navLinks').classList.toggle('nav-mobile-open');
+});
+
+// ── Smooth scroll for anchor links ──
+document.addEventListener('click', function(e) {
+  const link = e.target.closest('a[href^="#"]');
+  if (!link) return;
+  e.preventDefault();
+  const id = link.getAttribute('href').slice(1);
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({behavior: 'smooth', block: 'start'});
+    // Close mobile nav
+    document.getElementById('navLinks')?.classList.remove('nav-mobile-open');
+  }
+});
 </script>
 
 </body>
