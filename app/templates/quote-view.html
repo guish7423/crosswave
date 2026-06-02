@@ -258,9 +258,15 @@
             <h3 class="cn" style="font-weight:700;font-size:20px;margin-bottom:4px">报价已接受！</h3>
             <p class="cn" style="font-size:14px;opacity:.8">你的项目部署已经开始</p>
             {% if proposal.get('order_id') %}
-            <a href="http://127.0.0.1:13001/portal/{{ proposal.order_id }}" target="_blank" style="display:inline-block;margin-top:12px;padding:10px 24px;background:rgba(0,0,0,.15);color:#000;border-radius:8px;font-weight:700;font-size:14px;text-decoration:none">
-              📊 查看项目进度 →
-            </a>
+            <div id="execution-status" style="margin-top:12px">
+              <div style="display:inline-block;padding:8px 20px;background:rgba(0,0,0,.1);color:#000;border-radius:8px;font-size:13px;cursor:pointer" onclick="checkExecution({{ proposal.order_id }})">
+                ⚡ 查看部署状态
+              </div>
+              <div id="execution-detail" style="display:none;margin-top:12px;background:rgba(0,0,0,.08);border-radius:8px;padding:16px;text-align:left;font-size:13px">
+                <div id="execution-loading" style="text-align:center;color:rgba(0,0,0,.6)">加载中...</div>
+                <div id="execution-content" style="display:none"></div>
+              </div>
+            </div>
             {% endif %}
           </div>
         {% elif pstatus == 'lost' %}
@@ -369,7 +375,11 @@
             if (orderId) {
               planLink += '<br><a href="http://127.0.0.1:13001/portal/' + orderId + '" target="_blank" style="display:inline-block;margin-top:10px;padding:8px 20px;background:var(--green);color:#000;border-radius:6px;font-weight:600;font-size:13px;text-decoration:none">📊 查看项目进度</a>';
             }
-            msgEl.innerHTML = '<strong style="color:var(--green)">✓ 报价已接受！</strong><br>我们将立即开始执行你的订单。' + planLink;
+            msgEl.innerHTML = '<strong style="color:var(--green)">✓ 报价已接受！</strong><br>正在生成部署包...' + planLink;
+            // Auto-trigger deploy execution
+            if (orderId) {
+              fetch('/api/v1/_proxy/execute-deploy/' + orderId, {method:'POST'}).catch(function(){});
+            }
             setTimeout(function(){ location.reload(); }, 4000);
           } else {
             msgEl.textContent = '提交失败，请重试或联系客服。';
@@ -398,6 +408,56 @@
           document.getElementById('modal-actions').style.display = 'flex';
         });
     }
+  }
+
+  function checkExecution(orderId) {
+    var detail = document.getElementById('execution-detail');
+    var loading = document.getElementById('execution-loading');
+    var content = document.getElementById('execution-content');
+    detail.style.display = 'block';
+    loading.style.display = 'block';
+    content.style.display = 'none';
+    fetch('/api/v1/_proxy/execution-status/' + orderId)
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        var state = data.state || 'pending';
+        var icons = {pending:'⏳', running:'🔄', completed:'✅', failed:'❌'};
+        var html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+          '<span>' + (icons[state] || '⏳') + '</span>' +
+          '<strong style="text-transform:capitalize">' + state + '</strong>';
+        if (data.file_count !== undefined) {
+          html += '<span style="margin-left:auto;color:rgba(0,0,0,.5)">' + data.file_count + ' files</span>';
+        }
+        if (data.archive_size) {
+          var size = (data.archive_size / 1024).toFixed(1) + ' KB';
+          html += '<span style="margin-left:8px;color:rgba(0,0,0,.5)">· ' + size + '</span>';
+        }
+        html += '</div>';
+        if (data.files && data.files.length > 0) {
+          html += '<div style="background:rgba(0,0,0,.06);border-radius:6px;padding:10px;font-family:monospace;font-size:12px;max-height:200px;overflow-y:auto">';
+          data.files.forEach(function(f){
+            html += '<div style="padding:2px 0">📄 ' + f.name + ' <span style="color:rgba(0,0,0,.4)">(' + (f.size/1024).toFixed(1) + ' KB)</span></div>';
+          });
+          html += '</div>';
+        }
+        if (data.state === 'completed') {
+          html += '<div style="margin-top:10px;text-align:center">' +
+            '<span style="display:inline-block;padding:4px 12px;background:rgba(0,0,0,.1);border-radius:4px;font-size:12px">✅ 部署包已就绪</span>' +
+            '</div>';
+        }
+        if (data.log && data.state === 'failed') {
+          html += '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12px;color:rgba(0,0,0,.5)">查看日志</summary>' +
+            '<pre style="margin-top:4px;padding:8px;background:rgba(0,0,0,.06);border-radius:4px;font-size:11px;max-height:120px;overflow:auto;white-space:pre-wrap">' + data.log.slice(-500) + '</pre></details>';
+        }
+        content.innerHTML = html;
+      })
+      .catch(function(){
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        content.innerHTML = '<span style="color:rgba(0,0,0,.5)">暂时无法获取部署状态</span>';
+      });
   }
 
   (function(){

@@ -144,6 +144,12 @@ class PolsiaClient:
     async def reject_proposal(self, token: str, reason: str = "") -> dict | list:
         return await self._post(f"/api/v1/proposals/by-token/{token}/reject", {"reason": reason})
 
+    async def execute_deploy(self, order_id: int) -> dict | list:
+        return await self._post(f"/api/v1/orders/external/{order_id}/execute-deploy", {})
+
+    async def get_execution_status(self, order_id: int) -> dict | list:
+        return await self._get(f"/api/v1/orders/external/{order_id}/execution-status")
+
     async def get_analytics(self) -> dict:
         """Aggregate task data into chart-friendly analytics."""
         tasks = await self.get_tasks()

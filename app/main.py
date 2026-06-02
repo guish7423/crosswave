@@ -106,6 +106,18 @@ async def proxy_reject_proposal(view_token: str, data: dict = {}):
     return result
 
 
+@app.post("/api/v1/_proxy/execute-deploy/{order_id}")
+async def proxy_execute_deploy(order_id: int):
+    result = await polsia_client.execute_deploy(order_id)
+    return result
+
+
+@app.get("/api/v1/_proxy/execution-status/{order_id}")
+async def proxy_execution_status(order_id: int):
+    result = await polsia_client.get_execution_status(order_id)
+    return result
+
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     summary = await polsia_client.get_dashboard_summary()

@@ -1207,6 +1207,31 @@ async def hq_sandbox_cleanup(hours: int = 72):
         return {"error": str(e)}
 
 
+# ─── Deploy Execution (部署执行) ──────────────────────────────────────────────
+@app.post("/api/hq/orders/{order_id}/execute-deploy")
+async def hq_execute_deploy(order_id: int):
+    """Proxy: trigger deployment execution for an order."""
+    polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/orders/external/{order_id}/execute-deploy"
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            r = await client.post(polsia_url)
+            return r.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/hq/orders/{order_id}/execution-status")
+async def hq_execution_status(order_id: int):
+    """Proxy: get deployment execution status."""
+    polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/orders/external/{order_id}/execution-status"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(polsia_url)
+            return r.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
 # ─── Task Board (任务管理) ──────────────────────────────────────────────────
 @app.get("/api/hq/tasks")
 async def get_tasks(status: str = "", agent: str = "", search: str = ""):
