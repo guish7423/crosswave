@@ -111,6 +111,14 @@ async def proxy_create_checkout(order_id: int):
     result = await polsia_client.create_checkout(order_id)
     return result
 
+@app.post("/api/v1/_proxy/product-checkout")
+async def proxy_product_checkout(data: dict):
+    result = await polsia_client.create_product_checkout(
+        data.get("product_key", ""),
+        data.get("customer_email", ""),
+    )
+    return result
+
 @app.post("/api/v1/_proxy/execute-deploy/{order_id}")
 async def proxy_execute_deploy(order_id: int):
     result = await polsia_client.execute_deploy(order_id)

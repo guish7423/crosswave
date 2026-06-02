@@ -147,6 +147,13 @@ class PolsiaClient:
     async def execute_deploy(self, order_id: int) -> dict | list:
         return await self._post(f"/api/v1/orders/external/{order_id}/execute-deploy", {})
 
+    async def create_product_checkout(self, product_key: str, customer_email: str = "") -> dict | list:
+        """Direct product purchase from pricing page Buy Now buttons."""
+        return await self._post("/api/v1/create-product-checkout", {
+            "product_key": product_key,
+            "customer_email": customer_email,
+        })
+
     async def create_checkout(self, order_id: int) -> dict | list:
         return await self._post(f"/api/v1/orders/{order_id}/create-checkout", {})
 

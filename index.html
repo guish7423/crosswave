@@ -665,26 +665,37 @@ async function submitQuickQuote(e){
 </section>
 
 <script>
-// ── Stripe Payment Links (fill these in after creating Payment Links in Stripe Dashboard) ──
-const STRIPE_LINKS = {
-  basic: '',
-  standard: '',
-  enterprise: '',
-};
-const FALLBACK_EMAIL = 'hello@crosswave.app';
+// ── Direct Buy: Stripe Checkout via API ──
+const PRODUCT_KEYS = { basic: 'crossdeploy-basic', standard: 'crossdeploy-standard', enterprise: 'crossdeploy-enterprise' };
 
 function initPaymentButtons() {
   const tiers = ['basic', 'standard', 'enterprise'];
   tiers.forEach(tier => {
     const btn = document.getElementById('pay-' + tier);
     if (!btn) return;
-    if (STRIPE_LINKS[tier]) {
-      btn.href = STRIPE_LINKS[tier];
-      btn.target = '_blank';
-    } else {
-      btn.href = 'mailto:' + FALLBACK_EMAIL + '?subject=CrossDeploy%20' + tier.charAt(0).toUpperCase() + tier.slice(1);
-      btn.textContent = 'Contact Sales';
-    }
+    btn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const text = this.textContent;
+      this.textContent = 'Processing…';
+      this.style.opacity = '0.6';
+      try {
+        const resp = await fetch('/api/v1/_proxy/product-checkout', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ product_key: PRODUCT_KEYS[tier] })
+        });
+        const data = await resp.json();
+        if (data.checkout_url) {
+          window.location.href = data.checkout_url;
+        } else {
+          this.textContent = 'Contact Sales';
+          this.href = 'mailto:hello@crosswave.app?subject=CrossDeploy%20' + tier.charAt(0).toUpperCase() + tier.slice(1);
+        }
+      } catch(e) {
+        this.textContent = 'Contact Sales';
+        this.href = 'mailto:hello@crosswave.app?subject=CrossDeploy%20' + tier.charAt(0).toUpperCase() + tier.slice(1);
+      }
+    });
   });
 }
 initPaymentButtons();
