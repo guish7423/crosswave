@@ -147,6 +147,9 @@ class PolsiaClient:
     async def execute_deploy(self, order_id: int) -> dict | list:
         return await self._post(f"/api/v1/orders/external/{order_id}/execute-deploy", {})
 
+    async def create_checkout(self, order_id: int) -> dict | list:
+        return await self._post(f"/api/v1/orders/{order_id}/create-checkout", {})
+
     async def get_execution_status(self, order_id: int) -> dict | list:
         return await self._get(f"/api/v1/orders/external/{order_id}/execution-status")
 

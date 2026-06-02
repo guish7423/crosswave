@@ -106,6 +106,11 @@ async def proxy_reject_proposal(view_token: str, data: dict = {}):
     return result
 
 
+@app.post("/api/v1/_proxy/create-checkout/{order_id}")
+async def proxy_create_checkout(order_id: int):
+    result = await polsia_client.create_checkout(order_id)
+    return result
+
 @app.post("/api/v1/_proxy/execute-deploy/{order_id}")
 async def proxy_execute_deploy(order_id: int):
     result = await polsia_client.execute_deploy(order_id)
