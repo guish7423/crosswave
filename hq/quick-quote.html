@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>快速报价 — CrossWave HQ</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+.funnel-bar { display:flex; align-items:center; gap:12px; margin:8px 0; }
+.funnel-label { width:140px; text-align:right; font-size:13px; color:#b0b0b0; }
+.funnel-track { flex:1; height:32px; background:#1e293b; border-radius:6px; overflow:hidden; }
+.funnel-fill { height:100%; border-radius:6px; display:flex; align-items:center; padding-left:12px; font-size:12px; color:#fff; transition:width .6s ease; }
+.funnel-count { min-width:60px; font-size:13px; font-weight:600; color:#e0e0e0; }
+.card-green { border-left:3px solid #22c55e !important; }
+.card-blue { border-left:3px solid #3b82f6 !important; }
+.card-amber { border-left:3px solid #f59e0b !important; }
+.card-purple { border-left:3px solid #a855f7 !important; }
+.card-rose { border-left:3px solid #f43f5e !important; }
+.lead-row { display:flex; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid #1e293b; font-size:13px; }
+.lead-row:last-child { border-bottom:none; }
+.lead-row .badge { font-size:11px; }
+</style>
+</head>
+<body>
+<nav id="nav"></nav>
+<div class="layout">
+  <header class="page-header"><h1>📊 快速报价分析</h1></header>
+
+  <div class="kpi-row" id="kpi-row">
+    <div class="card card-green"><div class="card-label">总线索</div><div class="card-value" id="kpi-leads">—</div></div>
+    <div class="card card-blue"><div class="card-label">转化订单</div><div class="card-value" id="kpi-orders">—</div></div>
+    <div class="card card-amber"><div class="card-label">已发提案</div><div class="card-value" id="kpi-sent">—</div></div>
+    <div class="card card-purple"><div class="card-label">成交金额</div><div class="card-value" id="kpi-revenue">¥—</div></div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Funnel -->
+    <div class="card">
+      <h3 style="margin:0 0 16px; font-size:15px;">🔄 转化漏斗</h3>
+      <div id="funnel-container"></div>
+      <div class="insight-card" style="margin-top:16px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:13px;">
+          <div><span style="color:#94a3b8;">线索→订单</span><br><strong id="pct-l2o">—%</strong></div>
+          <div><span style="color:#94a3b8;">订单→提案</span><br><strong id="pct-o2p">—%</strong></div>
+          <div><span style="color:#94a3b8;">提案→已发</span><br><strong id="pct-p2s">—%</strong></div>
+          <div><span style="color:#94a3b8;">提案→成交</span><br><strong id="pct-p2w">—%</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Trend -->
+    <div class="card">
+      <h3 style="margin:0 0 16px; font-size:15px;">📈 每月趋势</h3>
+      <canvas id="trend-chart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent Quick Quote Leads -->
+  <div class="card" style="margin-top:16px;">
+    <h3 style="margin:0 0 12px; font-size:15px;">📋 最近询价</h3>
+    <div id="leads-table"><div class="loading">加载中…</div></div>
+  </div>
+</div>
+
+<script>
+const TOKEN = localStorage.getItem('hq_token');
+const HEADERS = {'X-HQ-Token': TOKEN};
+
+async function loadNav() {
+  const r = await fetch('/nav-partial', {headers: HEADERS});
+  if (r.ok) document.getElementById('nav').innerHTML = await r.text();
+}
+loadNav();
+
+async function loadData() {
+  try {
+    const r = await fetch('/api/hq/quick-quote-analytics', {headers: HEADERS});
+    if (r.status === 401) { window.location.href = '/login'; return; }
+    if (!r.ok) return;
+    const d = await r.json();
+    render(d);
+  } catch(e) { console.error(e); }
+}
+
+function render(d) {
+  const s = d.summary;
+  document.getElementById('kpi-leads').textContent = s.total_leads;
+  document.getElementById('kpi-orders').textContent = s.total_orders;
+  document.getElementById('kpi-sent').textContent = s.sent;
+  document.getElementById('kpi-revenue').textContent = '¥' + s.total_revenue.toLocaleString();
+
+  document.getElementById('pct-l2o').textContent = d.funnel.lead_to_order_pct + '%';
+  document.getElementById('pct-o2p').textContent = d.funnel.order_to_proposal_pct + '%';
+  document.getElementById('pct-p2s').textContent = d.funnel.proposal_to_sent_pct + '%';
+  document.getElementById('pct-p2w').textContent = d.funnel.proposal_to_won_pct + '%';
+
+  // Funnel bars
+  const stages = [
+    {label:'线索 (Leads)', count:s.total_leads, color:'#3b82f6'},
+    {label:'订单 (Orders)', count:s.total_orders, color:'#22c55e'},
+    {label:'提案 (Proposals)', count:s.total_proposals, color:'#f59e0b'},
+    {label:'已发送 (Sent)', count:s.sent, color:'#a855f7'},
+    {label:'已成交 (Won)', count:s.won, color:'#f43f5e'},
+  ];
+  const maxCount = Math.max(...stages.map(x=>x.count), 1);
+  document.getElementById('funnel-container').innerHTML = stages.map(st => `
+    <div class="funnel-bar">
+      <div class="funnel-label">${st.label}</div>
+      <div class="funnel-track"><div class="funnel-fill" style="width:${st.count/maxCount*100}%;background:${st.color};">${st.count > 0 ? st.count : ''}</div></div>
+      <div class="funnel-count">${st.count}</div>
+    </div>
+  `).join('');
+
+  // Trend chart
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: d.trend.map(t=>t.month),
+      datasets:[
+        {label:'线索', data:d.trend.map(t=>t.leads), borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.1)', fill:true, tension:0.3},
+        {label:'订单', data:d.trend.map(t=>t.orders), borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,0.1)', fill:true, tension:0.3},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#b0b0b0', font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:'#64748b', font:{size:10}}, grid:{color:'#1e293b'}},
+        y:{beginAtZero:true, ticks:{color:'#64748b', font:{size:10}}, grid:{color:'#1e293b'}}
+      }
+    }
+  });
+}
+
+loadData();
+setInterval(loadData, 60000);
+</script>
+</body>
+</html>

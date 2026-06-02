@@ -314,6 +314,73 @@ async def proposals_page():
 async def get_lines():
     return {"data": CACHE["lines"]}
 
+
+@app.get("/api/hq/quick-quote-analytics")
+async def quick_quote_analytics():
+    """Aggregate Quick Quote pipeline: website leads → orders → proposals."""
+    leads = CACHE.get("leads", [])
+    ext_orders = CACHE.get("external_orders", [])
+    proposals = CACHE.get("proposals", [])
+
+    # Quick-quote leads: created via /request-quote (product_interest contains Quick Quote)
+    qq_leads = [l for l in leads if "Quick Quote" in (l.get("product_interest") or "")]
+    qq_orders = [o for o in ext_orders if o.get("platform") == "internal" and "Quick Quote" in (o.get("title") or "")]
+    qq_order_ids = {o["id"] for o in qq_orders}
+    qq_proposals = [p for p in proposals if p.get("order_id") in qq_order_ids]
+
+    total_leads = len(qq_leads)
+    total_orders = len(qq_orders)
+    total_proposals = len(qq_proposals)
+    sent = len([p for p in qq_proposals if p.get("status") == "sent"])
+    won = len([p for p in qq_proposals if p.get("status") == "won"])
+    lost = len([p for p in qq_proposals if p.get("status") == "lost"])
+
+    # Revenue from won proposals
+    total_revenue = sum(p.get("proposed_amount", 0) or 0 for p in qq_proposals if p.get("status") == "won")
+
+    # Monthly trend
+    monthly = {}
+    for l in qq_leads:
+        created = l.get("created_at", "")[:7]
+        monthly[created] = monthly.get(created, {"leads": 0, "orders": 0, "revenue": 0})
+        monthly[created]["leads"] += 1
+    for o in qq_orders:
+        created = o.get("created_at", "")[:7]
+        if created not in monthly:
+            monthly[created] = {"leads": 0, "orders": 0, "revenue": 0}
+        monthly[created]["orders"] += 1
+    for p in qq_proposals:
+        if p.get("status") == "won":
+            created = p.get("created_at", "")[:7]
+            if created in monthly:
+                monthly[created]["revenue"] += p.get("proposed_amount", 0) or 0
+
+    trend = [{"month": k, **v} for k, v in sorted(monthly.items())]
+
+    return {
+        "summary": {
+            "total_leads": total_leads,
+            "total_orders": total_orders,
+            "total_proposals": total_proposals,
+            "sent": sent,
+            "won": won,
+            "lost": lost,
+            "total_revenue": total_revenue,
+        },
+        "funnel": {
+            "lead_to_order_pct": round(total_orders / total_leads * 100, 1) if total_leads else 0,
+            "order_to_proposal_pct": round(total_proposals / total_orders * 100, 1) if total_orders else 0,
+            "proposal_to_sent_pct": round(sent / total_proposals * 100, 1) if total_proposals else 0,
+            "proposal_to_won_pct": round(won / total_proposals * 100, 1) if total_proposals else 0,
+        },
+        "trend": trend,
+    }
+
+
+@app.get("/quick-quote")
+async def quick_quote_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "quick-quote.html"))
+
 @app.post("/api/hq/proxy/patch")
 async def proxy_patch(request: Request):
     """Proxy PATCH requests to Polsia Fork API (for status updates)."""
