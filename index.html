@@ -73,6 +73,29 @@
     .hero-metrics .m .num{font-size:28px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(135deg,var(--accent),oklch(0.60 0.25 300));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
     .hero-metrics .m .lbl{font-size:13px;color:var(--ink-dim);margin-top:2px}
 
+    /* ── Inline Quote Form ── */
+    .quote-inline{margin-top:-20px;padding-bottom:60px}
+    .quote-card{max-width:640px;margin:0 auto;background:linear-gradient(135deg,oklch(0.15 0.025 260),oklch(0.18 0.03 270));border-radius:var(--radius);padding:32px;position:relative;overflow:hidden}
+    .quote-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 500px 300px at 80% 0%,oklch(0.55 0.28 280/.12),transparent);pointer-events:none}
+    .quote-card h3{color:#fff;font-size:18px;font-weight:700;margin-bottom:4px;position:relative}
+    .quote-card p{color:oklch(.72 .02 260);font-size:13px;margin-bottom:20px;position:relative}
+    .quote-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;position:relative}
+    .quote-grid .full{grid-column:1/-1}
+    .quote-grid label{display:block;color:oklch(.8 .01 260);font-size:12px;font-weight:600;margin-bottom:4px}
+    .quote-grid input,.quote-grid select,.quote-grid textarea{width:100%;padding:10px 14px;border-radius:var(--radius-sm);border:1px solid oklch(1 0 0/.15);background:oklch(1 0 0/.06);color:#fff;font-size:14px;font-family:var(--font);outline:none;transition:border-color .2s}
+    .quote-grid input::placeholder,.quote-grid textarea::placeholder{color:oklch(1 0 0/.3)}
+    .quote-grid input:focus,.quote-grid select:focus,.quote-grid textarea:focus{border-color:var(--accent)}
+    .quote-grid select option{background:oklch(0.15 0.025 260);color:#fff}
+    .quote-grid textarea{resize:vertical;min-height:72px}
+    .quote-submit{grid-column:1/-1;display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:4px}
+    .quote-submit .btn{padding:10px 24px;font-size:14px}
+    .quote-result{font-size:13px;padding:10px 14px;border-radius:var(--radius-sm);display:none}
+    .quote-result.success{display:block;background:oklch(0.55 0.20 160/.15);border:1px solid oklch(0.55 0.20 160/.3);color:oklch(.8 .15 160)}
+    .quote-result.error{display:block;background:oklch(0.60 0.20 20/.15);border:1px solid oklch(0.60 0.20 20/.3);color:oklch(.8 .15 20)}
+    .quote-result a{color:var(--accent);text-decoration:underline}
+    .quote-result a:hover{color:oklch(0.65 0.25 300)}
+    @media(max-width:600px){.quote-grid{grid-template-columns:1fr}}
+
     /* ── Sections Common ── */
     section{padding:80px 0}
     .sec-header{text-align:center;margin-bottom:48px}
@@ -289,6 +312,95 @@
     </div>
   </div>
 </section>
+
+<!-- ═══ Inline Quick Quote ═══ -->
+<section class="quote-inline">
+  <div class="container">
+    <div class="quote-card">
+      <h3>Get a Free Quote in Seconds</h3>
+      <p>Describe your project and we'll send you a complete proposal with pricing — no commitment needed.</p>
+      <form id="quickQuoteForm" onsubmit="return submitQuickQuote(event)">
+        <div class="quote-grid">
+          <div>
+            <label for="qq-name">Name *</label>
+            <input type="text" id="qq-name" placeholder="Your name" required>
+          </div>
+          <div>
+            <label for="qq-email">Email *</label>
+            <input type="email" id="qq-email" placeholder="your@email.com" required>
+          </div>
+          <div class="full">
+            <label for="qq-desc">Project Description</label>
+            <textarea id="qq-desc" placeholder="Tell us about your project, goals, and timeline..."></textarea>
+          </div>
+          <div>
+            <label for="qq-budget">Budget Range</label>
+            <select id="qq-budget">
+              <option value="">Prefer not to say</option>
+              <option value="¥1,000-2,000">¥1,000 - ¥2,000</option>
+              <option value="¥2,000-3,000">¥2,000 - ¥3,000</option>
+              <option value="¥3,000-5,000">¥3,000 - ¥5,000</option>
+              <option value="¥5,000+">¥5,000+</option>
+            </select>
+          </div>
+          <div>
+            <label for="qq-tier">Service Tier</label>
+            <select id="qq-tier">
+              <option value="basic">Basic — Single Service</option>
+              <option value="standard" selected>Standard — Full Stack</option>
+              <option value="enterprise">Enterprise — K8s + SLA</option>
+            </select>
+          </div>
+          <div class="quote-submit">
+            <button type="submit" class="btn btn-primary" id="qq-btn">Get My Free Quote →</button>
+            <span style="color:oklch(.6 .02 260);font-size:12px">No spam. Unsubscribe anytime.</span>
+          </div>
+          <div class="full" id="qq-result" style="display:none"></div>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<script>
+async function submitQuickQuote(e){
+  e.preventDefault();
+  const btn=document.getElementById('qq-btn');
+  const result=document.getElementById('qq-result');
+  const name=document.getElementById('qq-name').value.trim();
+  const email=document.getElementById('qq-email').value.trim();
+  if(!name||!email){result.className='quote-result error';result.style.display='block';result.innerHTML='Please fill in name and email.';return}
+  btn.disabled=true;btn.innerHTML='Submitting…';
+  result.style.display='none';
+  try{
+    const desc=document.getElementById('qq-desc').value.trim();
+    const budget=document.getElementById('qq-budget').value;
+    const tier=document.getElementById('qq-tier').value;
+    const resp=await fetch('/api/v1/_proxy/submit-quote',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,email,project_description:desc,budget_range:budget,preferred_tier:tier})
+    });
+    const data=await resp.json();
+    if(data.view_token){
+      result.className='quote-result success';result.style.display='block';
+      result.innerHTML='<strong>✅ Proposal ready!</strong> <a href="/quote/'+data.view_token+'" target="_blank">View your proposal →</a>';
+      document.getElementById('qq-name').value='';document.getElementById('qq-email').value='';
+      document.getElementById('qq-desc').value='';
+    }else if(data.order_id){
+      result.className='quote-result success';result.style.display='block';
+      result.innerHTML='<strong>✅ Submitted!</strong> We\'ll review and get back to you shortly.';
+    }else{
+      result.className='quote-result error';result.style.display='block';
+      result.innerHTML='Something went wrong. Please <a href="/request-quote">fill out our full form</a>.';
+    }
+  }catch(e){
+    result.className='quote-result error';result.style.display='block';
+    result.innerHTML='Network error. Please <a href="/request-quote">try our full form</a>.';
+  }
+  btn.disabled=false;btn.innerHTML='Get My Free Quote →';
+}
+</script>
 
 <!-- ═══ How It Works ═══ -->
 <section id="how-it-works">

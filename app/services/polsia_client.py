@@ -135,6 +135,9 @@ class PolsiaClient:
     async def get_proposal_by_token(self, token: str) -> dict | list:
         return await self._get(f"/api/v1/proposals/by-token/{token}")
 
+    async def track_proposal_view(self, token: str) -> dict | list:
+        return await self._post(f"/api/v1/proposals/by-token/{token}/track-view", {})
+
     async def get_analytics(self) -> dict:
         """Aggregate task data into chart-friendly analytics."""
         tasks = await self.get_tasks()

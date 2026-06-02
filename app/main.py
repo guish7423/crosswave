@@ -87,6 +87,12 @@ async def submit_quote(data: QuickQuoteData):
     return result
 
 
+@app.post("/api/v1/_proxy/track-view/{view_token}")
+async def proxy_track_view(view_token: str):
+    result = await polsia_client.track_proposal_view(view_token)
+    return result
+
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     summary = await polsia_client.get_dashboard_summary()

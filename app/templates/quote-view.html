@@ -131,12 +131,18 @@
     </div>
 
     <div class="proposal-card">
-      <!-- Status -->
+      <!-- Status + View tracking -->
       {% set status = proposal.get('status', 'draft') %}
-      <div style="margin-bottom:24px">
+      {% set viewed_count = proposal.get('viewed_count', 0) %}
+      <div style="margin-bottom:24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span class="status-badge {{ 'sent' if status == 'sent' else 'draft' }}">
           ● {{ status|capitalize }}
         </span>
+        {% if viewed_count > 0 %}
+        <span style="font-size:12px;color:var(--ink-muted);background:var(--surface-2);padding:4px 12px;border-radius:999px;border:1px solid var(--border)">
+          👁 Viewed {{ viewed_count }} time{{ 's' if viewed_count != 1 }}
+        </span>
+        {% endif %}
       </div>
 
       <!-- Amount -->
@@ -245,5 +251,15 @@
       <p>© 2026 CrossWave. All rights reserved. · <a href="/">Home</a> · <a href="/request-quote">Request a Quote</a> · <a href="mailto:sales@crosswave.app">sales@crosswave.app</a></p>
     </div>
   </footer>
+
+  {% set view_token = proposal.get('view_token', '') %}
+  {% if view_token %}
+  <script>
+  (function(){
+    fetch('/api/v1/_proxy/track-view/{{ view_token }}', {method:'POST'})
+      .catch(function(){});
+  })();
+  </script>
+  {% endif %}
 </body>
 </html>
