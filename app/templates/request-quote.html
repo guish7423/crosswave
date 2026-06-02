@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Request a Quote — CrossDeploy by CrossWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: oklch(0.13 0.02 260);
+      --surface: oklch(0.18 0.02 260);
+      --surface-2: oklch(0.22 0.02 260);
+      --border: oklch(0.28 0.02 260);
+      --ink: oklch(0.93 0.01 260);
+      --ink-dim: oklch(0.65 0.02 260);
+      --ink-muted: oklch(0.50 0.02 260);
+      --accent: oklch(0.60 0.28 280);
+      --accent-soft: oklch(0.60 0.28 280 / 0.12);
+      --green: oklch(0.60 0.22 160);
+      --red: oklch(0.60 0.22 20);
+      --amber: oklch(0.72 0.22 80);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font: 'Inter', system-ui, sans-serif;
+      --font-cn: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.7;font-size:15px;min-height:100vh}
+    .cn{font-family:var(--font-cn)}
+    .container{max-width:720px;margin:0 auto;padding:0 24px}
+
+    /* Nav */
+    nav{background:oklch(0.15 0.02 260 / .85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+    nav .container{display:flex;align-items:center;justify-content:space-between;height:60px}
+    .nav-logo{font-weight:800;font-size:17px;letter-spacing:-.03em;background:linear-gradient(135deg,var(--accent),oklch(0.65 0.25 300));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none}
+    .nav-back{color:var(--ink-dim);text-decoration:none;font-size:14px;transition:color .2s}
+    .nav-back:hover{color:var(--ink)}
+
+    /* Hero */
+    .hero{padding:60px 0 20px;text-align:center}
+    .hero h1{font-size:32px;font-weight:800;letter-spacing:-.04em;background:linear-gradient(135deg,var(--ink),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hero p{color:var(--ink-dim);margin-top:8px;font-size:15px}
+
+    /* Form */
+    .form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px;margin:20px 0}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field.full{grid-column:1/-1}
+    label{font-size:13px;font-weight:600;color:var(--ink-dim);letter-spacing:.01em}
+    input,select,textarea{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:14px;font-family:var(--font);color:var(--ink);outline:none;transition:border .2s,box-shadow .2s}
+    input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+    input::placeholder,textarea::placeholder{color:var(--ink-muted)}
+    textarea{resize:vertical;min-height:120px}
+    select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;cursor:pointer}
+
+    /* Tier cards */
+    .tier-selector{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:4px}
+    .tier-option{position:relative;padding:16px;background:var(--surface-2);border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;text-align:center}
+    .tier-option:hover{border-color:var(--ink-muted)}
+    .tier-option input{position:absolute;opacity:0;pointer-events:none}
+    .tier-option:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+    .tier-name{font-size:14px;font-weight:700;display:block}
+    .tier-price{font-size:20px;font-weight:800;margin:4px 0;color:var(--accent)}
+    .tier-desc{font-size:12px;color:var(--ink-muted)}
+
+    /* Submit */
+    .submit-row{display:flex;gap:16px;align-items:center;margin-top:8px}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),oklch(0.65 0.30 300));color:#fff;border:none;padding:14px 32px;border-radius:var(--radius-sm);font-size:16px;font-weight:700;cursor:pointer;transition:transform .2s,box-shadow .2s;font-family:var(--font)}
+    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px var(--accent-soft)}
+    .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+    /* Status */
+    .status-msg{display:none;padding:16px;border-radius:var(--radius-sm);margin-top:20px;font-size:14px}
+    .status-msg.success{display:block;background:oklch(0.60 0.22 160 / .12);border:1px solid var(--green);color:var(--green)}
+    .status-msg.error{display:block;background:oklch(0.60 0.22 20 / .12);border:1px solid var(--red);color:var(--red)}
+    .status-msg .emoji{font-size:24px;display:block;margin-bottom:8px}
+    .status-msg strong{font-weight:700}
+
+    /* Footer */
+    footer{text-align:center;padding:40px 0;color:var(--ink-muted);font-size:13px}
+    footer a{color:var(--ink-dim);text-decoration:none}
+    footer a:hover{color:var(--accent)}
+
+    @media(max-width:640px){
+      .form-grid{grid-template-columns:1fr}
+      .tier-selector{grid-template-columns:1fr}
+      .form-card{padding:24px}
+      .hero h1{font-size:26px}
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <a href="/" class="nav-logo">CrossWave</a>
+      <a href="/" class="nav-back">← Back to Home</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="hero">
+      <h1 class="cn">获取专业部署报价</h1>
+      <p>Tell us about your project and we'll send you a detailed proposal within 24 hours</p>
+    </div>
+
+    <div class="form-card">
+      <form id="quoteForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="name">Your Name *</label>
+            <input type="text" id="name" name="name" required placeholder="Zhang Wei">
+          </div>
+          <div class="field">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" required placeholder="zhang@company.com">
+          </div>
+          <div class="field">
+            <label for="company">Company</label>
+            <input type="text" id="company" name="company" placeholder="Your Company Inc.">
+          </div>
+          <div class="field">
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" name="phone" placeholder="+86 138 xxxx xxxx">
+          </div>
+        </div>
+
+        <div class="field full" style="margin-top:20px">
+          <label>Select Service Tier</label>
+          <div class="tier-selector">
+            <label class="tier-option">
+              <input type="radio" name="preferred_tier" value="basic" checked>
+              <span class="tier-name">Basic</span>
+              <span class="tier-price">¥2,000</span>
+              <span class="tier-desc">Single Docker service + SSL</span>
+            </label>
+            <label class="tier-option">
+              <input type="radio" name="preferred_tier" value="standard">
+              <span class="tier-name">Standard</span>
+              <span class="tier-price">¥3,000</span>
+              <span class="tier-desc">Multi-service + CI/CD + 30d support</span>
+            </label>
+            <label class="tier-option">
+              <input type="radio" name="preferred_tier" value="enterprise">
+              <span class="tier-name">Enterprise</span>
+              <span class="tier-price">¥5,000</span>
+              <span class="tier-desc">K3s cluster + monitoring + SLA</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field full">
+          <label for="budget_range">Budget Range</label>
+          <select id="budget_range" name="budget_range">
+            <option value="">Prefer not to say</option>
+            <option value="¥1,000 - ¥2,000">¥1,000 - ¥2,000</option>
+            <option value="¥2,000 - ¥3,000">¥2,000 - ¥3,000 (Basic)</option>
+            <option value="¥3,000 - ¥5,000">¥3,000 - ¥5,000 (Standard)</option>
+            <option value="¥5,000 - ¥10,000">¥5,000 - ¥10,000 (Enterprise)</option>
+            <option value="¥10,000+">¥10,000+</option>
+          </select>
+        </div>
+
+        <div class="field full">
+          <label for="project_description">Project Description *</label>
+          <textarea id="project_description" name="project_description" required placeholder="Describe your project in detail — what technology stack, what services need deploying, any special requirements..."></textarea>
+        </div>
+
+        <div class="submit-row">
+          <button type="submit" class="btn-primary" id="submitBtn">Send Request</button>
+          <span style="font-size:13px;color:var(--ink-muted)">We'll respond within 24 hours</span>
+        </div>
+      </form>
+
+      <div id="statusMsg" class="status-msg"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <p>© 2026 CrossWave. All rights reserved. · <a href="/">Home</a> · <a href="mailto:sales@crosswave.app">sales@crosswave.app</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const form = document.getElementById('quoteForm');
+    const btn = document.getElementById('submitBtn');
+    const status = document.getElementById('statusMsg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+      status.className = 'status-msg';
+
+      const data = {
+        name: form.name.value.trim(),
+        email: form.email.value.trim(),
+        company: form.company.value.trim(),
+        phone: form.phone.value.trim(),
+        project_description: form.project_description.value.trim(),
+        budget_range: form.budget_range.value,
+        preferred_tier: form.querySelector('input[name="preferred_tier"]:checked').value,
+      };
+
+      try {
+        const resp = await fetch('/api/v1/_proxy/submit-quote', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(data),
+        });
+        const result = await resp.json();
+
+        if (resp.ok && result.proposal_id) {
+          status.className = 'status-msg success';
+          status.innerHTML = `
+            <span class="emoji">🎉</span>
+            <strong>Request submitted successfully!</strong><br>
+            Your quote is being prepared. We'll send it to <strong>${data.email}</strong> within 24 hours.<br>
+            Reference: Order #${result.order_id}
+          `;
+          form.reset();
+        } else {
+          throw new Error(result.detail || result.error || 'Unknown error');
+        }
+      } catch (err) {
+        status.className = 'status-msg error';
+        status.innerHTML = `
+          <span class="emoji">⚠️</span>
+          <strong>Submission failed</strong><br>
+          ${err.message}<br>
+          Please email us at <a href="mailto:sales@crosswave.app" style="color:var(--accent)">sales@crosswave.app</a>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Send Request';
+      }
+    });
+  </script>
+</body>
+</html>

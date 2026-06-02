@@ -104,6 +104,21 @@ class PolsiaClient:
     async def get_tasks(self, limit: int = 500) -> dict | list:
         return await self._get(f"/api/v1/tasks?limit={limit}")
 
+    async def _post(self, path: str, json_data: dict) -> dict | list:
+        if not self._client:
+            return {"status": "disconnected", "error": "client not initialized"}
+        try:
+            r = await self._client.post(path, json=json_data)
+            r.raise_for_status()
+            return r.json()
+        except (httpx.TimeoutException, httpx.HTTPStatusError, httpx.RequestError, Exception) as e:
+            if self._mock_disconnected():
+                return {"status": "mock", "order_id": 0, "proposal_id": 0, "note": f"mock fallback: {e}"}
+            return {"status": "error", "error": str(e)}
+
+    async def submit_quick_quote(self, data: dict) -> dict | list:
+        return await self._post("/api/v1/quick-quote", data)
+
     async def get_analytics(self) -> dict:
         """Aggregate task data into chart-friendly analytics."""
         tasks = await self.get_tasks()

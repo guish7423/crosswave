@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 import os
 
 from app.services.polsia_client import polsia_client
+from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
@@ -49,6 +50,27 @@ async def landing(request: Request):
 @app.get("/deploy", response_class=HTMLResponse)
 async def deploy_service(request: Request):
     return templates.TemplateResponse(request, "deploy-service.html")
+
+
+@app.get("/request-quote", response_class=HTMLResponse)
+async def request_quote(request: Request):
+    return templates.TemplateResponse(request, "request-quote.html", {"request": request})
+
+
+class QuickQuoteData(BaseModel):
+    name: str
+    email: str
+    company: str = ""
+    phone: str = ""
+    project_description: str = ""
+    budget_range: str = ""
+    preferred_tier: str = ""
+
+
+@app.post("/api/v1/_proxy/submit-quote")
+async def submit_quote(data: QuickQuoteData):
+    result = await polsia_client.submit_quick_quote(data.model_dump())
+    return result
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
