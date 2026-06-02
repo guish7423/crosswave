@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Human Review — CrossWave HQ</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .interrupt-card { background: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 16px; border-left: 4px solid var(--accent-warning); transition: opacity .3s; }
+  .interrupt-card.decided { opacity: .5; border-left-color: var(--text-muted); }
+  .interrupt-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  .badge-agent { background: var(--accent-primary); color: #000; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+  .badge-reason { background: rgba(245,158,11,.15); color: var(--accent-warning); padding: 2px 10px; border-radius: 12px; font-size: 13px; }
+  .interrupt-body { color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
+  .interrupt-meta { display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); margin-bottom: 12px; flex-wrap: wrap; }
+  .decision-actions { display: flex; gap: 12px; }
+  .btn-approve { background: var(--accent-success); color: #000; border: none; padding: 8px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+  .btn-reject { background: var(--accent-danger); color: #fff; border: none; padding: 8px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+  .btn-approve:hover { opacity: .85; }
+  .btn-reject:hover { opacity: .85; }
+  .reject-input { display: flex; gap: 8px; margin-top: 8px; }
+  .reject-input input { flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary); }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--accent-success); color: #000; padding: 12px 24px; border-radius: 8px; font-weight: 600; opacity: 0; transition: opacity .3s; z-index: 1000; }
+  .toast.show { opacity: 1; }
+  .toast.error { background: var(--accent-danger); color: #fff; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state .emoji { font-size: 48px; margin-bottom: 16px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .kpi-card { background: var(--bg-card); border-radius: 12px; padding: 16px; text-align: center; }
+  .kpi-value { font-size: 28px; font-weight: 700; }
+  .kpi-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<nav id="nav"></nav>
+<main class="container" style="padding: 24px; max-width: 1000px; margin: 0 auto;">
+  <h1 style="margin-bottom: 8px;">🛑 Human Review Queue</h1>
+  <p style="color: var(--text-secondary); margin-bottom: 24px;">Agents are paused waiting for your decision</p>
+
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi-card"><div class="kpi-value" id="kpiPending">—</div><div class="kpi-label">Pending</div></div>
+    <div class="kpi-card"><div class="kpi-value" id="kpiApproved">—</div><div class="kpi-label">Approved</div></div>
+    <div class="kpi-card"><div class="kpi-value" id="kpiRejected">—</div><div class="kpi-label">Rejected</div></div>
+  </div>
+
+  <div id="interruptList"></div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const NAV_ENDPOINT = '/api/hq/nav';
+const BASE_URL = '/api/hq';
+const POLL_INTERVAL = 15000;
+
+async function loadNav() {
+  try { const r = await fetch('/nav.html'); document.getElementById('nav').innerHTML = await r.text(); } catch {}
+}
+
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function loadInterrupts() {
+  try {
+    const r = await fetch(BASE_URL + '/interrupts');
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = { interrupts: [] }; }
+    const interrupts = Array.isArray(data) ? data : (data.interrupts || []);
+    const pending = interrupts.filter(i => i.status === 'pending');
+    const approved = interrupts.filter(i => i.status === 'approved');
+    const rejected = interrupts.filter(i => i.status === 'rejected');
+    document.getElementById('kpiPending').textContent = pending.length;
+    document.getElementById('kpiApproved').textContent = approved.length;
+    document.getElementById('kpiRejected').textContent = rejected.length;
+    const list = document.getElementById('interruptList');
+    if (pending.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="emoji">✅</div><h3>All Clear</h3><p>No pending decisions. Agents are running autonomously.</p></div>';
+      return;
+    }
+    list.innerHTML = pending.map(i => renderCard(i)).join('');
+  } catch (e) {
+    document.getElementById('interruptList').innerHTML = '<div class="empty-state"><div class="emoji">⚠️</div><p>Could not load interrupts</p></div>';
+  }
+}
+
+function renderCard(i) {
+  const context = i.context || {};
+  const contextHtml = Object.keys(context).length ? '<div class="interrupt-meta"><strong>Context:</strong> <code>' + JSON.stringify(context, null, 2).replace(/\n/g, '<br>') + '</code></div>' : '';
+  const timeAgo = i.created_at ? Math.round((Date.now()/1000 - i.created_at)/60) + 'm ago' : '';
+  return `<div class="interrupt-card" id="card-${i.id}">
+    <div class="interrupt-header">
+      <div><span class="badge-agent">${i.agent_type || 'agent'}</span> <span class="badge-reason">Task #${i.task_id || '?'}</span></div>
+      <span style="font-size:12px;color:var(--text-muted)">${timeAgo}</span>
+    </div>
+    <div class="interrupt-body">${i.reason || 'No reason provided'}</div>
+    ${contextHtml}
+    <div class="decision-actions">
+      <button class="btn-approve" onclick="decide(${i.id},'approve')">✅ Approve</button>
+      <button class="btn-reject" onclick="showReject(${i.id})">❌ Reject</button>
+    </div>
+    <div id="reject-${i.id}" style="display:none;" class="reject-input">
+      <input type="text" id="reason-${i.id}" placeholder="Why rejected?">
+      <button class="btn-reject" onclick="decide(${i.id},'reject')">Confirm</button>
+    </div>
+  </div>`;
+}
+
+function showReject(id) {
+  document.getElementById('reject-' + id).style.display = 'flex';
+}
+
+async function decide(id, action) {
+  const url = action === 'approve' ? BASE_URL + `/interrupts/${id}/approve` : BASE_URL + `/interrupts/${id}/reject`;
+  const body = action === 'reject' ? JSON.stringify({ reason: document.getElementById('reason-' + id)?.value || 'No reason' }) : null;
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    if (r.ok) {
+      showToast(action === 'approve' ? `✅ Interrupt #${id} approved — agent resumes` : `❌ Interrupt #${id} rejected`);
+      document.getElementById('card-' + id).classList.add('decided');
+      setTimeout(() => { document.getElementById('card-' + id).style.display = 'none'; loadInterrupts(); }, 1500);
+    } else {
+      const err = await r.json().catch(() => ({}));
+      showToast('Failed: ' + (err.detail || r.statusText), true);
+    }
+  } catch { showToast('Network error', true); }
+}
+
+loadNav();
+loadInterrupts();
+setInterval(loadInterrupts, POLL_INTERVAL);
+</script>
+</body>
+</html>

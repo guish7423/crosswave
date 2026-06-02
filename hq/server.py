@@ -1365,5 +1365,43 @@ async def task_board_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "task_board.html"))
 
 
+# ─── Interrupts (HITL Review Queue) ──────────────────────────────────────────
+@app.get("/api/hq/interrupts")
+async def hq_interrupts():
+    """Proxy to Polsia Fork — list all interrupts."""
+    polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/interrupts"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(polsia_url, headers={"X-API-Key": "dev-key"})
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("interrupts", [])
+        return []
+
+@app.post("/api/hq/interrupts/{interrupt_id}/approve")
+async def hq_interrupt_approve(interrupt_id: int):
+    """Approve a pending interrupt via Polsia proxy."""
+    polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/interrupts/{interrupt_id}/approve"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(polsia_url, headers={"X-API-Key": "dev-key"})
+        if resp.status_code == 200:
+            return resp.json()
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+
+@app.post("/api/hq/interrupts/{interrupt_id}/reject")
+async def hq_interrupt_reject(interrupt_id: int, body: dict):
+    """Reject a pending interrupt via Polsia proxy."""
+    polsia_url = f"http://127.0.0.1:{POLSIA_PORT}/api/v1/interrupts/{interrupt_id}/reject"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(polsia_url, json=body, headers={"X-API-Key": "dev-key"})
+        if resp.status_code == 200:
+            return resp.json()
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+
+@app.get("/interrupts")
+async def interrupts_page():
+    """Human review queue page."""
+    return FileResponse(os.path.join(os.path.dirname(__file__), "interrupts.html"))
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)
