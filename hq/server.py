@@ -162,6 +162,19 @@ async def polsia_sync():
             "created_at": r[11] or "", "updated_at": r[12] or "",
         })
     CACHE["tasks"] = full_tasks
+    # Activity log (for notifications, nurture tracking, timeline)
+    try:
+        activity_rows = await db.execute_fetchall(
+            "SELECT agent_type, action, summary, level, created_at, id FROM activity_log ORDER BY created_at DESC LIMIT 200"
+        )
+        CACHE["activity_log"] = [
+            {"agent_type": r[0], "action": r[1], "summary": r[2],
+             "level": r[3] or "info", "created_at": r[4] or "", "id": r[5]}
+            for r in activity_rows
+        ]
+    except Exception as al_err:
+        print(f"[bridge] activity_log sync error: {al_err}")
+        CACHE["activity_log"] = []
     print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks, {len(leads)} leads, {len(ext_orders)} ext orders, {len(exps)} expenses, {len(revs)} rev months, {len(full_tasks)} full tasks")
 
     # ── Optional: sync to NocoBase ─────────────────────────────
@@ -936,12 +949,16 @@ async def get_notifications():
     pending_orders = len([o for o in CACHE.get("external_orders", []) if o.get("status") in ("pending", "scanned")])
     active_internal = len([o for o in CACHE["orders"] if o.get("status") in ("pending", "in_progress")])
     draft_proposals = len([p for p in CACHE.get("proposals", []) if p.get("status") in ("draft", "sent")])
+    nurture_followups = len([a for a in CACHE.get("activity_log", [])
+                             if a.get("agent_type") == "proposal_nurture"
+                             and a.get("action") == "proposal_needs_followup"])
     return {
         "new_leads": new_leads,
         "pending_external_orders": pending_orders,
         "active_tasks": active_internal,
         "draft_proposals": draft_proposals,
-        "total": new_leads + pending_orders + active_internal + draft_proposals,
+        "nurture_followups": nurture_followups,
+        "total": new_leads + pending_orders + active_internal + draft_proposals + nurture_followups,
     }
 
 
