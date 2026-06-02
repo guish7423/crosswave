@@ -12,6 +12,10 @@ CROSSWAVE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PID_DIR="$HOME/.crosswave/run"
 mkdir -p "$PID_DIR"
 
+# ── Load credentials from .env ──
+ENV_FILE="$CROSSWAVE_DIR/.env"
+[ -f "$ENV_FILE" ] && set -a && source "$ENV_FILE" && set +a || true
+
 # ── Resolve venv python for a project directory ──
 resolve_python() {
     local project_dir=$1
@@ -79,6 +83,23 @@ wait_ready() {
 # SERVICE START FUNCTIONS
 # ═══════════════════════════════════════════
 
+# ── Build credential exports for subprocesses ──
+cred_exports() {
+    local prefix="${1:-}"
+    for var in DEEPSEEK_API_KEY VOLC_ENGINE_API_KEY LLM_API_KEY \
+               STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET \
+               SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM_EMAIL SMTP_FROM_NAME \
+               UPWORK_CLIENT_ID UPWORK_CLIENT_SECRET \
+               ZHUBAJIE_APP_KEY ZHUBAJIE_APP_SECRET \
+               CROSSBRIDGE_DB BASE_URL; do
+        local v="${prefix}${var}"
+        local val="${!v:-}"
+        if [ -n "$val" ]; then
+            echo -n "export ${var}='${val}'; "
+        fi
+    done
+}
+
 start_polsia() {
     local dir="$CROSSWAVE_DIR/../polsia-fork"
     [ ! -d "$dir" ] && { echo "  ⏭️  Polsia Fork not found"; return 0; }
@@ -92,9 +113,7 @@ start_polsia() {
 
     echo "  → Polsia Fork (:8001)..."
     cd "$dir"
-    env LLM_API_MOCK=false \
-        DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY:-}" \
-        VOLC_ENGINE_API_KEY="${VOLC_ENGINE_API_KEY:-}" \
+    env $(cred_exports) LLM_API_MOCK=false \
         setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
         export DATABASE_URL='sqlite+aiosqlite:///./polsia.db'
@@ -115,9 +134,7 @@ start_celery_worker() {
     mkdir -p "$PID_DIR"
     echo "  → Celery Worker (3 queues)..."
     cd "$dir"
-    env LLM_API_MOCK=false \
-        DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY:-}" \
-        VOLC_ENGINE_API_KEY="${VOLC_ENGINE_API_KEY:-}" \
+    env $(cred_exports) LLM_API_MOCK=false \
         setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
         export DATABASE_URL=sqlite+aiosqlite:///./polsia.db
@@ -141,9 +158,7 @@ start_celery_beat() {
 
     echo "  → Celery Beat (6 schedules)..."
     cd "$dir"
-    env LLM_API_MOCK=false \
-        DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY:-}" \
-        VOLC_ENGINE_API_KEY="${VOLC_ENGINE_API_KEY:-}" \
+    env $(cred_exports) LLM_API_MOCK=false \
         setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
         export LLM_API_MOCK=false
@@ -163,7 +178,8 @@ start_hq() {
 
     echo "  → HQ Bridge (:13001)..."
     cd "$CROSSWAVE_DIR"
-    setsid bash -c "
+    env $(cred_exports) \
+        setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
         exec \"$python\" -m uvicorn hq.server:app --host 0.0.0.0 --port 13001
     " > "$logf" 2>&1 &
@@ -180,7 +196,8 @@ start_crosswave() {
 
     echo "  → CrossWave (:9999)..."
     cd "$CROSSWAVE_DIR"
-    setsid bash -c "
+    env $(cred_exports) \
+        setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
         export POLSIA_BASE_URL=http://127.0.0.1:8001
         export POLSIA_API_KEY=dev-key
@@ -203,7 +220,8 @@ start_blog() {
 
     echo "  → CrossBlog (:8002)..."
     cd "$dir"
-    setsid bash -c "
+    env $(cred_exports) \
+        setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
         exec \"$python\" -m uvicorn app.main:app --host 0.0.0.0 --port 8002
     " > "$logf" 2>&1 &
