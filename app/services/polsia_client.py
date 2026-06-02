@@ -160,6 +160,9 @@ class PolsiaClient:
     async def get_execution_status(self, order_id: int) -> dict | list:
         return await self._get(f"/api/v1/orders/external/{order_id}/execution-status")
 
+    async def get_downloadable_orders(self) -> list:
+        return await self._get("/api/v1/orders/external/downloadable")
+
     async def get_analytics(self) -> dict:
         """Aggregate task data into chart-friendly analytics."""
         tasks = await self.get_tasks()

@@ -3,13 +3,16 @@ from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 import os
 
+import httpx
+
 from app.services.polsia_client import polsia_client
+from app.config import settings
 from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -129,6 +132,40 @@ async def proxy_execute_deploy(order_id: int):
 async def proxy_execution_status(order_id: int):
     result = await polsia_client.get_execution_status(order_id)
     return result
+
+
+@app.get("/api/v1/_proxy/download-deliverable/{order_id}")
+async def proxy_download_deliverable(order_id: int):
+    """Proxy the deliverable archive from Polsia Fork to the client."""
+    polsia_url = f"{settings.polsia_base_url}/api/v1/orders/external/{order_id}/download-deliverable"
+    headers = {"X-API-Key": settings.polsia_api_key}
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.get(polsia_url, headers=headers)
+            resp.raise_for_status()
+            # Extract filename from Content-Disposition or use default
+            disposition = resp.headers.get("content-disposition", "")
+            filename = f"order-{order_id}-deliverable.tar.gz"
+            if "filename=" in disposition:
+                filename = disposition.split("filename=")[-1].strip('"\'')
+            return StreamingResponse(
+                resp.aiter_bytes(),
+                media_type=resp.headers.get("content-type", "application/gzip"),
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"',
+                    "Content-Length": resp.headers.get("content-length", ""),
+                },
+            )
+    except httpx.HTTPStatusError as e:
+        return JSONResponse(
+            status_code=e.response.status_code,
+            content={"error": f"Polsia Fork returned {e.response.status_code}"},
+        )
+    except httpx.RequestError:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Polsia Fork unreachable"},
+        )
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

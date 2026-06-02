@@ -270,8 +270,13 @@
             {% endif %}
             {% if proposal.get('order_id') %}
             <div id="execution-status" style="margin-top:12px">
-              <div style="display:inline-block;padding:8px 20px;background:rgba(0,0,0,.1);color:#000;border-radius:8px;font-size:13px;cursor:pointer" onclick="checkExecution({{ proposal.order_id }})">
+                    <div style="display:inline-block;padding:8px 20px;background:rgba(0,0,0,.1);color:#000;border-radius:8px;font-size:13px;cursor:pointer" onclick="checkExecution({{ proposal.order_id }})">
                 ⚡ 查看部署状态
+              </div>
+              <div style="margin-top:8px">
+                <a href="/api/v1/_proxy/download-deliverable/{{ proposal.order_id }}" class="btn-primary" style="display:inline-block;padding:8px 20px;font-size:13px;background:oklch(0.50 0.20 260);text-decoration:none" id="download-btn" target="_blank">
+                  ⬇️ 下载交付物
+                </a>
               </div>
               <div id="execution-detail" style="display:none;margin-top:12px;background:rgba(0,0,0,.08);border-radius:8px;padding:16px;text-align:left;font-size:13px">
                 <div id="execution-loading" style="text-align:center;color:rgba(0,0,0,.6)">加载中...</div>
