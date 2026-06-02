@@ -1,66 +1,155 @@
-version: "3.9"
-
 # ═══════════════════════════════════════════════════════
-# CrossWave 全栈 Docker Compose
-# 一键部署: docker compose up -d
+# CrossWave 全栈 Docker Compose（生产环境）
+# 使用方式：
+#   1. git clone 3 个仓库到同一目录
+#   2. docker compose up -d
 # ═══════════════════════════════════════════════════════
 
 services:
 
-  # ── Polsia Fork 后端 ──────────────────────────────
+  # ── Redis（Polsia Fork 任务队列）────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: crosswave-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # ── Polsia Fork 后端 + Celery Worker ────────────────
   polsia-fork:
     build:
-      context: ./projects/polsia-fork
+      context: ../polsia-fork
       dockerfile: Dockerfile
     container_name: polsia-fork
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
-      - DATABASE_URL=sqlite:///data/polsia.db
+      - DATABASE_URL=sqlite+aiosqlite:///data/polsia.db
       - DEBUG=false
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
       - LLM_BASE_URL=${LLM_BASE_URL:-https://api.deepseek.com/v1}
+      - LLM_API_MOCK=${LLM_API_MOCK:-true}
+      - REDIS_URL=redis://redis:6379/0
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:9999}
+      - API_KEY=${POLSIA_API_KEY:-dev-key}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
     volumes:
       - polsia_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
-      interval: 15s
+      interval: 30s
       timeout: 5s
+      start_period: 15s
       retries: 3
     restart: unless-stopped
 
-  # ── CrossWave BFF + 官网 ─────────────────────────
+  # ── Celery Worker（Polsia Fork 任务执行器）─────────
+  celery-worker:
+    build:
+      context: ../polsia-fork
+      dockerfile: Dockerfile
+    container_name: polsia-celery-worker
+    command: celery -A celery_app worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///data/polsia.db
+      - C_FORCE_ROOT=true
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.deepseek.com/v1}
+      - LLM_API_MOCK=${LLM_API_MOCK:-true}
+      - REDIS_URL=redis://redis:6379/0
+      - API_KEY=${POLSIA_API_KEY:-dev-key}
+    volumes:
+      - polsia_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      polsia-fork:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── Celery Beat（定时任务调度）─────────────────────
+  celery-beat:
+    build:
+      context: ../polsia-fork
+      dockerfile: Dockerfile
+    container_name: polsia-celery-beat
+    command: celery -A celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///data/polsia.db
+      - C_FORCE_ROOT=true
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.deepseek.com/v1}
+      - LLM_API_MOCK=${LLM_API_MOCK:-true}
+      - REDIS_URL=redis://redis:6379/0
+      - API_KEY=${POLSIA_API_KEY:-dev-key}
+    volumes:
+      - polsia_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      polsia-fork:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── CrossWave 官网 + HQ 后台（双进程容器）─────────
   crosswave:
     build:
-      context: ./projects/crosswave
+      context: .
       dockerfile: Dockerfile
     container_name: crosswave
     ports:
       - "9999:9999"
+      - "13001:13001"
     environment:
+      - PORT=9999
+      - HQ_PORT=13001
       - POLSIA_BASE_URL=http://polsia-fork:8000
       - POLSIA_API_KEY=${POLSIA_API_KEY:-dev-key}
       - POLSIA_MOCK=false
+      - POLSIA_DB=/polsia-data/polsia.db
+      - HQ_AUTH_TOKEN=${HQ_AUTH_TOKEN:-}
+      - CROSSBLOG_URL=http://crossblog:8000
+      - CROSSBRIDGE_DB=/bridge-data/content_bridge.db
+    volumes:
+      - polsia_data:/polsia-data:ro
     depends_on:
       polsia-fork:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9999/health"]
-      interval: 15s
+      interval: 30s
       timeout: 5s
+      start_period: 10s
       retries: 3
     restart: unless-stopped
 
-  # ── CrossBlog ─────────────────────────────────────
+  # ── CrossBlog（SEO 博客引擎）────────────────────────
   crossblog:
     build:
-      context: ./projects/ai-blog-engine
+      context: ../ai-blog-engine
       dockerfile: Dockerfile
     container_name: crossblog
     ports:
-      - "7777:7777"
+      - "8002:8000"
     environment:
       - LLM_API_MOCK=${LLM_API_MOCK:-true}
       - LLM_API_KEY=${LLM_API_KEY:-}
@@ -68,13 +157,14 @@ services:
     volumes:
       - blog_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7777/health"]
-      interval: 15s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
       timeout: 5s
+      start_period: 10s
       retries: 3
     restart: unless-stopped
 
-  # ── Nginx 反向代理 ──────────────────────────────
+  # ── Nginx 反向代理（生产入口）─────────────────────
   nginx:
     image: nginx:alpine
     container_name: crosswave-nginx
@@ -88,9 +178,10 @@ services:
       crosswave:
         condition: service_healthy
       crossblog:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
 
 volumes:
+  redis_data:
   polsia_data:
   blog_data:
