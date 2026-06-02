@@ -93,6 +93,19 @@ async def proxy_track_view(view_token: str):
     return result
 
 
+@app.post("/api/v1/_proxy/accept-proposal/{view_token}")
+async def proxy_accept_proposal(view_token: str):
+    result = await polsia_client.accept_proposal(view_token)
+    return result
+
+
+@app.post("/api/v1/_proxy/reject-proposal/{view_token}")
+async def proxy_reject_proposal(view_token: str, data: dict = {}):
+    reason = data.get("reason", "") if isinstance(data, dict) else ""
+    result = await polsia_client.reject_proposal(view_token, reason)
+    return result
+
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     summary = await polsia_client.get_dashboard_summary()

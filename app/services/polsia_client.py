@@ -138,6 +138,12 @@ class PolsiaClient:
     async def track_proposal_view(self, token: str) -> dict | list:
         return await self._post(f"/api/v1/proposals/by-token/{token}/track-view", {})
 
+    async def accept_proposal(self, token: str) -> dict | list:
+        return await self._post(f"/api/v1/proposals/by-token/{token}/accept", {})
+
+    async def reject_proposal(self, token: str, reason: str = "") -> dict | list:
+        return await self._post(f"/api/v1/proposals/by-token/{token}/reject", {"reason": reason})
+
     async def get_analytics(self) -> dict:
         """Aggregate task data into chart-friendly analytics."""
         tasks = await self.get_tasks()
