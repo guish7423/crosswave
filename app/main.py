@@ -250,20 +250,50 @@ async def proxy_analytics():
     return {"status_distribution": [], "agent_breakdown": [], "daily_trend": []}
 
 
+BLOG_URL = os.getenv("CROSSBLOG_URL", "http://127.0.0.1:8001")
+
+async def _fetch_blog(path: str) -> dict | list:
+    """Fetch from CrossBlog JSON API with timeout + fallback."""
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{BLOG_URL}{path}")
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception:
+        pass
+    return {"posts": []} if "posts" in path else []
+
+
 @app.get("/api/v1/_proxy/blog/latest")
 async def proxy_blog_latest():
     """Proxy popular blog posts from CrossBlog API."""
-    import httpx
-    blog_url = os.getenv("CROSSBLOG_URL", "http://127.0.0.1:8001")
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{blog_url}/api/posts/popular")
-            if resp.status_code == 200:
-                posts = resp.json()
-                return {"posts": posts if isinstance(posts, list) else []}
-    except Exception:
-        pass
-    return {"posts": []}
+    result = await _fetch_blog("/api/posts/popular")
+    return {"posts": result if isinstance(result, list) else []}
+
+
+@app.get("/api/v1/_proxy/blog/recent")
+async def proxy_blog_recent(limit: int = 6):
+    """Proxy recent blog posts."""
+    result = await _fetch_blog(f"/api/posts/recent?limit={limit}")
+    return {"posts": result if isinstance(result, list) else []}
+
+
+@app.get("/api/v1/_proxy/blog/by-tag/{tag}")
+async def proxy_blog_by_tag(tag: str):
+    """Proxy blog posts filtered by tag."""
+    from urllib.parse import quote
+    result = await _fetch_blog(f"/api/posts/by-tag/{quote(tag)}")
+    return {"posts": result if isinstance(result, list) else []}
+
+
+@app.get("/api/v1/_proxy/blog/tags")
+async def proxy_blog_tags():
+    """Proxy all blog tags."""
+    result = await _fetch_blog("/api/tags")
+    if isinstance(result, dict):
+        return {"tags": result.get("tags", []), "total": result.get("total", 0)}
+    return {"tags": result if isinstance(result, list) else [], "total": 0}
 
 
 # ─── Render helpers ──────────────────────────────────────────────────────
