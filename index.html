@@ -449,7 +449,7 @@
           <li>Custom domain setup</li>
           <li>Basic monitoring + alerts</li>
         </ul>
-        <a onclick="openInquiry('CrossDeploy Basic')" class="btn btn-outline" style="text-align:center;display:block;cursor:pointer">Inquire Now</a>
+        <a href="/request-quote?tier=basic" class="btn btn-outline" style="text-align:center;display:block">Get Quote →</a>
       </div>
       <div class="pricing-card featured">
         <div class="p-name">Standard</div>
@@ -462,7 +462,7 @@
           <li>CI/CD pipeline setup</li>
           <li>30-day post-deploy support</li>
         </ul>
-        <a onclick="openInquiry('CrossDeploy Standard')" class="btn btn-primary" style="text-align:center;display:block;cursor:pointer">Inquire Now</a>
+        <a href="/request-quote?tier=standard" class="btn btn-primary" style="text-align:center;display:block">Get Quote →</a>
       </div>
       <div class="pricing-card">
         <div class="p-name">Enterprise</div>
@@ -475,7 +475,7 @@
           <li>Custom CI/CD + monitoring stack</li>
           <li>90-day support + SLA</li>
         </ul>
-        <a onclick="openInquiry('CrossDeploy Enterprise')" class="btn btn-outline" style="text-align:center;display:block;cursor:pointer">Inquire Now</a>
+        <a href="/request-quote?tier=enterprise" class="btn btn-outline" style="text-align:center;display:block">Get Quote →</a>
       </div>
     </div>
 
@@ -671,8 +671,11 @@ initPaymentButtons();
           <li>Basic monitoring setup</li>
           <li>7-day post-deploy support</li>
         </ul>
-        <a id="pay-basic" class="btn btn-outline" style="text-align:center;display:block;cursor:pointer">Buy Now →</a>
-        <div style="text-align:center;margin-top:8px"><a onclick="openInquiry('CrossDeploy Basic')" style="color:var(--ink-dim);font-size:13px;cursor:pointer;text-decoration:underline">or inquire</a></div>
+        <div style="display:flex;gap:8px">
+          <a id="pay-basic" class="btn btn-outline" style="text-align:center;display:block;cursor:pointer;flex:1">Buy Now →</a>
+          <a href="/request-quote?tier=basic" class="btn btn-outline" style="text-align:center;display:block;flex:1">Get Quote</a>
+        </div>
+        <div style="text-align:center;margin-top:8px"><a onclick="openInquiry('CrossDeploy Basic')" style="color:var(--ink-dim);font-size:13px;cursor:pointer;text-decoration:underline">Ask a question</a></div>
       </div>
       <div class="pricing-card featured" id="deploy-standard">
         <div class="p-name">Standard</div>
@@ -685,8 +688,11 @@ initPaymentButtons();
           <li>CI/CD pipeline setup</li>
           <li>30-day post-deploy support</li>
         </ul>
-        <a id="pay-standard" class="btn btn-primary" style="text-align:center;display:block;cursor:pointer">Buy Now →</a>
-        <div style="text-align:center;margin-top:8px"><a onclick="openInquiry('CrossDeploy Standard')" style="color:var(--ink-dim);font-size:13px;cursor:pointer;text-decoration:underline">or inquire</a></div>
+        <div style="display:flex;gap:8px">
+          <a id="pay-standard" class="btn btn-primary" style="text-align:center;display:block;cursor:pointer;flex:1">Buy Now →</a>
+          <a href="/request-quote?tier=standard" class="btn btn-primary" style="text-align:center;display:block;flex:1">Get Quote</a>
+        </div>
+        <div style="text-align:center;margin-top:8px"><a onclick="openInquiry('CrossDeploy Standard')" style="color:var(--ink-dim);font-size:13px;cursor:pointer;text-decoration:underline">Ask a question</a></div>
       </div>
       <div class="pricing-card" id="deploy-enterprise">
         <div class="p-name">Enterprise</div>
@@ -699,8 +705,11 @@ initPaymentButtons();
           <li>Custom CI/CD + monitoring stack</li>
           <li>90-day support + SLA</li>
         </ul>
-        <a id="pay-enterprise" class="btn btn-outline" style="text-align:center;display:block;cursor:pointer">Contact Sales →</a>
-        <div style="text-align:center;margin-top:8px"><a onclick="openInquiry('CrossDeploy Enterprise')" style="color:var(--ink-dim);font-size:13px;cursor:pointer;text-decoration:underline">or inquire</a></div>
+        <div style="display:flex;gap:8px">
+          <a id="pay-enterprise" class="btn btn-outline" style="text-align:center;display:block;cursor:pointer;flex:1">Contact Sales →</a>
+          <a href="/request-quote?tier=enterprise" class="btn btn-outline" style="text-align:center;display:block;flex:1">Get Quote</a>
+        </div>
+        <div style="text-align:center;margin-top:8px"><a onclick="openInquiry('CrossDeploy Enterprise')" style="color:var(--ink-dim);font-size:13px;cursor:pointer;text-decoration:underline">Ask a question</a></div>
       </div>
       <div class="pricing-card featured">
         <div class="p-name">Starter</div>

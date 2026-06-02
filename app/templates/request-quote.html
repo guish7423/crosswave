@@ -183,6 +183,16 @@
   </footer>
 
   <script>
+    // Pre-select tier from URL query param
+    (function() {
+      const url = new URL(window.location.href);
+      const tier = url.searchParams.get('tier');
+      if (tier) {
+        const radio = document.querySelector(`input[name="preferred_tier"][value="${tier}"]`);
+        if (radio) radio.checked = true;
+      }
+    })();
+
     const form = document.getElementById('quoteForm');
     const btn = document.getElementById('submitBtn');
     const status = document.getElementById('statusMsg');
