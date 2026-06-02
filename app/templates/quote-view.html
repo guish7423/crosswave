@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proposal — CrossWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: oklch(0.13 0.02 260);
+      --surface: oklch(0.18 0.02 260);
+      --surface-2: oklch(0.22 0.02 260);
+      --border: oklch(0.28 0.02 260);
+      --ink: oklch(0.93 0.01 260);
+      --ink-dim: oklch(0.65 0.02 260);
+      --ink-muted: oklch(0.50 0.02 260);
+      --accent: oklch(0.60 0.28 280);
+      --accent-soft: oklch(0.60 0.28 280 / 0.12);
+      --green: oklch(0.60 0.22 160);
+      --red: oklch(0.60 0.22 20);
+      --amber: oklch(0.72 0.22 80);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font: 'Inter', system-ui, sans-serif;
+      --font-cn: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.7;font-size:15px;min-height:100vh}
+    .cn{font-family:var(--font-cn)}
+
+    /* Nav */
+    nav{background:oklch(0.15 0.02 260 / .85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+    nav .container{display:flex;align-items:center;justify-content:space-between;height:60px;max-width:960px;margin:0 auto;padding:0 24px}
+    .nav-logo{font-weight:800;font-size:17px;letter-spacing:-.03em;background:linear-gradient(135deg,var(--accent),oklch(0.65 0.25 300));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none}
+    .nav-back{color:var(--ink-dim);text-decoration:none;font-size:14px;transition:color .2s}
+    .nav-back:hover{color:var(--ink)}
+
+    /* Hero */
+    .hero{padding:48px 0 24px;text-align:center}
+    .hero h1{font-size:28px;font-weight:800;letter-spacing:-.04em;background:linear-gradient(135deg,var(--ink),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hero p{color:var(--ink-dim);margin-top:6px;font-size:14px}
+
+    /* Container */
+    .container{max-width:960px;margin:0 auto;padding:0 24px}
+
+    /* Proposal card */
+    .proposal-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:48px;margin:20px 0}
+
+    /* Status badge */
+    .status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:999px;font-size:13px;font-weight:600}
+    .status-badge.sent{background:var(--green);color:#000}
+    .status-badge.draft{background:var(--amber);color:#000}
+
+    /* Amount display */
+    .amount-section{text-align:center;padding:40px 0;border-bottom:1px solid var(--border);margin-bottom:32px}
+    .amount-label{font-size:13px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+    .amount-value{font-size:48px;font-weight:900;letter-spacing:-.03em;background:linear-gradient(135deg,var(--ink),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .amount-currency{font-size:24px;font-weight:700;color:var(--ink-dim);margin-top:4px}
+    .amount-date{font-size:13px;color:var(--ink-muted);margin-top:8px}
+
+    /* Order meta */
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid var(--border)}
+    .meta-item{}
+    .meta-label{font-size:12px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+    .meta-value{font-size:15px;color:var(--ink);margin-top:2px;font-weight:500}
+
+    /* Content */
+    .proposal-content{line-height:1.9;color:var(--ink)}
+    .proposal-content h2{font-size:22px;font-weight:700;margin:32px 0 16px;letter-spacing:-.02em;color:var(--accent)}
+    .proposal-content h3{font-size:17px;font-weight:600;margin:24px 0 12px;color:var(--ink)}
+    .proposal-content p{margin:12px 0}
+    .proposal-content strong{color:var(--ink);font-weight:600}
+    .proposal-content em{color:var(--ink-dim)}
+    .proposal-content ul,.proposal-content ol{margin:12px 0;padding-left:24px}
+    .proposal-content li{margin:6px 0}
+    .proposal-content hr{margin:32px 0;border:none;border-top:1px solid var(--border)}
+    .proposal-content blockquote{border-left:3px solid var(--accent);padding:12px 20px;margin:16px 0;background:var(--surface-2);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--ink-dim)}
+    .proposal-content code{background:var(--surface-2);padding:2px 8px;border-radius:4px;font-size:14px;color:var(--accent)}
+
+    /* Deliverables */
+    .deliverables{margin-top:32px;padding-top:32px;border-top:1px solid var(--border)}
+    .deliverables h3{font-size:17px;font-weight:700;margin-bottom:16px;color:var(--ink)}
+    .deliverable-item{display:flex;align-items:flex-start;gap:12px;padding:16px;background:var(--surface-2);border-radius:var(--radius-sm);margin-bottom:12px}
+    .deliverable-icon{font-size:20px;flex-shrink:0;margin-top:2px}
+    .deliverable-text{}
+    .deliverable-title{font-weight:600;font-size:15px}
+    .deliverable-desc{font-size:13px;color:var(--ink-dim);margin-top:2px}
+
+    /* CTA */
+    .cta-section{text-align:center;padding:40px 0 0;border-top:1px solid var(--border);margin-top:40px}
+    .cta-section p{color:var(--ink-dim);margin-bottom:16px;font-size:14px}
+    .btn-primary{display:inline-block;background:linear-gradient(135deg,var(--accent),oklch(0.65 0.30 300));color:#fff;padding:14px 36px;border-radius:var(--radius-sm);font-size:15px;font-weight:700;text-decoration:none;cursor:pointer;transition:transform .2s,box-shadow .2s}
+    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px var(--accent-soft)}
+
+    /* Error state */
+    .error-state{text-align:center;padding:80px 0}
+    .error-state .icon{font-size:64px;display:block;margin-bottom:16px}
+    .error-state h2{font-size:24px;font-weight:700;margin-bottom:8px}
+    .error-state p{color:var(--ink-dim);margin-bottom:24px}
+    .btn-secondary{display:inline-block;background:var(--surface-2);color:var(--ink);padding:12px 28px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;text-decoration:none;border:1px solid var(--border);transition:border-color .2s}
+    .btn-secondary:hover{border-color:var(--accent)}
+
+    /* Footer */
+    footer{text-align:center;padding:40px 0;color:var(--ink-muted);font-size:13px}
+    footer a{color:var(--ink-dim);text-decoration:none}
+    footer a:hover{color:var(--accent)}
+
+    @media(max-width:640px){
+      .proposal-card{padding:24px}
+      .amount-value{font-size:36px}
+      .meta-grid{grid-template-columns:1fr}
+      .hero h1{font-size:22px}
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <a href="/" class="nav-logo">CrossWave</a>
+      <a href="/request-quote" class="nav-back">← Request a Quote</a>
+    </div>
+  </nav>
+
+  {% if proposal %}
+
+  <div class="container">
+    <div class="hero">
+      <h1 class="cn">Your Proposal</h1>
+      <p>Prepared by CrossWave AI · Delivered in under 24 hours</p>
+    </div>
+
+    <div class="proposal-card">
+      <!-- Status -->
+      {% set status = proposal.get('status', 'draft') %}
+      <div style="margin-bottom:24px">
+        <span class="status-badge {{ 'sent' if status == 'sent' else 'draft' }}">
+          ● {{ status|capitalize }}
+        </span>
+      </div>
+
+      <!-- Amount -->
+      <div class="amount-section">
+        <div class="amount-label">Proposed Investment</div>
+        <div class="amount-value">
+          {% set amount = proposal.get('proposed_amount', 0) %}
+          {% set currency = proposal.get('currency', 'USD') %}
+          {% if currency == 'CNY' or currency == '¥' %}
+            ¥{{ '{:,.0f}'.format(amount) }}
+          {% elif currency == 'USD' %}
+            ${{ '{:,.0f}'.format(amount) }}
+          {% else %}
+            {{ currency }} {{ '{:,.0f}'.format(amount) }}
+          {% endif %}
+        </div>
+        {% set created = proposal.get('created_at', '') %}
+        {% if created %}
+          <div class="amount-date">Issued: {{ created[:10] }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Order meta -->
+      {% if proposal.get('order_id') %}
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-label">Order Reference</div>
+          <div class="meta-value">#{{ proposal.order_id }}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Status</div>
+          <div class="meta-value cn">{{ '已发送' if status == 'sent' else '草稿' }}</div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Proposal content -->
+      {% set content = proposal.get('content', '') %}
+      {% if content %}
+      <div class="proposal-content">
+        {% for line in content.split('\n') %}
+          {% if line.startswith('### ') %}
+            <h3>{{ line[4:] }}</h3>
+          {% elif line.startswith('## ') %}
+            <h2>{{ line[3:] }}</h2>
+          {% elif line.startswith('# ') %}
+            <h2>{{ line[2:] }}</h2>
+          {% elif line.startswith('---') %}
+            <hr>
+          {% elif line.startswith('- **') and '**:' in line %}
+            {% set parts = line[2:].split('**:', 1) %}
+            <p><strong>{{ parts[0] + '**' if '**' in parts[0] else parts[0] }}</strong>{{ parts[1] if parts[1:] else '' }}</p>
+          {% elif line.startswith('- ') %}
+            <p style="padding-left:16px;position:relative">&bull; {{ line[2:] }}</p>
+          {% elif line.strip() == '' %}
+            <p style="margin:4px 0">&nbsp;</p>
+          {% else %}
+            <p>{{ line }}</p>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Deliverables -->
+      {% set deliverables = proposal.get('deliverables', []) %}
+      {% if deliverables %}
+      <div class="deliverables">
+        <h3>📦 Included Deliverables</h3>
+        {% for d in deliverables %}
+        <div class="deliverable-item">
+          <span class="deliverable-icon">▹</span>
+          <div class="deliverable-text">
+            <div class="deliverable-title">{{ d.get('title', 'Service') }}</div>
+            {% if d.get('description') %}
+            <div class="deliverable-desc">{{ d.description }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- CTA -->
+      <div class="cta-section">
+        <p class="cn">对这份报价有疑问？我们随时为您解答</p>
+        <a href="mailto:sales@crosswave.app?subject=Question%20about%20Proposal%20%23{{ proposal.get('id', '') }}" class="btn-primary">Contact Us</a>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+
+  <div class="container">
+    <div class="error-state">
+      <span class="icon">🔍</span>
+      <h2 class="cn">未找到报价</h2>
+      <p>{{ error if error else 'This proposal could not be found or has expired.' }}</p>
+      <a href="/request-quote" class="btn-secondary">Request a New Quote</a>
+    </div>
+  </div>
+
+  {% endif %}
+
+  <footer>
+    <div class="container">
+      <p>© 2026 CrossWave. All rights reserved. · <a href="/">Home</a> · <a href="/request-quote">Request a Quote</a> · <a href="mailto:sales@crosswave.app">sales@crosswave.app</a></p>
+    </div>
+  </footer>
+</body>
+</html>

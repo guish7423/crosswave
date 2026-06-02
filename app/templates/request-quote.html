@@ -213,11 +213,15 @@
 
         if (resp.ok && result.proposal_id) {
           status.className = 'status-msg success';
+          const viewUrl = result.view_url || '';
+          const viewLink = viewUrl
+            ? `<br><a href="${viewUrl}" target="_blank" style="color:var(--accent);font-weight:600;font-size:16px">📄 View Your Proposal</a>`
+            : '';
           status.innerHTML = `
             <span class="emoji">🎉</span>
             <strong>Request submitted successfully!</strong><br>
-            Your quote is being prepared. We'll send it to <strong>${data.email}</strong> within 24 hours.<br>
-            Reference: Order #${result.order_id}
+            Your proposal is ready. ${viewLink}<br>
+            <span style="font-size:13px;color:var(--ink-muted)">Reference: Order #${result.order_id}</span>
           `;
           form.reset();
         } else {

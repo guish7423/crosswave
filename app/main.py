@@ -67,6 +67,20 @@ class QuickQuoteData(BaseModel):
     preferred_tier: str = ""
 
 
+@app.get("/quote/{view_token}", response_class=HTMLResponse)
+async def quote_view(request: Request, view_token: str):
+    proposal = await polsia_client.get_proposal_by_token(view_token)
+    if isinstance(proposal, dict) and proposal.get("id") is not None:
+        return templates.TemplateResponse(
+            request, "quote-view.html", {"request": request, "proposal": proposal}
+        )
+    return templates.TemplateResponse(
+        request,
+        "quote-view.html",
+        {"request": request, "proposal": None, "error": "Proposal not found or expired."},
+    )
+
+
 @app.post("/api/v1/_proxy/submit-quote")
 async def submit_quote(data: QuickQuoteData):
     result = await polsia_client.submit_quick_quote(data.model_dump())

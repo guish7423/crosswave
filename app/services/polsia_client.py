@@ -90,6 +90,19 @@ class PolsiaClient:
             return MOCK_AGENTS
         if "activity" in path:
             return MOCK_ACTIVITY
+        if "proposals/by-token/" in path:
+            return {
+                "id": 0,
+                "status": "sent",
+                "proposed_amount": 2500,
+                "currency": "USD",
+                "content": "## Mock Proposal\n\nThis is a mock proposal for offline development.",
+                "created_at": "2026-06-01T12:00:00+00:00",
+                "order_id": 0,
+                "deliverables": [
+                    {"title": "Docker Deployment", "description": "Production-ready Docker container"}
+                ],
+            }
         return {"status": "disconnected"}
 
     async def get_dashboard_summary(self) -> dict | list:
@@ -118,6 +131,9 @@ class PolsiaClient:
 
     async def submit_quick_quote(self, data: dict) -> dict | list:
         return await self._post("/api/v1/quick-quote", data)
+
+    async def get_proposal_by_token(self, token: str) -> dict | list:
+        return await self._get(f"/api/v1/proposals/by-token/{token}")
 
     async def get_analytics(self) -> dict:
         """Aggregate task data into chart-friendly analytics."""
