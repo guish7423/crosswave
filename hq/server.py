@@ -1350,7 +1350,9 @@ async def get_tasks_summary():
         for r in agent_rows:
             a = r[0] or "unknown"
             if a not in by_agent:
-                by_agent[a] = {"completed": 0, "pending": 0, "failed": 0, "in_progress": 0, "cancelled": 0}
+                by_agent[a] = {"completed": 0, "pending": 0, "failed": 0,
+                                "in_progress": 0, "cancelled": 0,
+                                "blocked": 0, "paused": 0, "in_review": 0}
             s = r[1] or "pending"
             by_agent[a][s] = by_agent[a].get(s, 0) + r[2]
         return {"by_status": by_status, "by_agent": by_agent, "total": sum(by_status.values())}
