@@ -62,6 +62,10 @@ async def polsia_sync():
             task_rows = await db.execute_fetchall(
                 "SELECT id, title, description, agent_type, priority, status, source, scheduled_date, result_summary, error_message, metadata_json, created_at, updated_at FROM tasks ORDER BY created_at DESC LIMIT 200"
             )
+            weekly_report_rows = await db.execute_fetchall(
+                "SELECT id, period_start, period_end, summary, created_at, recipient_count "
+                "FROM weekly_reports ORDER BY created_at DESC LIMIT 20"
+            )
     except Exception as e:
         print(f"[bridge] DB read error: {e}")
         return
@@ -175,6 +179,15 @@ async def polsia_sync():
     except Exception as al_err:
         print(f"[bridge] activity_log sync error: {al_err}")
         CACHE["activity_log"] = []
+    # Weekly reports
+    try:
+        CACHE["weekly_reports"] = [
+            {"id": r[0], "period_start": r[1], "period_end": r[2],
+             "summary": r[3], "created_at": r[4], "recipient_count": r[5]}
+            for r in weekly_report_rows
+        ]
+    except Exception:
+        CACHE["weekly_reports"] = []
     print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks, {len(leads)} leads, {len(ext_orders)} ext orders, {len(exps)} expenses, {len(revs)} rev months, {len(full_tasks)} full tasks")
 
     # ── Optional: sync to NocoBase ─────────────────────────────
@@ -502,10 +515,6 @@ async def finances_redirect():
     from starlette.responses import RedirectResponse
     return RedirectResponse(url="/finance")
 
-@app.get("/reports")
-async def reports_page():
-    return FileResponse(os.path.join(os.path.dirname(__file__), "reports.html"))
-
 @app.get("/deploy")
 async def deploy_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "deploy.html"))
@@ -704,6 +713,48 @@ async def get_evolution():
 @app.get("/evolution")
 async def evolution_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "evolution.html"))
+
+# ─── Weekly Reports (周报) ────────────────────────────────────────────────────
+@app.get("/api/hq/weekly-reports")
+async def hq_weekly_reports():
+    """Return cached weekly reports."""
+    return {"data": CACHE.get("weekly_reports", [])}
+
+@app.get("/api/hq/report/{report_id}")
+async def hq_report_detail(report_id: int):
+    """Return full report with HTML content."""
+    if not os.path.exists(DB_PATH):
+        raise HTTPException(status_code=404, detail="Report not found")
+    try:
+        import aiosqlite
+        async with aiosqlite.connect(DB_PATH) as db:
+            rows = await db.execute_fetchall(
+                "SELECT id, period_start, period_end, summary, html_content, created_at, recipient_count "
+                "FROM weekly_reports WHERE id = ?",
+                (report_id,)
+            )
+            if not rows:
+                raise HTTPException(status_code=404, detail="Report not found")
+            r = rows[0]
+            return {
+                "id": r[0], "period_start": r[1], "period_end": r[2],
+                "summary": r[3], "html_content": r[4], "created_at": r[5],
+                "recipient_count": r[6],
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/reports")
+async def reports_page():
+    """Weekly reports listing page."""
+    return FileResponse(os.path.join(os.path.dirname(__file__), "reports.html"))
+
+@app.get("/report/{report_id}")
+async def report_detail_page(report_id: int):
+    """Single report detail page."""
+    return FileResponse(os.path.join(os.path.dirname(__file__), "report_detail.html"))
 
 # ─── Timeline (统一时间线) ──────────────────────────────────────────────────
 @app.get("/api/hq/timeline")

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>周报详情 · CrossWave HQ</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div id="nav-placeholder"></div>
+<div class="content">
+    <a href="/reports" class="back-link">← 返回周报列表</a>
+    <div id="report-content"><p class="empty-state">加载中...</p></div>
+</div>
+<script>
+const nav = document.getElementById('nav-placeholder');
+fetch('/nav.html').then(r=>r.text()).then(h=>{nav.innerHTML=h;});
+
+const id = window.location.pathname.split('/').pop();
+fetch(`/api/hq/report/${id}`).then(r=>r.json()).then(data => {
+    if (data.html_content) {
+        document.getElementById('report-content').innerHTML = data.html_content;
+    } else {
+        document.getElementById('report-content').innerHTML = '<p class="empty-state">报告未找到</p>';
+    }
+}).catch(() => {
+    document.getElementById('report-content').innerHTML = '<p class="empty-state">⚠️ 加载失败</p>';
+});
+</script>
+</body>
+</html>

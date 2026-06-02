@@ -1,123 +1,68 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CrossWave HQ — 运营报表</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="/static/styles.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>周报 · CrossWave HQ</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-<div class="header">
-  <h1>🌊 <span>CrossWave</span> HQ · 运营报表</h1>
-  <span class="nav">
-    <a href="/">战情室</a>
-    <a href="/timeline">时间线</a>
-      <a href="/employees">员工</a>
-    <a href="/orders">订单</a>
-    <a href="/leads">线索</a>
-      <a href="/agents">Agent</a>
-    <a href="/deploy">部署</a>
-    <a href="/finance">财务</a>
-    <a href="/monitor">监控</a>
-      <a href="/evolution">进化办</a>
-    <a href="/reports" class="active">报表</a>
-  </span>
-</div>
+<div id="nav-placeholder"></div>
+<div class="content">
+    <h1>📊 周报</h1>
+    <p class="subtitle">每周一 9:00 自动生成 · 60s 自动刷新</p>
 
-<div class="kpi-grid" id="kpiGrid">
-  <div class="kpi-card"><div class="label">总任务</div><div class="value">—</div></div>
-  <div class="kpi-card" style="border-left-color:#4ade80"><div class="label">已完成</div><div class="value">—</div></div>
-  <div class="kpi-card" style="border-left-color:#f87171"><div class="label">失败</div><div class="value">—</div></div>
-  <div class="kpi-card" style="border-left-color:#facc15"><div class="label">完成率</div><div class="value">—</div><div class="sub">%</div></div>
-  <div class="kpi-card" style="border-left-color:#a78bfa"><div class="label">员工数</div><div class="value">—</div></div>
-  <div class="kpi-card" style="border-left-color:#60a5fa"><div class="label">7天活动</div><div class="value">—</div><div class="sub">次</div></div>
-</div>
+    <div class="kpi-row" id="kpi-row">
+        <div class="kpi-card"><div class="kpi-value" id="total-reports">—</div><div class="kpi-label">总报告数</div></div>
+        <div class="kpi-card"><div class="kpi-value" id="latest-report">—</div><div class="kpi-label">最新报告</div></div>
+    </div>
 
-<div class="charts-row">
-  <div class="chart-card full-width"><h3>📈 任务趋势</h3><canvas id="taskTrendChart"></canvas></div>
-</div>
-<div class="charts-row">
-  <div class="chart-card"><h3>🤖 Agent 绩效</h3>
-    <ul class="rank-list" id="agentPerfList"><li class="empty">加载中...</li></ul>
-  </div>
-  <div class="chart-card"><h3>🧑‍💼 Agent 活跃度排名</h3>
-    <ul class="rank-list" id="agentRankList"><li class="empty">加载中...</li></ul>
-  </div>
+    <div id="reports-list"></div>
 </div>
 
 <script>
-let taskTrendChart;
-const apiBase = 'http://localhost:13001';
+const nav = document.getElementById('nav-placeholder');
+fetch('/nav.html').then(r=>r.text()).then(h=>{nav.innerHTML=h;document.querySelectorAll('[data-page="reports"]').forEach(e=>e.classList.add('active'));});
 
-async function loadReports() {
-  try {
-    const res = await fetch(`${apiBase}/api/hq/reports`);
-    const data = await res.json();
+async function fetchReports() {
+    try {
+        const resp = await fetch('/api/hq/weekly-reports');
+        const {data} = await resp.json();
+        const list = document.getElementById('reports-list');
+        document.getElementById('total-reports').textContent = data.length;
+        
+        if (data.length === 0) {
+            list.innerHTML = '<div class="empty-state">暂无周报。下周一 9:00 将自动生成第一份报告。</div>';
+            document.getElementById('latest-report').textContent = '—';
+            return;
+        }
 
-    const kpis = document.getElementById('kpiGrid').children;
-    kpis[0].querySelector('.value').textContent = data.total_tasks;
-    kpis[1].querySelector('.value').textContent = data.completed_tasks;
-    kpis[2].querySelector('.value').textContent = data.failed_tasks;
-    kpis[3].querySelector('.value').textContent = data.completion_rate + '%';
-    kpis[4].querySelector('.value').textContent = data.employee_count;
-    kpis[5].querySelector('.value').textContent = data.last_7d_activity;
+        document.getElementById('latest-report').textContent = data[0].period_start;
 
-    const trend = data.task_trend || [];
-    if (taskTrendChart) taskTrendChart.destroy();
-    taskTrendChart = new Chart(document.getElementById('taskTrendChart'), {
-      type: 'line',
-      data: {
-        labels: trend.map(t => t.date),
-        datasets: [{
-          label: '任务数',
-          data: trend.map(t => t.count),
-          borderColor: '#38bdf8',
-          backgroundColor: 'rgba(56, 189, 248, 0.1)',
-          fill: true,
-          tension: 0.4,
-        }],
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: '#94a3b8' } } },
-        scales: { x: { ticks: { color: '#64748b' } }, y: { ticks: { color: '#64748b' } } },
-      },
-    });
-
-    const perf = data.agent_performance || [];
-    const perfList = document.getElementById('agentPerfList');
-    if (perf.length === 0) {
-      perfList.innerHTML = '<li class="empty">暂无数据</li>';
-    } else {
-      perfList.innerHTML = perf.map((a, i) => `
-        <li class="rank-item">
-          <span class="rank-num">#${i + 1}</span>
-          <span class="rank-name">${a.agent}</span>
-          <span class="rank-stat">✅ ${a.done} ❌ ${a.failed} 📋 ${a.total}</span>
-        </li>
-      `).join('');
+        list.innerHTML = data.map(r => `
+            <div class="card report-card" onclick="openReport(${r.id})">
+                <div class="card-header">
+                    <span class="card-title">📅 ${r.period_start} ~ ${r.period_end}</span>
+                    <span class="badge">${r.created_at ? r.created_at.slice(0,10) : ''}</span>
+                </div>
+                <p class="card-desc">${r.summary || '无摘要'}</p>
+                <div class="card-meta">
+                    <span>📧 ${r.recipient_count || 0} 收件人</span>
+                </div>
+            </div>
+        `).join('');
+    } catch(e) {
+        document.getElementById('reports-list').innerHTML = '<div class="empty-state">⚠️ 加载失败</div>';
     }
-
-    const rankList = document.getElementById('agentRankList');
-    const ranked = [...perf].sort((a, b) => b.done - a.done);
-    if (ranked.length === 0) {
-      rankList.innerHTML = '<li class="empty">暂无数据</li>';
-    } else {
-      rankList.innerHTML = ranked.map((a, i) => `
-        <li class="rank-item">
-          <span class="rank-num">#${i + 1}</span>
-          <span class="rank-name">${a.agent}</span>
-          <span class="rank-stat">完成 ${a.done} 任务</span>
-        </li>
-      `).join('');
-    }
-  } catch (e) {
-    document.body.innerHTML += `<div class="empty" style="color:#f87171">⚠️ Error: ${e.message}</div>`;
-  }
 }
-loadReports();
-setInterval(loadReports, 30000);
+
+function openReport(id) {
+    window.open(`/report/${id}`, '_blank');
+}
+
+fetchReports();
+setInterval(fetchReports, 60000);
 </script>
 </body>
 </html>
