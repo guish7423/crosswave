@@ -182,6 +182,9 @@ start_crosswave() {
     cd "$CROSSWAVE_DIR"
     setsid bash -c "
         export PATH=\"$(dirname "$python"):\$PATH\"
+        export POLSIA_BASE_URL=http://127.0.0.1:8001
+        export POLSIA_API_KEY=dev-key
+        export POLSIA_MOCK=false
         exec \"$python\" -m uvicorn app.main:app --host 0.0.0.0 --port 9999
     " > "$logf" 2>&1 &
     write_pid "crosswave" $!
