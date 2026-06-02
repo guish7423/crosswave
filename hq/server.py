@@ -1,4 +1,5 @@
 import os, json, asyncio, httpx, uvicorn, secrets, time
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -20,7 +21,13 @@ async def require_token(request: Request):
         return True
     raise HTTPException(status_code=401, detail="Unauthorized — provide X-HQ-Token header")
 
-app = FastAPI(title="CrossWave HQ Bridge", dependencies=[Depends(require_token)])
+@asynccontextmanager
+async def app_lifespan(app: FastAPI):
+    """Start background sync on startup."""
+    asyncio.create_task(periodic_sync())
+    yield
+
+app = FastAPI(title="CrossWave HQ Bridge", dependencies=[Depends(require_token)], lifespan=app_lifespan)
 app.mount("/static", StaticFiles(directory=os.path.dirname(__file__)), name="hq_static")
 
 DB_PATH = os.environ.get("POLSIA_DB", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "polsia-fork", "polsia.db"))
@@ -202,10 +209,6 @@ async def periodic_sync():
     while True:
         await polsia_sync()
         await asyncio.sleep(1800)
-
-@app.on_event("startup")
-async def startup():
-    asyncio.create_task(periodic_sync())
 
 @app.get("/api/hq/summary")
 async def summary():
