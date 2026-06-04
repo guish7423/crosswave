@@ -1,0 +1,126 @@
+name: "Digital Agency"
+slug: agency
+description: >
+  AI-powered service business — client acquisition, project delivery,
+  and account management for solo agency operators doing dev/design/marketing.
+niche: "Services / Agency"
+difficulty: "Advanced"
+monthly_revenue_target: "$5K–$20K"
+
+agents:
+  activate:
+    - agent_type: orchestrator
+      tier: core
+      priority: 10
+    - agent_type: lead_nurturing
+      tier: core
+      priority: 9
+    - agent_type: order_scanner
+      tier: core
+      priority: 8
+    - agent_type: order_fulfiller
+      tier: core
+      priority: 8
+    - agent_type: deploy_agent
+      tier: core
+      priority: 7
+    - agent_type: social_media
+      tier: standard
+      priority: 6
+    - agent_type: email_outreach
+      tier: core
+      priority: 8
+    - agent_type: competitor_research
+      tier: standard
+      priority: 5
+    - agent_type: code_generation
+      tier: standard
+      priority: 6
+    - agent_type: deployment
+      tier: standard
+      priority: 6
+    - agent_type: finance
+      tier: core
+      priority: 7
+    - agent_type: customer_support
+      tier: standard
+      priority: 5
+    - agent_type: ads_management
+      tier: standard
+      priority: 5
+    - agent_type: market_intel
+      tier: standard
+      priority: 4
+    - agent_type: business_planning
+      tier: standard
+      priority: 4
+    - agent_type: monitor
+      tier: core
+      priority: 7
+  deactivate: []
+
+pricing:
+  tiers:
+    basic:
+      name: "Freelancer"
+      price_usd: 49
+      description: "Single client pipeline, basic delivery"
+    standard:
+      name: "Studio"
+      price_usd: 149
+      description: "Multi-client, full agent suite, proposals"
+    enterprise:
+      name: "Agency"
+      price_usd: 399
+      description: "Unlimited clients, white-label, SLA monitoring"
+
+deliverables:
+  - name: "Client Onboarding Kit"
+    files: ["onboarding/welcome-pack.md", "onboarding/questionnaire.yaml", "onboarding/sla-template.md"]
+    tier: basic
+  - name: "Proposal Generator"
+    files: ["proposals/templates/", "proposals/pricing-calc.yaml", "proposals/contract-template.md"]
+    tier: standard
+  - name: "Delivery Pipeline"
+    files: ["pipeline/checklist.yaml", "pipeline/review-gates.md", "pipeline/handoff-template.md"]
+    tier: standard
+  - name: "Client Portal"
+    files: ["portal/status-page.html", "portal/chat-widget.js", "portal/report-templates/"]
+    tier: enterprise
+  - name: "Invoice & Collections"
+    files: ["finance/invoice-template.html", "finance/payment-reminders.yaml", "finance/mrr-tracking.csv"]
+    tier: basic
+
+schedules:
+  order-scanner-sweep:
+    interval: 3600
+    desc: "Scan freelance platforms every 1h"
+  lead-nurture-sweep:
+    interval: 1800
+    desc: "Lead follow-up every 30min"
+  email-sweep:
+    interval: 3600
+    desc: "Outreach every 1h"
+  social-sweep:
+    interval: 3600
+    desc: "Social presence every 1h"
+  monitor-sweep:
+    interval: 300
+    desc: "Client service health every 5min"
+  finance-sweep:
+    interval: 86400
+    desc: "Daily finance reconciliation"
+  deploy-sweep:
+    interval: 7200
+    desc: "Deployment check every 2h"
+  weekly-report:
+    crontab: "0 9 * * 1"
+    desc: "Client weekly report Monday 9:00"
+
+startup_tips:
+  - "Enable order_scanner first to find real client work on Upwork/Fiverr"
+  - "lead_nurturing + email_outreach = automated client acquisition pipeline"
+  - "Use CrossDeploy for delivery (Docker/Nginx/K8s), CrossBridge for translation"
+  - "Finance agent tracks per-client profitability in real-time"
+  - "Generate proposals automatically via the Quick Quote pipeline"
+  - "Set up client portal for status transparency → upsell opportunities"

@@ -113,12 +113,18 @@ start_polsia() {
 
     echo "  → Polsia Fork (:8001)..."
     cd "$dir"
-    env $(cred_exports) LLM_API_MOCK=false \
-        setsid bash -c "
+    # Load .env then start: avoids `env export` syntax error
+    local env_file="$CROSSWAVE_DIR/../polsia-fork/.env"
+    local env_load=""
+    if [ -f "$env_file" ]; then
+        env_load="set -a; source '$env_file'; set +a;"
+    fi
+    setsid bash -c "
+        ${env_load}
         export PATH=\"$(dirname "$python"):\$PATH\"
         export DATABASE_URL='sqlite+aiosqlite:///./polsia.db'
         export LLM_API_MOCK=false
-        exec \"$python\" -m uvicorn app.main:app --host 0.0.0.0 --port 8001
+        exec \"$python\" -m uvicorn app.main:app --host 127.0.0.1 --port 8001
     " > "$logf" 2>&1 &
     write_pid "polsia" $!
     wait_ready "Polsia Fork" "http://127.0.0.1:8001/api/v1/health" 30
@@ -134,12 +140,15 @@ start_celery_worker() {
     mkdir -p "$PID_DIR"
     echo "  → Celery Worker (3 queues)..."
     cd "$dir"
-    env $(cred_exports) LLM_API_MOCK=false \
-        setsid bash -c "
+    local env_file="$CROSSWAVE_DIR/../polsia-fork/.env"
+    local env_load=""
+    if [ -f "$env_file" ]; then env_load="set -a; source '$env_file'; set +a;"; fi
+    setsid bash -c "
+        ${env_load}
         export PATH=\"$(dirname "$python"):\$PATH\"
         export DATABASE_URL=sqlite+aiosqlite:///./polsia.db
         export LLM_API_MOCK=false
-        exec \"$python\" -m celery -A celery_app worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance
+        exec \"$python\" -m celery -A celery_app.worker worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance
     " > "$logf" 2>&1 &
     write_pid "celery-worker" $!
     sleep 2
@@ -158,8 +167,11 @@ start_celery_beat() {
 
     echo "  → Celery Beat (6 schedules)..."
     cd "$dir"
-    env $(cred_exports) LLM_API_MOCK=false \
-        setsid bash -c "
+    local env_file="$CROSSWAVE_DIR/../polsia-fork/.env"
+    local env_load=""
+    if [ -f "$env_file" ]; then env_load="set -a; source '$env_file'; set +a;"; fi
+    setsid bash -c "
+        ${env_load}
         export PATH=\"$(dirname "$python"):\$PATH\"
         export LLM_API_MOCK=false
         exec \"$python\" -m celery -A celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
@@ -178,10 +190,13 @@ start_hq() {
 
     echo "  → HQ Bridge (:13001)..."
     cd "$CROSSWAVE_DIR"
-    env $(cred_exports) \
-        setsid bash -c "
+    local env_file="$CROSSWAVE_DIR/.env"
+    local env_load=""
+    if [ -f "$env_file" ]; then env_load="set -a; source '$env_file'; set +a;"; fi
+    setsid bash -c "
+        ${env_load}
         export PATH=\"$(dirname "$python"):\$PATH\"
-        exec \"$python\" -m uvicorn hq.server:app --host 0.0.0.0 --port 13001
+        exec \"$python\" -m uvicorn hq.server:app --host 127.0.0.1 --port 13001
     " > "$logf" 2>&1 &
     write_pid "hq" $!
     wait_ready "HQ Bridge" "http://127.0.0.1:13001/health" 30
@@ -196,13 +211,16 @@ start_crosswave() {
 
     echo "  → CrossWave (:9999)..."
     cd "$CROSSWAVE_DIR"
-    env $(cred_exports) \
-        setsid bash -c "
+    local env_file="$CROSSWAVE_DIR/.env"
+    local env_load=""
+    if [ -f "$env_file" ]; then env_load="set -a; source '$env_file'; set +a;"; fi
+    setsid bash -c "
+        ${env_load}
         export PATH=\"$(dirname "$python"):\$PATH\"
         export POLSIA_BASE_URL=http://127.0.0.1:8001
         export POLSIA_API_KEY=dev-key
         export POLSIA_MOCK=false
-        exec \"$python\" -m uvicorn app.main:app --host 0.0.0.0 --port 9999
+        exec \"$python\" -m uvicorn app.main:app --host 127.0.0.1 --port 9999
     " > "$logf" 2>&1 &
     write_pid "crosswave" $!
     wait_ready "CrossWave" "http://127.0.0.1:9999/health" 20
@@ -220,10 +238,13 @@ start_blog() {
 
     echo "  → CrossBlog (:8002)..."
     cd "$dir"
-    env $(cred_exports) \
-        setsid bash -c "
+    local env_file="$dir/.env"
+    local env_load=""
+    if [ -f "$env_file" ]; then env_load="set -a; source '$env_file'; set +a;"; fi
+    setsid bash -c "
+        ${env_load}
         export PATH=\"$(dirname "$python"):\$PATH\"
-        exec \"$python\" -m uvicorn app.main:app --host 0.0.0.0 --port 8002
+        exec \"$python\" -m uvicorn app.main:app --host 127.0.0.1 --port 8002
     " > "$logf" 2>&1 &
     write_pid "blog" $!
     wait_ready "CrossBlog" "http://127.0.0.1:8002/health" 20

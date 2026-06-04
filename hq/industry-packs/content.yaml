@@ -1,0 +1,108 @@
+name: "Content Creator / Media"
+slug: content
+description: >
+  AI-driven content production pipeline for solo creators & media brands.
+  Blog, social, video, newsletter automation with SEO optimization.
+niche: "Media / Content Creation"
+difficulty: "Beginner"
+monthly_revenue_target: "$1K–$5K"
+
+agents:
+  activate:
+    - agent_type: orchestrator
+      tier: core
+      priority: 10
+    - agent_type: social_media
+      tier: core
+      priority: 9
+    - agent_type: email_outreach
+      tier: core
+      priority: 8
+    - agent_type: competitor_research
+      tier: standard
+      priority: 7
+    - agent_type: lead_nurturing
+      tier: standard
+      priority: 6
+    - agent_type: market_intel
+      tier: core
+      priority: 7
+    - agent_type: finance
+      tier: standard
+      priority: 4
+    - agent_type: business_planning
+      tier: standard
+      priority: 3
+    - agent_type: customer_support
+      tier: standard
+      priority: 3
+    - agent_type: ads_management
+      tier: standard
+      priority: 5
+    - agent_type: monitor
+      tier: standard
+      priority: 4
+  deactivate:
+    - code_generation
+    - deploy_agent
+    - order_scanner
+    - order_fulfiller
+
+pricing:
+  tiers:
+    basic:
+      name: "Creator"
+      price_usd: 15
+      description: "Content scheduling, social automation"
+    standard:
+      name: "Publisher"
+      price_usd: 49
+      description: "Multi-platform, SEO optimization, newsletter"
+    enterprise:
+      name: "Media Brand"
+      price_usd: 149
+      description: "Full pipeline, ad revenue optimization, sponsorship"
+
+deliverables:
+  - name: "Content Calendar"
+    files: ["calendar/monthly-grid.csv", "calendar/evergreen-topics.md"]
+    tier: basic
+  - name: "SEO Kit"
+    files: ["seo/keyword-research.csv", "seo/content-optimization-checklist.md", "seo/internal-linking.yaml"]
+    tier: standard
+  - name: "Newsletter Templates"
+    files: ["email/welcome-series.html", "email/weekly-digest.html", "email/promotional.html"]
+    tier: standard
+  - name: "Social Media Assets"
+    files: ["social/brand-kit.yaml", "social/post-templates/", "social/hashtag-strategy.csv"]
+    tier: basic
+  - name: "Analytics Dashboard"
+    files: ["analytics/content-performance.sql", "analytics/audience-insights.yaml"]
+    tier: enterprise
+
+schedules:
+  social-sweep:
+    interval: 3600
+    desc: "Social posting every 1h"
+  market-intel-sweep:
+    interval: 43200
+    desc: "Trend research twice daily"
+  email-sweep:
+    interval: 86400
+    desc: "Newsletter dispatch daily"
+  competitor-sweep:
+    interval: 86400
+    desc: "Competitor content analysis daily"
+  ads-sync:
+    interval: 43200
+    desc: "Ad performance sync twice daily"
+  weekly-report:
+    crontab: "0 9 * * 1"
+    desc: "Weekly content performance report"
+
+startup_tips:
+  - "CrossBlog powers your content engine — activate before anything else"
+  - "social_media + market_intel = trending topic detection → rapid content"
+  - "Use lead_nurturing to convert blog subscribers into paid members"
+  - "Set up ads_management for paid promotion of top-performing posts"
+  - "CrossBridge can localize content for international audiences"

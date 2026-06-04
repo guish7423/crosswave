@@ -1403,5 +1403,30 @@ async def interrupts_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "interrupts.html"))
 
 
+# ─── Industry Packs ──────────────────────────────────────────────────────────
+
+@app.get("/api/hq/industry-packs")
+async def list_industry_packs():
+    """List all available industry packs."""
+    from hq.industry_pack_service import list_packs
+    return {"packs": list_packs()}
+
+
+@app.get("/api/hq/industry-packs/{slug}")
+async def get_industry_pack(slug: str):
+    """Get full detail for a specific industry pack."""
+    from hq.industry_pack_service import get_pack
+    pack = get_pack(slug)
+    if not pack:
+        raise HTTPException(404, f"Industry pack '{slug}' not found")
+    return pack
+
+
+@app.get("/industry-packs")
+async def industry_packs_page():
+    """Industry packs browse page."""
+    return FileResponse(os.path.join(os.path.dirname(__file__), "industry_packs.html"))
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)

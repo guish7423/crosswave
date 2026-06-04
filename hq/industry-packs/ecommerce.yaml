@@ -1,0 +1,110 @@
+name: "E-Commerce"
+slug: ecommerce
+description: >
+  AI-powered online store operations. Product sourcing, customer acquisition,
+  order fulfillment, and cross-border sales for solo entrepreneurs.
+niche: "Retail / E-Commerce"
+difficulty: "Beginner"
+monthly_revenue_target: "$2K–$8K"
+
+agents:
+  activate:
+    - agent_type: orchestrator
+      tier: core
+      priority: 10
+    - agent_type: social_media
+      tier: core
+      priority: 9
+    - agent_type: ads_management
+      tier: core
+      priority: 8
+    - agent_type: customer_support
+      tier: core
+      priority: 7
+    - agent_type: email_outreach
+      tier: standard
+      priority: 6
+    - agent_type: competitor_research
+      tier: standard
+      priority: 6
+    - agent_type: order_fulfiller
+      tier: standard
+      priority: 5
+    - agent_type: finance
+      tier: standard
+      priority: 4
+    - agent_type: business_planning
+      tier: standard
+      priority: 3
+    - agent_type: lead_nurturing
+      tier: standard
+      priority: 4
+    - agent_type: market_intel
+      tier: standard
+      priority: 3
+    - agent_type: monitor
+      tier: standard
+      priority: 5
+  deactivate:
+    - code_generation
+    - deploy_agent
+    - order_scanner
+
+pricing:
+  tiers:
+    basic:
+      name: "Store"
+      price_usd: 19
+      description: "Single store, social media automation"
+    standard:
+      name: "Multi-Store"
+      price_usd: 79
+      description: "3 stores, ads management, competitor tracking"
+    enterprise:
+      name: "Cross-Border"
+      price_usd: 199
+      description: "跨境店铺, multi-platform listing, 24/7 support"
+
+deliverables:
+  - name: "Store Setup"
+    files: ["store-config.yaml", "product-template.csv", "shipping-rules.json"]
+    tier: basic
+  - name: "Social Media Calendar"
+    files: ["content-calendar.csv", "post-templates/", "hashtag-research.txt"]
+    tier: basic
+  - name: "Ad Campaign Templates"
+    files: ["ads/google-ads.yaml", "ads/facebook-ads.yaml", "ads/remarketing.yaml"]
+    tier: standard
+  - name: "Customer Service SOP"
+    files: ["sop/faq-automation.json", "sop/escalation-rules.yaml", "sop/refund-policy.md"]
+    tier: standard
+  - name: "Cross-Border Kit"
+    files: ["shipping/international-rates.yaml", "customs/declaration-forms/", "localization/translations.csv"]
+    tier: enterprise
+
+schedules:
+  social-sweep:
+    interval: 1800
+    desc: "Social media every 30min"
+  ads-sync:
+    interval: 3600
+    desc: "Ad metrics sync every 1h"
+  customer-support-sweep:
+    interval: 900
+    desc: "Support check every 15min"
+  competitor-sweep:
+    interval: 86400
+    desc: "Competitor research daily"
+  email-sweep:
+    interval: 7200
+    desc: "Email outreach every 2h"
+  weekly-report:
+    crontab: "0 9 * * 1"
+    desc: "Weekly report Monday 9:00"
+
+startup_tips:
+  - "Activate social_media + ads_management first for customer acquisition"
+  - "Enable competitor_research to track pricing trends"
+  - "Set up Stripe/PayPal for multi-currency payments"
+  - "Use customer_support with FAQ automation for 24/7 coverage"
+  - "Cross-border: enable market_intel for tariff/regulation updates"

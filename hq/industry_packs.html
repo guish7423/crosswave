@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Industry Packs — CrossWave HQ</title>
+<link rel="stylesheet" href="/static/styles.css">
+<style>
+  .pack-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:24px; }
+  .pack-card { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px; transition:transform .2s,box-shadow .2s; cursor:pointer; }
+  .pack-card:hover { transform:translateY(-4px); box-shadow:0 8px 32px rgba(0,0,0,.3); }
+  .pack-card.featured { border-color:var(--accent); position:relative; }
+  .pack-card.featured::before { content:"★ Recommended"; position:absolute; top:-10px; right:16px; background:var(--accent); color:#000; padding:2px 12px; border-radius:10px; font-size:12px; font-weight:600; }
+  .pack-difficulty { display:inline-block; padding:2px 10px; border-radius:8px; font-size:12px; font-weight:500; margin:8px 0; }
+  .pack-difficulty.beginner { background:rgba(34,197,94,.15); color:#22c55e; }
+  .pack-difficulty.intermediate { background:rgba(234,179,8,.15); color:#eab308; }
+  .pack-difficulty.advanced { background:rgba(239,68,68,.15); color:#ef4444; }
+  .pack-detail { display:none; margin-top:24px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:32px; }
+  .pack-detail.active { display:block; }
+  .agent-tag { display:inline-block; padding:2px 10px; border-radius:6px; font-size:12px; margin:3px; }
+  .agent-tag.core { background:rgba(99,102,241,.15); color:#818cf8; }
+  .agent-tag.standard { background:rgba(34,197,94,.15); color:#22c55e; }
+  .agent-tag.restricted { background:rgba(234,179,8,.15); color:#eab308; }
+  .agent-tag.inactive { background:rgba(239,68,68,.1); color:#ef4444; text-decoration:line-through; }
+  .deliverable-table { width:100%; border-collapse:collapse; margin:16px 0; }
+  .deliverable-table th,.deliverable-table td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); }
+  .deliverable-table th { color:var(--text-secondary); font-size:13px; font-weight:500; }
+  .tier-badge { display:inline-block; padding:1px 8px; border-radius:6px; font-size:11px; font-weight:500; }
+  .tier-badge.basic { background:rgba(99,102,241,.15); color:#818cf8; }
+  .tier-badge.standard { background:rgba(234,179,8,.15); color:#eab308; }
+  .tier-badge.enterprise { background:rgba(239,68,68,.15); color:#ef4444; }
+  .pricing-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:16px 0; }
+  .pricing-card { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center; }
+  .pricing-card .price { font-size:28px; font-weight:700; color:var(--accent); margin:8px 0; }
+  .pricing-card .price-label { font-size:12px; color:var(--text-secondary); }
+  .tip-list { padding-left:20px; }
+  .tip-list li { margin:6px 0; color:var(--text-secondary); }
+  .back-btn { display:inline-block; margin-bottom:16px; color:var(--text-secondary); cursor:pointer; font-size:14px; }
+  .back-btn:hover { color:var(--accent); }
+  .empty-state { text-align:center; padding:60px 20px; color:var(--text-secondary); }
+  .kpi-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+  .kpi-card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center; }
+  .kpi-card .value { font-size:28px; font-weight:700; color:var(--accent); }
+  .kpi-card .label { font-size:12px; color:var(--text-secondary); margin-top:4px; }
+  .schedule-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin:16px 0; }
+  .schedule-item { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; }
+  .schedule-item .interval { font-family:monospace; font-size:13px; color:var(--accent); }
+  .schedule-item .desc { font-size:13px; color:var(--text-secondary); margin-top:4px; }
+  @media(max-width:768px){ .pack-grid, .pricing-grid { grid-template-columns:1fr; } .kpi-cards { grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+<iframe src="/nav" style="width:100%;border:none;height:52px;display:block;" title="nav"></iframe>
+
+<div class="main-content" style="max-width:1200px;margin:32px auto;padding:0 20px;">
+  <h1 style="margin-bottom:8px;">📋 Industry Packs</h1>
+  <p style="color:var(--text-secondary);margin-bottom:32px;">One-click startup templates — configure agents, pricing, and workflows for your business type</p>
+
+  <!-- KPI row -->
+  <div class="kpi-cards" id="kpiRow">
+    <div class="kpi-card"><div class="value" id="totalPacks">—</div><div class="label">Total Packs</div></div>
+    <div class="kpi-card"><div class="value" id="totalAgents">—</div><div class="label">Agents Across All</div></div>
+    <div class="kpi-card"><div class="value" id="activePacks">4</div><div class="label">Available Now</div></div>
+    <div class="kpi-card"><div class="value" id="activePackName">—</div><div class="label">Currently Applied</div></div>
+  </div>
+
+  <!-- Pack list -->
+  <div id="packList">
+    <div class="pack-grid" id="packGrid"></div>
+  </div>
+
+  <!-- Pack detail -->
+  <div class="pack-detail" id="packDetail">
+    <div class="back-btn" onclick="showList()">← Back to all packs</div>
+    <div id="packDetailContent"></div>
+  </div>
+</div>
+
+<script>
+let packs = [];
+let currentPack = null;
+
+async function loadPacks() {
+  try {
+    const resp = await fetch('/api/hq/industry-packs');
+    const data = await resp.json();
+    packs = data.packs || [];
+    renderList();
+  } catch(e) {
+    document.getElementById('packGrid').innerHTML = '<div class="empty-state">Failed to load packs. Is HQ Bridge running?</div>';
+  }
+}
+
+function renderList() {
+  const grid = document.getElementById('packGrid');
+  const totalAgents = packs.reduce((sum, p) => sum + (p.agent_count || 0), 0);
+  document.getElementById('totalPacks').textContent = packs.length;
+  document.getElementById('totalAgents').textContent = totalAgents;
+
+  if (packs.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No industry packs available yet.</div>';
+    return;
+  }
+
+  grid.innerHTML = packs.map((p, i) => `
+    <div class="pack-card ${i === 0 ? 'featured' : ''}" onclick="showDetail('${p.slug}')">
+      <h3 style="margin:0 0 4px;">${p.name}</h3>
+      <div class="pack-difficulty ${(p.difficulty||'').toLowerCase()}">${p.difficulty || 'Beginner'}</div>
+      <p style="color:var(--text-secondary);font-size:14px;margin:8px 0;">${p.description || ''}</p>
+      <div style="display:flex;gap:16px;font-size:13px;color:var(--text-secondary);margin-top:12px;">
+        <span>🎯 ${p.monthly_revenue_target || '—'}</span>
+        <span>🤖 ${p.agent_count} agents</span>
+        <span>🏷️ ${p.niche || '—'}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function showDetail(slug) {
+  try {
+    const resp = await fetch(`/api/hq/industry-packs/${slug}`);
+    const pack = await resp.json();
+    currentPack = pack;
+    document.getElementById('packList').style.display = 'none';
+    const detail = document.getElementById('packDetail');
+    detail.classList.add('active');
+    document.getElementById('activePackName').textContent = pack.name || slug;
+
+    // Activate / deactivate counts
+    const activate = pack.agents?.activate || [];
+    const deactivate = pack.agents?.deactivate || [];
+    const pricing = pack.pricing?.tiers || {};
+    const tiers = Object.entries(pricing);
+    const deliverables = pack.deliverables || [];
+    const schedules = pack.schedules || {};
+
+    document.getElementById('packDetailContent').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;">
+        <div>
+          <h2 style="margin:0;">${pack.name}</h2>
+          <div class="pack-difficulty ${(pack.difficulty||'').toLowerCase()}">${pack.difficulty || 'Beginner'}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:24px;font-weight:700;color:var(--accent);">🎯 ${pack.monthly_revenue_target || '—'}</div>
+          <div style="font-size:12px;color:var(--text-secondary);">Revenue Target</div>
+        </div>
+      </div>
+      <p style="color:var(--text-secondary);margin:16px 0;">${pack.description || ''}</p>
+      <p style="font-size:13px;color:var(--text-secondary);"><strong>Niche:</strong> ${pack.niche || '—'}</p>
+
+      <h3 style="margin-top:32px;">🤖 Agent Configuration</h3>
+      <p style="color:var(--text-secondary);font-size:13px;">${activate.length} active · ${deactivate.length} inactive</p>
+      <div>
+        ${activate.map(a => `<span class="agent-tag ${a.tier || 'standard'}">${a.agent_type}</span>`).join('')}
+        ${deactivate.map(a => `<span class="agent-tag inactive">${a}</span>`).join('')}
+      </div>
+
+      ${tiers.length > 0 ? `
+      <h3 style="margin-top:32px;">💵 Pricing</h3>
+      <div class="pricing-grid">
+        ${tiers.map(([key, t]) => `
+          <div class="pricing-card">
+            <div class="tier-badge ${key}">${key}</div>
+            <div class="price">$${t.price_usd}</div>
+            <div class="price-label">${t.name}</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">${t.description}</div>
+          </div>
+        `).join('')}
+      </div>` : ''}
+
+      ${deliverables.length > 0 ? `
+      <h3 style="margin-top:32px;">📦 Deliverables</h3>
+      <table class="deliverable-table">
+        <thead><tr><th>Deliverable</th><th>Tier</th><th>Files</th></tr></thead>
+        <tbody>
+          ${deliverables.map(d => `
+            <tr>
+              <td><strong>${d.name}</strong></td>
+              <td><span class="tier-badge ${d.tier}">${d.tier}</span></td>
+              <td style="font-size:12px;color:var(--text-secondary);">${(d.files||[]).join(', ')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>` : ''}
+
+      ${Object.keys(schedules).length > 0 ? `
+      <h3 style="margin-top:32px;">⏰ Schedule</h3>
+      <div class="schedule-grid">
+        ${Object.entries(schedules).map(([key, s]) => `
+          <div class="schedule-item">
+            <strong>${key}</strong>
+            <div class="interval">${s.interval ? `every ${s.interval/60}min` : s.crontab || ''}</div>
+            <div class="desc">${s.desc}</div>
+          </div>
+        `).join('')}
+      </div>` : ''}
+
+      ${pack.startup_tips && pack.startup_tips.length > 0 ? `
+      <h3 style="margin-top:32px;">💡 Startup Tips</h3>
+      <ul class="tip-list">
+        ${pack.startup_tips.map(t => `<li>${t}</li>`).join('')}
+      </ul>` : ''}
+    `;
+  } catch(e) {
+    console.error('Failed to load pack detail:', e);
+  }
+}
+
+function showList() {
+  document.getElementById('packList').style.display = 'block';
+  const detail = document.getElementById('packDetail');
+  detail.classList.remove('active');
+  document.getElementById('activePackName').textContent = '—';
+}
+
+loadPacks();
+</script>
+</body>
+</html>

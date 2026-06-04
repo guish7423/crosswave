@@ -1,4 +1,6 @@
 """CrossWave — Unified Management Platform"""
+import asyncio
+import json
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
@@ -12,6 +14,7 @@ import os
 import httpx
 
 from app.services.polsia_client import polsia_client
+from app.services.mcp_service import mcp_service
 from app.config import settings
 from pydantic import BaseModel
 
@@ -42,6 +45,48 @@ Allow: /
 
 Sitemap: https://crosswave.app/sitemap.xml
 """
+
+# ─── MCP Protocol routes (JSON-RPC 2.0 over SSE) ─────────────────────────
+
+@app.get("/mcp/sse")
+async def mcp_sse(request: Request):
+    """SSE endpoint for MCP protocol — JSON-RPC 2.0 event stream."""
+    from fastapi.responses import StreamingResponse
+
+    async def event_generator():
+        await mcp_service.initialize()
+        # Send endpoint notification first
+        yield "event: endpoint\ndata: /mcp/message\n\n"
+        # Keep connection alive with heartbeats
+        try:
+            while True:
+                await asyncio.sleep(30)
+                yield "event: heartbeat\ndata: \n\n"
+        except asyncio.CancelledError:
+            await mcp_service.shutdown()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/mcp/message")
+async def mcp_message(request: Request):
+    """POST endpoint for MCP JSON-RPC 2.0 requests."""
+    body = await request.body()
+    response = await mcp_service.handle_message(body)
+    if not response:
+        # Notification (no response body)
+        return JSONResponse(content={"status": "accepted"}, status_code=202)
+    data = json.loads(response)
+    return JSONResponse(content=data)
+
 
 # ─── Page routes ──────────────────────────────────────────────────────────
 

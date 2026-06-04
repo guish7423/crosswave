@@ -1,0 +1,111 @@
+name: "SaaS Startup"
+slug: saas
+description: >
+  AI SaaS product development & growth. One-person tech startup running
+  AI agents for product dev, customer acquisition, deployment, and finance.
+niche: "Tech / SaaS"
+difficulty: "Intermediate"
+monthly_revenue_target: "$3K–$10K"
+
+agents:
+  activate:
+    - agent_type: orchestrator
+      tier: core
+      priority: 10
+    - agent_type: code_generation
+      tier: core
+      priority: 9
+    - agent_type: deployment
+      tier: core
+      priority: 8
+    - agent_type: deploy_agent
+      tier: core
+      priority: 8
+    - agent_type: social_media
+      tier: standard
+      priority: 6
+    - agent_type: customer_support
+      tier: standard
+      priority: 5
+    - agent_type: finance
+      tier: standard
+      priority: 5
+    - agent_type: business_planning
+      tier: standard
+      priority: 4
+    - agent_type: lead_nurturing
+      tier: standard
+      priority: 4
+    - agent_type: competitor_research
+      tier: standard
+      priority: 3
+    - agent_type: order_scanner
+      tier: restricted
+      priority: 2
+    - agent_type: order_fulfiller
+      tier: restricted
+      priority: 2
+    - agent_type: market_intel
+      tier: standard
+      priority: 3
+    - agent_type: monitor
+      tier: core
+      priority: 7
+  deactivate:
+    - ads_management
+    - email_outreach
+
+pricing:
+  tiers:
+    basic:
+      name: "Starter"
+      price_usd: 29
+      description: "Single product, basic monitoring"
+    standard:
+      name: "Growth"
+      price_usd: 99
+      description: "Multi-product, full agent suite"
+    enterprise:
+      name: "Scale"
+      price_usd: 299
+      description: "Custom integrations, priority support"
+
+deliverables:
+  - name: "Docker Deployment"
+    files: ["Dockerfile", "docker-compose.yml", ".dockerignore"]
+    tier: basic
+  - name: "CI/CD Pipeline"
+    files: [".github/workflows/ci.yml", "scripts/deploy.sh"]
+    tier: standard
+  - name: "Monitoring Stack"
+    files: ["prometheus.yml", "grafana/dashboards/", "alertmanager.yml"]
+    tier: enterprise
+  - name: "API Documentation"
+    files: ["docs/api.md", "openapi.yaml"]
+    tier: standard
+  - name: "SSL & Domain"
+    files: ["nginx.conf", "scripts/ssl-setup.sh"]
+    tier: basic
+
+schedules:
+  monitor-sweep:
+    interval: 300
+    desc: "Health check every 5min"
+  social-sweep:
+    interval: 7200
+    desc: "Social media every 2h"
+  customer-support-sweep:
+    interval: 3600
+    desc: "Support check every 1h"
+  weekly-report:
+    crontab: "0 9 * * 1"
+    desc: "Weekly report Monday 9:00"
+  evolution-sweep:
+    crontab: "0 0 * * 6"
+    desc: "Agent evolution Saturday midnight"
+
+startup_tips:
+  - "Start with core agents (orchestrator, code_gen, deployment, monitor)"
+  - "Enable lead_nurturing + customer_support after first beta user"
+  - "Set STRIPE_SECRET_KEY before activating pricing tiers"
+  - "Use order_scanner for freelance income during development phase"
