@@ -76,11 +76,11 @@ class TestCompatAdapter:
         # Should have converted and returned JSON-RPC response
         assert result is not None  # In real async would await
 
-    def test_adapter_unknown_method(self):
-        """Unknown methods return MethodNotFound error."""
+    async def test_adapter_unknown_method(self):
+        """Unknown methods return None (no handler registered)."""
         adapter = CompatAdapter()
         new_req = {"jsonrpc": "2.0", "method": "unknown/method", "params": {}, "id": 1}
-        result = adapter.handle_request(new_req)
+        result = await adapter.handle_request(new_req)
         assert result is None  # No handler registered
 
     def test_action_mapping(self):

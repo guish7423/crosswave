@@ -12,17 +12,15 @@ client = TestClient(app)
 
 class TestMCPServiceRoutes:
     def test_mcp_message_endpoint(self):
-        """Message endpoint accepts JSON-RPC requests."""
+        """Message endpoint accepts JSON-RPC requests, returns 202 (SSE)."""
         resp = client.post(
             "/mcp/message",
             json={"jsonrpc": "2.0", "method": "ping", "id": 1},
         )
-        assert resp.status_code == 200
+        # Per MCP spec, responses are delivered via SSE stream, HTTP returns 202
+        assert resp.status_code == 202
         data = resp.json()
-        assert data["jsonrpc"] == "2.0"
-        assert "result" in data or "error" in data
-        if "result" in data:
-            assert data["result"]["status"] == "pong"
+        assert data["status"] == "accepted"
 
     def test_mcp_invalid_request(self):
         """Invalid JSON-RPC request returns error."""
@@ -48,15 +46,14 @@ class TestMCPServiceRoutes:
         assert data["error"]["code"] == -32700  # Parse Error
 
     def test_mcp_unknown_method(self):
-        """Unknown method returns MethodNotFound error."""
+        """Unknown method returns 202 (error sent via SSE)."""
         resp = client.post(
             "/mcp/message",
             json={"jsonrpc": "2.0", "method": "unknown/method", "id": 1},
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 202
         data = resp.json()
-        assert "error" in data
-        assert data["error"]["code"] == -32601  # Method Not Found
+        assert data["status"] == "accepted"
 
     def test_mcp_notification_no_response(self):
         """Notifications should return 202."""

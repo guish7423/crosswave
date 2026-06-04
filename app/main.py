@@ -53,20 +53,10 @@ async def mcp_sse(request: Request):
     """SSE endpoint for MCP protocol — JSON-RPC 2.0 event stream."""
     from fastapi.responses import StreamingResponse
 
-    async def event_generator():
-        await mcp_service.initialize()
-        # Send endpoint notification first
-        yield "event: endpoint\ndata: /mcp/message\n\n"
-        # Keep connection alive with heartbeats
-        try:
-            while True:
-                await asyncio.sleep(30)
-                yield "event: heartbeat\ndata: \n\n"
-        except asyncio.CancelledError:
-            await mcp_service.shutdown()
+    await mcp_service.initialize()
 
     return StreamingResponse(
-        event_generator(),
+        mcp_service.sse_events(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

@@ -6,6 +6,7 @@ and any older protocol format used by CrossWave components.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Coroutine
@@ -81,10 +82,11 @@ def convert_new_to_old(new: dict[str, Any]) -> OldProtocolMessage:
     """Convert a JSON-RPC 2.0 message to old protocol format."""
     if "method" in new:
         # Request or Notification
-        action = _METHOD_TO_ACTION.get(new["method"], new["method"])
+        raw_method = new.get("method", "")
+        action = _METHOD_TO_ACTION.get(raw_method, raw_method) if raw_method else ""
         return OldProtocolMessage(
             type="request",
-            action=action,
+            action=action or "",
             payload=new.get("params"),
             request_id=new.get("id"),
         )
@@ -136,7 +138,7 @@ class CompatAdapter:
         """Map an old-style action to a JSON-RPC 2.0 method name."""
         return _ACTION_TO_METHOD.get(action, action)
 
-    def handle_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
+    async def handle_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
         """Handle a JSON-RPC 2.0 request using old-style handlers.
 
         Returns a JSON-RPC 2.0 response dict, or None if unhandled.
@@ -155,12 +157,8 @@ class CompatAdapter:
             request_id=request.get("id"),
         )
 
-        # Note: In a real async context, this would await the handler.
-        # The compat adapter is intentionally synchronous for the old
-        # protocol format; callers should handle async dispatch.
         try:
-            import asyncio
-            result = asyncio.run(handler(old_req))
+            result = await handler(old_req)
             if result is None:
                 return None
             return {

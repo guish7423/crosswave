@@ -98,10 +98,12 @@ class MCPService:
             await self._dispatch_notification(msg)
             return ""
 
-        # Handle request
+        # Handle request — send response via SSE stream, return empty for 202
         if isinstance(msg, JSONRPCRequest):
             response = await self._dispatch_request(msg)
-            return serialize_message(response)
+            payload = serialize_message(response)
+            await self._transport.send_jsonrpc_response(json.loads(payload))
+            return ""
 
         # Response/Error messages from client (shouldn't happen normally)
         if isinstance(msg, JSONRPCResponse):
@@ -124,13 +126,6 @@ class MCPService:
             code=JSONRPCErrorCode.INVALID_REQUEST,
             message="Unknown message type",
         ))
-
-    async def get_sse_response(self) -> str:
-        """Generate the initial SSE response with endpoint information."""
-        # Send the endpoint URL as the first event
-        await self._transport.send_endpoint("/mcp/message")
-        # Return the full event stream
-        return await self._transport.event_stream()
 
     async def _dispatch_request(self, request: JSONRPCRequest) -> JSONRPCResponse | JSONRPCError:
         """Dispatch a request to the appropriate handler."""
@@ -211,6 +206,17 @@ class MCPService:
         """Handle the 'notifications/initialized' notification."""
         self._initialized = True
         logger.info("MCP client fully initialized")
+
+
+    async def sse_events(self):
+        """Async generator for SSE event stream.
+
+        Yields formatted SSE strings for FastAPI's StreamingResponse.
+        First event is the endpoint URL, followed by JSON-RPC responses
+        and heartbeats.
+        """
+        async for event in self._transport.iter_events():
+            yield event
 
 
 # Singleton

@@ -98,7 +98,6 @@ class SSETransport:
         Returns formatted SSE text that can be used as an HTTP response body
         or streamed to the client.
         """
-        # Send initial endpoint notification
         parts = []
 
         while self._connected:
@@ -110,6 +109,22 @@ class SSETransport:
                 parts.append(self._format_sse("heartbeat", ""))
 
         return "".join(parts)
+
+    async def iter_events(self):
+        """Async generator yielding formatted SSE event strings.
+
+        Yields each event as it arrives from the queue, with a heartbeat
+        every 30 seconds to keep the connection alive.  Designed for use
+        with FastAPI's StreamingResponse.
+        """
+        await self.send_endpoint("/mcp/message")
+
+        while self._connected:
+            try:
+                entry = await asyncio.wait_for(self._queue.get(), timeout=30.0)
+                yield entry["formatted"]
+            except asyncio.TimeoutError:
+                yield self._format_sse("heartbeat", "")
 
     @staticmethod
     def _format_sse(event: str, data: str) -> str:
