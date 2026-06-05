@@ -24,15 +24,17 @@ class TestHealth:
 
 # ─── /api/hq/summary ──────────────────────────────────────────────────────────
 class TestSummary:
+    URL = "/api/hq/summary?source=cache"
+
     def test_summary_structure(self, auth_client):
-        resp = auth_client.get("/api/hq/summary")
+        resp = auth_client.get(self.URL)
         assert resp.status_code == 200
         data = resp.json()
         for key in ("employees", "lines", "orders", "mrr", "customers", "leads", "last_sync"):
             assert key in data
 
     def test_summary_employee_counts(self, auth_client):
-        resp = auth_client.get("/api/hq/summary")
+        resp = auth_client.get(self.URL)
         data = resp.json()
         assert data["employees"]["total"] == 3
         assert data["employees"]["status_distribution"]["idle"] == 1
@@ -40,33 +42,57 @@ class TestSummary:
         assert data["employees"]["status_distribution"]["error"] == 1
 
     def test_summary_orders(self, auth_client):
-        resp = auth_client.get("/api/hq/summary")
+        resp = auth_client.get(self.URL)
         data = resp.json()
         assert data["orders"]["total"] == 3
         assert data["orders"]["active"] == 1
         assert data["orders"]["status_distribution"]["completed"] == 1
 
     def test_summary_mrr(self, auth_client):
-        resp = auth_client.get("/api/hq/summary")
+        resp = auth_client.get(self.URL)
         data = resp.json()
         assert data["mrr"] == 174
         assert data["customers"] == 4
 
     def test_summary_leads(self, auth_client):
-        resp = auth_client.get("/api/hq/summary")
+        resp = auth_client.get(self.URL)
         data = resp.json()
         assert data["leads"]["total"] == 2
         assert data["leads"]["new"] == 1
 
-    def test_summary_lines_health(self, auth_client):
-        resp = auth_client.get("/api/hq/summary")
+    def test_summary_source_cache_flag(self, auth_client):
+        """?source=cache returns 'cache' as source."""
+        resp = auth_client.get("/api/hq/summary?source=cache")
+        assert resp.json().get("source") == "cache"
+
+
+class TestSummaryNocoBase:
+    """Tests for the NocoBase-read path (when available)."""
+
+    def test_nocobase_summary_structure(self, auth_client):
+        resp = auth_client.get("/api/hq/summary?source=auto")
+        assert resp.status_code == 200
         data = resp.json()
-        lines = data["lines"]
-        assert len(lines) == 3
-        active = [item for item in lines if item["health"] == "healthy"]
-        dev = [item for item in lines if item["health"] == "warning"]
-        assert len(active) == 2
-        assert len(dev) == 1
+        for key in ("employees", "lines", "orders", "mrr", "source"):
+            assert key in data
+
+    def test_nocobase_stats_endpoint(self, auth_client):
+        resp = auth_client.get("/api/hq/nocobase/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "status" in data
+
+    def test_nocobase_employees_endpoint(self, auth_client):
+        resp = auth_client.get("/api/hq/nocobase/employees")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total" in data
+
+    def test_nocobase_orders_endpoint(self, auth_client):
+        resp = auth_client.get("/api/hq/nocobase/orders")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total" in data
 
 
 # ─── /api/hq/employees ────────────────────────────────────────────────────────

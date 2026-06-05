@@ -70,3 +70,56 @@ async def get_stats() -> dict:
         "external_orders": len(orders),
         "status": "connected",
     }
+
+
+async def get_summary() -> dict:
+    """Rich summary matching /api/hq/summary shape, sourced from NocoBase."""
+    employees = await list_all("employees")
+    lines = await list_all("business_lines")
+    orders = await list_all("external_orders")
+
+    # Employee stats
+    emp_statuses: dict[str, int] = {}
+    for e in employees:
+        s = e.get("status", "idle")
+        emp_statuses[s] = emp_statuses.get(s, 0) + 1
+
+    # Line stats
+    total_mrr = sum(l.get("monthly_revenue", 0) or 0 for l in lines)
+    total_customers = sum(l.get("customer_count", 0) or 0 for l in lines)
+    line_summaries = []
+    for l in lines:
+        line_summaries.append({
+            "name": l.get("name", l.get("slug", "unknown")),
+            "slug": l.get("slug", ""),
+            "status": l.get("status", "unknown"),
+            "health": "healthy" if l.get("status") == "active" else "warning",
+            "monthly_revenue": l.get("monthly_revenue", 0) or 0,
+            "customer_count": l.get("customer_count", 0) or 0,
+        })
+
+    # Order stats
+    active_orders = [o for o in orders if o.get("status") in ("pending", "in_progress")]
+    order_statuses: dict[str, int] = {}
+    for o in orders:
+        s = o.get("status", "pending")
+        order_statuses[s] = order_statuses.get(s, 0) + 1
+
+    return {
+        "employees": {
+            "total": len(employees),
+            "active": len([e for e in employees if e.get("status") in ("idle", "running")]),
+            "status_distribution": emp_statuses,
+        },
+        "lines": line_summaries,
+        "orders": {
+            "total": len(orders),
+            "active": len(active_orders),
+            "status_distribution": order_statuses,
+        },
+        "mrr": total_mrr,
+        "customers": total_customers,
+        "leads": {"total": 0, "new": 0},  # NocoBase doesn't have leads yet
+        "last_sync": None,
+        "source": "nocobase",
+    }

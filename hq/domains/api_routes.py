@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from hq.domains.data import (
     CACHE,
@@ -12,8 +12,8 @@ from hq.domains.data import (
 router = APIRouter(prefix="/api/hq", tags=["api"])
 
 
-@router.get("/summary")
-async def summary():
+def _summary_from_cache() -> dict:
+    """Build summary dict from in-memory CACHE (fallback)."""
     emps = CACHE["employees"]
     lines = CACHE["lines"]
     orders = CACHE["orders"]
@@ -47,7 +47,25 @@ async def summary():
             "new": len([lead for lead in leads if lead.get("status") == "new"]),
         },
         "last_sync": CACHE.get("last_sync"),
+        "source": "cache",
     }
+
+
+@router.get("/summary")
+async def summary(source: str = Query("auto", description="data source: auto, cache, or nocobase")):
+    """Dashboard summary — tries NocoBase first (if 'auto'), falls back to in-memory CACHE."""
+    if source != "cache":
+        try:
+            from hq.nocobase_client import get_summary  # noqa: lazy import
+            nb = await get_summary()
+            if nb.get("employees", {}).get("total", 0) > 0:
+                # NocoBase has data — use it, but fill gaps from CACHE
+                nb["leads"] = _summary_from_cache().get("leads", {"total": 0, "new": 0})
+                nb["last_sync"] = CACHE.get("last_sync")
+                return nb
+        except Exception:
+            pass  # fall through to CACHE
+    return _summary_from_cache()
 
 
 @router.get("/employees")
