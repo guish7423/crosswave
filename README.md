@@ -52,6 +52,31 @@ crosswave/
 2. **Phase 2**: 开通 Stripe → SaaS 订阅 ($19-49/月)
 3. **Phase 3**: 产品矩阵 → 交叉销售
 
+## Configuration
+
+### Sentry Error Tracking
+
+1. Create a Sentry account at https://sentry.io
+2. Create a new Python project, copy the DSN
+3. Add to `.env`: `SENTRY_DSN=https://xxx@xxx.ingest.us.sentry.io/xxx`
+
+### Stripe
+
+1. Create a Stripe account at https://stripe.com
+2. Copy secret key to `.env`: `STRIPE_SECRET_KEY=sk_test_xxx`
+3. Copy webhook secret to `.env`: `STRIPE_WEBHOOK_SECRET=whsec_xxx`
+4. Run product setup: `STRIPE_SECRET_KEY=sk_test_xxx python scripts/setup_stripe.py`
+5. Set price IDs in `.env` from the script output
+
+### Admin Login
+
+1. Generate password hash: `python -c "import bcrypt; print(bcrypt.hashpw(b'your-password', bcrypt.gensalt()).decode())"`
+2. Set in `.env`:
+   ```
+   ADMIN_USERNAME=admin
+   ADMIN_PASSWORD_HASH=$2b$12$...
+   ```
+
 ---
 
 *Built for the global Chinese creator community.*
