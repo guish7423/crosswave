@@ -9,7 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from hq.weekly_report import generate_report, get_db, main as report_main
+from hq.weekly_report import generate_report, get_db
+from hq.weekly_report import main as report_main
 
 
 @pytest.fixture
@@ -141,10 +142,9 @@ def test_main_stdout(polsia_db):
 
     wr.POLSIA_DB = polsia_db
     test_args = ["weekly_report.py"]
-    with patch.object(sys, "argv", test_args):
-        with patch("builtins.print") as mock_print:
-            report_main()
-            assert mock_print.called
+    with patch.object(sys, "argv", test_args), patch("builtins.print") as mock_print:
+        report_main()
+        assert mock_print.called
 
 
 def test_main_json(polsia_db):
@@ -153,15 +153,14 @@ def test_main_json(polsia_db):
 
     wr.POLSIA_DB = polsia_db
     test_args = ["weekly_report.py", "--json"]
-    with patch.object(sys, "argv", test_args):
-        with patch("builtins.print") as mock_print:
-            report_main()
-            # Should have printed JSON
-            calls = [c[0][0] for c in mock_print.call_args_list if c[0]]
-            json_outputs = [c for c in calls if isinstance(c, str) and c.startswith("{")]
-            assert len(json_outputs) > 0
-            parsed = json.loads(json_outputs[0])
-            assert "mrr" in parsed
+    with patch.object(sys, "argv", test_args), patch("builtins.print") as mock_print:
+        report_main()
+        # Should have printed JSON
+        calls = [c[0][0] for c in mock_print.call_args_list if c[0]]
+        json_outputs = [c for c in calls if isinstance(c, str) and c.startswith("{")]
+        assert len(json_outputs) > 0
+        parsed = json.loads(json_outputs[0])
+        assert "mrr" in parsed
 
 
 

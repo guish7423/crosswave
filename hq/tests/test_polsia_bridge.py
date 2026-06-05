@@ -1,7 +1,5 @@
 """Tests for hq.polsia_bridge — NocoBase sync."""
 
-import asyncio
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -192,9 +190,10 @@ async def test_sync_skips_when_db_missing():
 @pytest.mark.asyncio
 async def test_sync_with_mocked_db():
     """sync runs through with a real temp SQLite DB."""
-    import hq.polsia_bridge as pb
-    import tempfile
     import os
+    import tempfile
+
+    import hq.polsia_bridge as pb
 
     Pf = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     db_path = Pf.name

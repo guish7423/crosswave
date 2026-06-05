@@ -1,12 +1,12 @@
 """Tests for hq.scheduler — standalone sync runner."""
 
-import asyncio
 import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from hq.scheduler import run_sync, main as scheduler_main
+from hq.scheduler import main as scheduler_main
+from hq.scheduler import run_sync
 
 
 @pytest.mark.asyncio

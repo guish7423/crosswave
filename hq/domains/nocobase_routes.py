@@ -1,6 +1,7 @@
 """NocoBase dashboard data routes — read path for NocoBase (PostgreSQL)."""
 
 from fastapi import APIRouter
+
 from hq.nocobase_client import get_stats, list_all
 
 router = APIRouter(tags=["nocobase"])

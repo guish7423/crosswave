@@ -1,8 +1,6 @@
 """Tests for NocoBase dashboard data routes."""
 
-from unittest.mock import patch
 
-import pytest
 
 
 class TestNocoBaseEndpoints:

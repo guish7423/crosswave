@@ -4,7 +4,6 @@ NocoBase REST API client for CrossWave HQ.
 Queries synced business data from NocoBase (PostgreSQL) for dashboard display.
 Sync happens via polsia_bridge.py (write path); this client is the read path.
 """
-import json
 import os
 import time
 
