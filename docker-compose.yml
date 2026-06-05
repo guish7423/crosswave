@@ -182,6 +182,35 @@ services:
       retries: 3
     restart: unless-stopped
 
+  # ── Prometheus（指标采集）─────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: crosswave-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    restart: unless-stopped
+
+  # ── Grafana（可视化面板）─────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: crosswave-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
   # ── Nginx 反向代理（生产入口）─────────────────────
   nginx:
     image: nginx:alpine
@@ -203,3 +232,4 @@ volumes:
   redis_data:
   polsia_data:
   blog_data:
+  grafana_data:

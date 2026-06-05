@@ -1,0 +1,43 @@
+# Prometheus scrape config for CrossWave services
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "crossblog"
+    metrics_path: "/health"
+    static_configs:
+      - targets: ["crossblog:8000"]
+        labels:
+          product: "crossblog"
+
+  - job_name: "crossdeploy"
+    metrics_path: "/health"
+    static_configs:
+      - targets: ["crossdeploy:8002"]
+        labels:
+          product: "crossdeploy"
+
+  - job_name: "crosswave"
+    metrics_path: "/health"
+    static_configs:
+      - targets: ["crosswave:9999"]
+        labels:
+          product: "crosswave"
+
+  - job_name: "nocobase"
+    metrics_path: "/api/health"
+    static_configs:
+      - targets: ["hq-nocobase-1:13000"]
+        labels:
+          product: "crosswave-hq"
+
+  - job_name: "node"
+    static_configs:
+      - targets: ["host.docker.internal:9100"]
+        labels:
+          product: "host"

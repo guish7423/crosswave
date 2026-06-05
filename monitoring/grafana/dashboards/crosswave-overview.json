@@ -1,0 +1,14 @@
+{
+  "title": "CrossWave Overview",
+  "uid": "crosswave-overview",
+  "panels": [
+    {
+      "title": "Service Health",
+      "type": "stat",
+      "targets": [{ "expr": "up", "legendFormat": "{{job}}" }],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 }
+    }
+  ],
+  "schemaVersion": 36,
+  "version": 1
+}

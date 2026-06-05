@@ -192,6 +192,32 @@ uvicorn app.main:app --port 9999
 
 ---
 
+## 监控 & 可观测性
+
+### Prometheus + Grafana
+
+CrossWave 自带 Prometheus + Grafana 监控栈：
+
+```bash
+# 启动监控
+docker compose up -d prometheus grafana
+
+# 访问 Grafana
+open http://localhost:3000  # admin / admin (或 $GRAFANA_PASSWORD)
+```
+
+**预配置**:
+- Prometheus 采集: crossblog, crossdeploy, crosswave, nocobase 的 `/health` 端点
+- Grafana 数据源: Prometheus (自动配置)
+- 默认 Dashboard: CrossWave Overview (服务健康状态)
+
+**扩展**:
+- 在生产环境安装 `node_exporter` 采集主机指标
+- 使用 Uptime Kuma 或 Healthchecks.io 做外部监控
+- 配置 Grafana Alerting 发送告警到 Slack/Email
+
+---
+
 ## 商业方向
 
 从 `projects/polsia-fork/PLAN_BUSINESS.md` 和 `marketing/` 文件的研究结论：
