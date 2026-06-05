@@ -173,3 +173,23 @@ async def test_client_reads_env():
     finally:
         del os.environ["POLSIA_BASE_URL"]
         del os.environ["POLSIA_API_KEY"]
+
+
+# ── Integration: polsia_sync_via_api with mock ────────────────────
+
+
+async def test_polsia_sync_via_api_with_mock(mock_polsia_client):
+    """Verify that polsia_sync_via_api works with the mock client."""
+    from hq.domains.data import CACHE, polsia_sync_via_api
+    # Reset CACHE to clean state
+    CACHE.clear()
+    CACHE.update({k: [] for k in ["employees", "lines", "orders", "leads",
+                                    "external_orders", "expenses", "revenue_history",
+                                    "tasks", "activity_log"]})
+    CACHE["last_sync"] = None
+
+    result = await polsia_sync_via_api()
+    assert result is True
+    assert len(CACHE["employees"]) >= 3
+    assert len(CACHE["tasks"]) == 2
+    assert CACHE["last_sync"] is not None

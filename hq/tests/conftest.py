@@ -129,3 +129,63 @@ def reset_cache():
     for k in list(CACHE.keys()):
         if k != "last_sync":
             CACHE[k] = [] if isinstance(CACHE[k], list) else CACHE[k]
+
+
+@pytest.fixture
+def mock_polsia_client():
+    """Opt-in fixture providing a mock PolsiaClient with realistic test data.
+
+    Usage:
+        async def test_foo(mock_polsia_client):
+            from hq.domains.data import polsia_sync_via_api
+            result = await polsia_sync_via_api()
+            assert result is True
+    """
+    from unittest.mock import AsyncMock, patch
+
+    mock = AsyncMock()
+    mock.get_agents.return_value = {
+        "agents": [
+            {"agent_type": "orchestrator", "status": "idle"},
+            {"agent_type": "social_media", "status": "running"},
+            {"agent_type": "finance_agent", "status": "error"},
+        ]
+    }
+    mock.get_tasks.return_value = [
+        {"id": 1, "title": "Weekly report", "agent_type": "orchestrator", "status": "completed",
+         "priority": 2, "source": "schedule", "created_at": "2026-06-01T00:00:00"},
+        {"id": 2, "title": "Scrape competitors", "agent_type": "competitor_research", "status": "in_progress",
+         "priority": 3, "source": "api", "created_at": "2026-06-05T00:00:00"},
+    ]
+    mock.get_activity.return_value = [
+        {"id": 1, "agent_type": "orchestrator", "action": "completed task", "summary": "Weekly report done",
+         "level": "info", "created_at": "2026-06-05T10:00:00"},
+    ]
+    mock.get_leads.return_value = {
+        "total": 2,
+        "data": [
+            {"id": 1, "name": "Alice", "email": "alice@test.com", "company": "Acme",
+             "product_interest": "CrossBridge", "status": "new", "created_at": "2026-06-01T00:00:00"},
+            {"id": 2, "name": "Bob", "email": "bob@test.com", "company": "BobCo",
+             "product_interest": "CrossDeploy", "status": "contacted", "created_at": "2026-06-03T00:00:00"},
+        ]
+    }
+    mock.get_external_orders.return_value = {
+        "data": [
+            {"id": 1, "title": "Build landing page", "platform": "Upwork", "status": "scanned",
+             "budget_min": 500, "budget_max": 1000, "currency": "USD", "score": 8},
+        ],
+        "total": 1,
+    }
+    mock.get_dashboard_summary.return_value = {
+        "total_revenue": 1000.0,
+        "active_subscribers": 10,
+        "mrr": 174.0,
+    }
+    mock.get_health.return_value = {
+        "overall": "healthy",
+        "checks": {"agents": {"status": "healthy", "running": 5, "total": 10}},
+    }
+
+    with patch("hq.domains.data.PolsiaClient", return_value=mock):
+        yield mock
