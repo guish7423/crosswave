@@ -1,55 +1,77 @@
-"""Test configuration for HQ Bridge API tests."""
+"""Test configuration for HQ Bridge API tests.
+
+Provides proper pytest fixtures (not module-level singletons) for
+clean test isolation.
+"""
 
 import os
 import sys
 from pathlib import Path
 
-# Point POLSIA_DB to non-existent file so startup sync doesn't error
 os.environ.setdefault("POLSIA_DB", "/tmp/crosswave-test-polsia.db")
-# Set auth token for tests
 os.environ.setdefault("HQ_AUTH_TOKEN", "test-hq-token")
 
-# Ensure paths so `from server import app` and `from hq.model_router import *` work
-_hq_dir = str(Path(__file__).resolve().parent.parent)
 _root_dir = str(Path(__file__).resolve().parent.parent.parent)
-for _p in [_hq_dir, _root_dir]:
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+if _root_dir not in sys.path:
+    sys.path.insert(0, _root_dir)
+
+_hq_dir = str(Path(__file__).resolve().parent.parent)
+if _hq_dir not in sys.path:
+    sys.path.insert(0, _hq_dir)
 
 
 import pytest
 from fastapi.testclient import TestClient
+from server import CACHE, create_app
 
-# Must import AFTER env/path setup
-from server import CACHE, app
 
-_raw_client = TestClient(app)
-_AUTH = os.environ["HQ_AUTH_TOKEN"]
+@pytest.fixture
+def app():
+    """Fresh app instance per test (no lifecycle or shared state leaks)."""
+    return create_app()
 
-class _AuthClient:
-    """Wrapper that adds X-HQ-Token to all requests except public endpoints."""
-    def get(self, url, **kw):
-        kw.setdefault("headers", {})["X-HQ-Token"] = _AUTH
-        return _raw_client.get(url, **kw)
-    def post(self, url, **kw):
-        kw.setdefault("headers", {})["X-HQ-Token"] = _AUTH
-        return _raw_client.post(url, **kw)
-    def put(self, url, **kw):
-        kw.setdefault("headers", {})["X-HQ-Token"] = _AUTH
-        return _raw_client.put(url, **kw)
-    def patch(self, url, **kw):
-        kw.setdefault("headers", {})["X-HQ-Token"] = _AUTH
-        return _raw_client.patch(url, **kw)
-    def delete(self, url, **kw):
-        kw.setdefault("headers", {})["X-HQ-Token"] = _AUTH
-        return _raw_client.delete(url, **kw)
 
-client = _AuthClient()
+@pytest.fixture
+def client(app):
+    """TestClient wrapping a fresh app."""
+    with TestClient(app) as c:
+        yield c
+
+
+@pytest.fixture
+def auth_headers():
+    """Auth headers for HQ API endpoints."""
+    return {"X-HQ-Token": os.environ["HQ_AUTH_TOKEN"]}
+
+
+@pytest.fixture
+def auth_client(client, auth_headers):
+    """TestClient subclass that auto-adds X-HQ-Token."""
+    orig_get = client.get
+    orig_post = client.post
+    orig_put = client.put
+
+    def _get(url, **kw):
+        kw.setdefault("headers", {}).update(auth_headers)
+        return orig_get(url, **kw)
+
+    def _post(url, **kw):
+        kw.setdefault("headers", {}).update(auth_headers)
+        return orig_post(url, **kw)
+
+    def _put(url, **kw):
+        kw.setdefault("headers", {}).update(auth_headers)
+        return orig_put(url, **kw)
+
+    client.get = _get
+    client.post = _post
+    client.put = _put
+    return client
 
 
 @pytest.fixture(autouse=True)
 def reset_cache():
-    """Populate CACHE with representative test data before each test."""
+    """Populate CACHE with test data before each test, clear after."""
     CACHE["employees"] = [
         {"name": "Orchestrator", "type": "ai", "role": "orchestrator", "status": "idle",
          "agent_type": "orchestrator"},
@@ -104,8 +126,6 @@ def reset_cache():
     CACHE["last_sync"] = "2026-06-01T00:00:00+00:00"
     CACHE["mrr"] = 174
     yield
-    # Clear after test so tests don't leak state
-    keys = list(CACHE.keys())
-    for k in keys:
+    for k in list(CACHE.keys()):
         if k != "last_sync":
             CACHE[k] = [] if isinstance(CACHE[k], list) else CACHE[k]
