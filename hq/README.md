@@ -11,11 +11,8 @@ hq/
 ├── dashboard.html        # 战情室仪表板
 ├── employees.html        # 员工管理页面
 ├── orders.html           # 订单中心页面
-<<<<<<< HEAD
 ├── finances.html         # 财务中心页面
 ├── reports.html          # 运营报表页面
-=======
->>>>>>> feature/hq-p2
 ├── scheduler.py          # 独立定时同步脚本
 ├── polsia_bridge.py      # Polsia DB → NocoBase 数据同步
 └── plugins/crosswave-hq/ # NocoBase 插件 (4个集合定义)
@@ -46,11 +43,8 @@ Bridge 启动后每 30 分钟自动同步一次 Polsia Fork 数据。
 | `/` | 战情室 | KPI + 3 Chart.js 图表 + 业务线健康 + 员工 + 活动 |
 | `/employees` | 员工管理 | 角色/状态分布 + 详细员工表格 |
 | `/orders` | 订单中心 | 订单筛选 + 平台连接状态 |
-<<<<<<< HEAD
 | `/finance` | 财务中心 | 收入趋势 + 费用分布 + 盈亏概况 |
 | `/reports` | 运营报表 | 任务趋势 + Agent 绩效 + 活跃度排名 |
-=======
->>>>>>> feature/hq-p2
 
 ## 配置
 
