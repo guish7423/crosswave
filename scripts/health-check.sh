@@ -1,56 +1,78 @@
 #!/usr/bin/env bash
-# CrossWave Health Monitor
-# Usage: watch -n 30 ./scripts/health-check.sh
+# ═══════════════════════════════════════════════════════
+# CrossWave 全栈健康检查
+# 用法: bash scripts/health-check.sh
+# 返回: 所有在线服务状态汇总, 非0退出码表示有服务异常
+# ═══════════════════════════════════════════════════════
 set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
+FAIL=0
 
-ENDPOINTS=(
-    "CrossWave:9999/health"
-    "HQ Bridge:13001/api/hq/summary"
-    "CrossBlog:8002/health"
-    "Polsia Fork:8001/api/v1/health"
-)
+check_http() {
+  local name=$1 url=$2
+  local code
+  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null || echo "000")
+  if [[ "$code" == "000" ]]; then
+    echo -e "  ${RED}✗${NC} $name — unreachable"
+    FAIL=1
+  elif [[ "$code" -ge 200 && "$code" -lt 500 ]]; then
+    echo -e "  ${GREEN}✓${NC} $name — HTTP $code"
+  else
+    echo -e "  ${RED}✗${NC} $name — HTTP $code"
+    FAIL=1
+  fi
+}
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  CrossWave Health Monitor"
-echo "  $(date '+%Y-%m-%d %H:%M:%S')"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+check_container() {
+  local name=$1
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${name}$"; then
+    echo -e "  ${GREEN}✓${NC} $name — running"
+  else
+    echo -e "  ${RED}✗${NC} $name — not running"
+    FAIL=1
+  fi
+}
 
-for entry in "${ENDPOINTS[@]}"; do
-    name="${entry%%:*}"
-    port_and_path="${entry#*:}"
-    url="http://127.0.0.1:$port_and_path"
-
-    start=$(date +%s%N)
-    status_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null || echo "000")
-    end=$(date +%s%N)
-    ms=$(( (end - start) / 1000000 ))
-
-    if [ "$status_code" = "200" ]; then
-        printf "  ${GREEN}✅${NC} %-15s %5s %3dms\n" "$name" "$status_code" "$ms"
-    elif [ "$status_code" = "000" ]; then
-        printf "  ${RED}❌${NC} %-15s %5s\n" "$name" "DOWN"
-    else
-        printf "  ${YELLOW}⚠️${NC}  %-15s %5s %3dms\n" "$name" "$status_code" "$ms"
-    fi
-done
-
-# Disk usage
 echo ""
-echo "  Disk: $(df -h / | awk 'NR==2{print $5}') used"
-echo "  RAM:  $(free -h | awk '/^Mem:/{print $3"/"$2}')"
+echo "═══════════════════════════════════════════"
+echo "  CrossWave Health Check — $(date '+%Y-%m-%d %H:%M:%S')"
+echo "═══════════════════════════════════════════"
+echo ""
 
-# Process check
-for proc in "uvicorn hq.server" "uvicorn app.main:app --port 9999" "uvicorn app.main:app --port 8002"; do
-    if pgrep -f "$proc" > /dev/null 2>&1; then
-        pid=$(pgrep -f "$proc" | head -1)
-        rss=$(ps -o rss= -p "$pid" 2>/dev/null | awk '{printf "%.0f MB", $1/1024}')
-        echo "  $(echo "$proc" | awk '{print $1}') PID:$pid ($rss)"
-    fi
-done
+echo "── Containers ──"
+check_container "hq-nocobase-1"
+check_container "hq-postgres-1"
+check_container "searxng"
+check_container "crosswave-crossblog"
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "── HTTP Endpoints ──"
+check_http "NocoBase"     "http://localhost:13000/"
+check_http "CrossBlog"    "http://localhost:9000/health"
+check_http "SearXNG"      "http://localhost:4000/"
+
+echo ""
+echo "── Database ──"
+if docker exec hq-postgres-1 pg_isready -U nocobase >/dev/null 2>&1; then
+  echo -e "  ${GREEN}✓${NC} PostgreSQL — accepting connections"
+else
+  echo -e "  ${RED}✗${NC} PostgreSQL — NOT accepting connections"
+  FAIL=1
+fi
+
+# Quick table count sanity
+TABLE_COUNT=$(docker exec hq-postgres-1 psql -U nocobase -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null || echo "0")
+echo -e "  ${GREEN}✓${NC} NocoBase tables: $TABLE_COUNT"
+
+echo ""
+if [ "$FAIL" -eq 0 ]; then
+  echo -e "${GREEN}✅ All services healthy${NC}"
+else
+  echo -e "${RED}❌ Some services have issues${NC}"
+fi
+echo ""
+exit $FAIL
