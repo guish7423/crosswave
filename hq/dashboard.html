@@ -5,7 +5,60 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CrossWave HQ — 战情室</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<<<<<<< HEAD
 <link rel="stylesheet" href="/static/styles.css">
+=======
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #1e293b, #0f172a); padding: 24px 32px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header h1 span { color: #38bdf8; }
+.header .time { color: #94a3b8; font-size: 13px; }
+.header .nav a { color: #94a3b8; font-size: 13px; margin-left: 16px; text-decoration: none; }
+.header .nav a:hover { color: #38bdf8; }
+.header .sync-info { font-size: 11px; color: #64748b; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; padding: 24px 32px 16px; }
+.kpi-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; border-left: 4px solid #38bdf8; }
+.kpi-card .label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
+.kpi-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+.kpi-card .sub { font-size: 12px; margin-top: 4px; color: #94a3b8; }
+
+.charts-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 0 32px 16px; }
+.chart-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+.chart-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
+.chart-card canvas { max-height: 240px; }
+
+.health-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 0 32px 16px; }
+.health-card { background: #1e293b; border-radius: 12px; padding: 16px; border: 1px solid #334155; border-left: 4px solid #4ade80; display: flex; justify-content: space-between; align-items: center; }
+.health-card.warning { border-left-color: #facc15; }
+.health-card.critical { border-left-color: #f87171; }
+.health-card .line-name { font-size: 15px; font-weight: 600; }
+.health-card .line-status { font-size: 11px; padding: 2px 8px; border-radius: 8px; }
+.health-card .line-status.active { background: #166534; color: #4ade80; }
+.health-card .line-status.development { background: #5c3d1a; color: #facc15; }
+.health-card .line-status.inactive { background: #5c1a1a; color: #f87171; }
+.health-card .line-meta { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+.bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 32px 24px; }
+.section-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+.section-card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
+.agent-list { list-style: none; }
+.agent-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #334155; }
+.agent-item:last-child { border-bottom: none; }
+.agent-item .name { font-size: 14px; }
+.agent-item .status { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
+.agent-item .status.active { background: #166534; color: #4ade80; }
+.agent-item .status.idle { background: #1e3a5f; color: #60a5fa; }
+.agent-item .status.error { background: #5c1a1a; color: #f87171; }
+.activity-feed { max-height: 300px; overflow-y: auto; }
+.activity-item { padding: 6px 0; font-size: 13px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; }
+.activity-item .time { color: #64748b; font-size: 12px; }
+.empty { color: #64748b; text-align: center; padding: 24px; font-size: 14px; }
+.error-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #f87171; text-align: center; color: #f87171; }
+</style>
+>>>>>>> feature/hq-p2
 </head>
 <body>
 <div class="header">
@@ -13,6 +66,7 @@
   <div>
     <span class="sync-info" id="syncInfo"></span>
     <span class="nav">
+<<<<<<< HEAD
       <a href="/" class="active">战情室</a>
       <a href="/employees">员工</a>
       <a href="/orders">订单</a>
@@ -21,6 +75,12 @@
       <a href="/reports">报表</a>
     </span>
     <span id="dashNotif" style="display:none;cursor:pointer;font-size:.82rem;background:rgba(239,68,68,.15);color:#f87171;padding:2px 10px;border-radius:12px" onclick="window.location.href='/leads'"></span>
+=======
+      <a href="/">战情室</a>
+      <a href="/employees">员工</a>
+      <a href="/orders">订单</a>
+    </span>
+>>>>>>> feature/hq-p2
     <span class="time" id="time"></span>
   </div>
 </div>
@@ -30,10 +90,16 @@
   <div class="kpi-card" style="border-left-color:#4ade80"><div class="label">活跃订单</div><div class="value">—</div><div class="sub" id="orderBreakdown"></div></div>
   <div class="kpi-card" style="border-left-color:#facc15"><div class="label">月收入 (MRR)</div><div class="value">—</div><div class="sub">¥ ARR</div></div>
   <div class="kpi-card" style="border-left-color:#a78bfa"><div class="label">客户数</div><div class="value">—</div><div class="sub">跨业务线</div></div>
+<<<<<<< HEAD
   <div class="kpi-card" style="border-left-color:#60a5fa"><div class="label">线索 (Leads)</div><div class="value">—</div><div class="sub" id="leadBreakdown">新: —</div></div>
 </div>
 
 <div class="chart-row">
+=======
+</div>
+
+<div class="charts-row">
+>>>>>>> feature/hq-p2
   <div class="chart-card"><h3>👥 员工状态分布</h3><canvas id="empChart"></canvas></div>
   <div class="chart-card"><h3>📊 业务线收入分布</h3><canvas id="revenueChart"></canvas></div>
   <div class="chart-card"><h3>🔵 任务状态分布</h3><canvas id="taskChart"></canvas></div>
@@ -59,8 +125,11 @@
 <script>
 function updateTime() { document.getElementById('time').textContent = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }); }
 setInterval(updateTime, 1000); updateTime();
+<<<<<<< HEAD
 async function loadNotif(){try{const r=await fetch('/api/hq/notifications');const d=await r.json();const b=document.getElementById('dashNotif');if(d.new_leads>0){b.style.display='inline';b.textContent='🔔 '+d.new_leads+' new'}else b.style.display='none'}catch(e){}}
 loadNotif();setInterval(loadNotif,15000);
+=======
+>>>>>>> feature/hq-p2
 
 let empChart, revenueChart, taskChart;
 const apiBase = 'http://localhost:13001';
@@ -82,10 +151,13 @@ async function loadSummary() {
     kpis[2].querySelector('.value').textContent = `¥${data.mrr.toLocaleString()}`;
     kpis[2].querySelector('.sub').textContent = `¥${(data.mrr * 12).toLocaleString()} ARR`;
     kpis[3].querySelector('.value').textContent = data.customers;
+<<<<<<< HEAD
     if (data.leads) {
       kpis[4].querySelector('.value').textContent = data.leads.total;
       document.getElementById('leadBreakdown').textContent = `新: ${data.leads.new}`;
     }
+=======
+>>>>>>> feature/hq-p2
 
     const empLabels = Object.keys(sd);
     const empValues = Object.values(sd);
@@ -162,6 +234,7 @@ async function loadActivity() {
   }
 }
 
+<<<<<<< HEAD
 async function loadLeads() {
   try {
     const res = await fetch(`${apiBase}/api/hq/leads`);
@@ -181,6 +254,10 @@ async function loadLeads() {
 
 loadSummary(); loadEmployees(); loadActivity(); loadLeads();
 setInterval(() => { loadSummary(); loadEmployees(); loadActivity(); loadLeads(); }, 30000);
+=======
+loadSummary(); loadEmployees(); loadActivity();
+setInterval(() => { loadSummary(); loadEmployees(); loadActivity(); }, 30000);
+>>>>>>> feature/hq-p2
 </script>
 </body>
 </html>

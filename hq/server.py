@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import os, json, asyncio, httpx, uvicorn, secrets, time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, Depends, status
@@ -37,6 +38,25 @@ HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
 HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
 
 CACHE = {"employees": [], "lines": [], "orders": [], "leads": [], "external_orders": [], "proposals": [], "expenses": [], "revenue_history": [], "last_sync": None, "tasks": []}
+=======
+import os
+import json
+import asyncio
+import httpx
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from datetime import datetime, timezone
+
+app = FastAPI(title="CrossWave HQ Bridge")
+
+DB_PATH = os.environ.get("POLSIA_DB", os.path.expanduser("~/.opencode-workspace/projects/polsia-fork/polsia.db"))
+HQ_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
+HQ_TOKEN = os.environ.get("HQ_TOKEN", "")
+
+CACHE = {"employees": [], "lines": [], "orders": [], "last_sync": None}
+>>>>>>> feature/hq-p2
 
 async def polsia_sync():
     if not os.path.exists(DB_PATH):
@@ -45,12 +65,18 @@ async def polsia_sync():
     try:
         import aiosqlite
         async with aiosqlite.connect(DB_PATH) as db:
+<<<<<<< HEAD
             agent_types = await db.execute_fetchall(
                 "SELECT DISTINCT agent_type FROM tasks ORDER BY agent_type"
+=======
+            agents = await db.execute_fetchall(
+                "SELECT type, name, role, status, id FROM agents ORDER BY id"
+>>>>>>> feature/hq-p2
             )
             tasks = await db.execute_fetchall(
                 "SELECT title, status, agent_type, created_at, id FROM tasks ORDER BY created_at DESC LIMIT 100"
             )
+<<<<<<< HEAD
             expense_rows = await db.execute_fetchall(
                 "SELECT amount_cents, category, description, date FROM expense_records ORDER BY date"
             )
@@ -73,11 +99,14 @@ async def polsia_sync():
                 "SELECT id, period_start, period_end, summary, created_at, recipient_count "
                 "FROM weekly_reports ORDER BY created_at DESC LIMIT 20"
             )
+=======
+>>>>>>> feature/hq-p2
     except Exception as e:
         print(f"[bridge] DB read error: {e}")
         return
 
     employees = []
+<<<<<<< HEAD
     for row in agent_types:
         employees.append({
             "name": row[0].replace("_", " ").title() if row[0] else "Agent",
@@ -99,6 +128,17 @@ async def polsia_sync():
                 "status": "idle",
                 "agent_type": ka,
             })
+=======
+    for row in agents:
+        employees.append({
+            "name": row[1] or row[0],
+            "type": row[3] or "ai",
+            "role": row[2] or row[0],
+            "status": row[3] or "idle",
+            "agent_type": row[0],
+            "source_id": row[4],
+        })
+>>>>>>> feature/hq-p2
     orders = []
     for row in tasks:
         orders.append({
@@ -109,6 +149,7 @@ async def polsia_sync():
             "source_id": row[4],
             "platform": "internal",
         })
+<<<<<<< HEAD
     exps = []
     for r in expense_rows:
         exps.append({"amount": r[0] / 100.0 if r[0] else 0, "category": r[1] or "other", "description": r[2] or "", "date": r[3] or ""})
@@ -125,17 +166,24 @@ async def polsia_sync():
         sub_val = latest[2] or 0
     mrr_dollars = mrr_val or 174
     subscribers = sub_val or 4
+=======
+>>>>>>> feature/hq-p2
     predef_lines = [
         {"name": "CrossBridge", "slug": "crossbridge", "status": "active", "monthly_revenue": 0, "customer_count": 0},
         {"name": "CrossBlog", "slug": "crossblog", "status": "active", "monthly_revenue": 0, "customer_count": 0},
         {"name": "CrossDeploy", "slug": "crossdeploy", "status": "active", "monthly_revenue": 0, "customer_count": 0},
+<<<<<<< HEAD
         {"name": "Polsia Fork", "slug": "polsia", "status": "active", "monthly_revenue": mrr_dollars, "customer_count": subscribers},
+=======
+        {"name": "Polsia Fork", "slug": "polsia", "status": "active", "monthly_revenue": 0, "customer_count": 0},
+>>>>>>> feature/hq-p2
         {"name": "HiveMind", "slug": "hivemind", "status": "development", "monthly_revenue": 0, "customer_count": 0},
     ]
     CACHE["employees"] = employees
     CACHE["lines"] = predef_lines
     CACHE["orders"] = orders
     CACHE["last_sync"] = datetime.now(timezone.utc).isoformat()
+<<<<<<< HEAD
     leads = []
     for row in lead_rows:
         leads.append({"id": row[0], "name": row[1] or "", "email": row[2] or "", "company": row[3] or "", "product_interest": row[4] or "", "budget_range": row[5] or "", "message": row[6] or "", "status": row[7] or "new", "source_page": row[8] or "", "created_at": row[9] or ""})
@@ -204,12 +252,22 @@ async def polsia_sync():
         print("[bridge] NocoBase sync completed")
     except Exception as nbe:
         print(f"[bridge] NocoBase sync skipped: {nbe}")
+=======
+    print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks")
+>>>>>>> feature/hq-p2
 
 async def periodic_sync():
     while True:
         await polsia_sync()
         await asyncio.sleep(1800)
 
+<<<<<<< HEAD
+=======
+@app.on_event("startup")
+async def startup():
+    asyncio.create_task(periodic_sync())
+
+>>>>>>> feature/hq-p2
 @app.get("/api/hq/summary")
 async def summary():
     emps = CACHE["employees"]
@@ -217,7 +275,10 @@ async def summary():
     orders = CACHE["orders"]
     active_orders = [o for o in orders if o["status"] in ("pending", "in_progress")]
     total_mrr = sum(l.get("monthly_revenue", 0) for l in lines)
+<<<<<<< HEAD
     CACHE["mrr"] = total_mrr
+=======
+>>>>>>> feature/hq-p2
     total_customers = sum(l.get("customer_count", 0) for l in lines)
     status_counts = {}
     for e in emps:
@@ -237,6 +298,7 @@ async def summary():
         "orders": {"total": len(orders), "active": len(active_orders), "status_distribution": order_status},
         "mrr": total_mrr,
         "customers": total_customers,
+<<<<<<< HEAD
         "leads": {"total": len(CACHE["leads"]), "new": len([l for l in CACHE["leads"] if l["status"] == "new"])},
         "proposals": {p["status"]: len([x for x in CACHE.get("proposals", []) if x["status"] == p["status"]]) for p in [{"status":s} for s in ("draft","sent","replied","negotiating","won","lost")]},
         "last_sync": CACHE["last_sync"],
@@ -296,6 +358,11 @@ async def get_crossbridge_summary():
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
+=======
+        "last_sync": CACHE["last_sync"],
+    }
+
+>>>>>>> feature/hq-p2
 @app.get("/api/hq/employees")
 async def get_employees():
     return {"data": CACHE["employees"]}
@@ -309,6 +376,7 @@ async def get_orders(platform: str = "", status: str = ""):
         items = [o for o in items if o.get("status") == status]
     return {"data": items}
 
+<<<<<<< HEAD
 @app.get("/api/hq/leads")
 async def get_leads(status: str = ""):
     items = CACHE["leads"]
@@ -339,10 +407,13 @@ async def proposals_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "proposals.html"))
 
 
+=======
+>>>>>>> feature/hq-p2
 @app.get("/api/hq/lines")
 async def get_lines():
     return {"data": CACHE["lines"]}
 
+<<<<<<< HEAD
 
 @app.get("/api/hq/quick-quote-analytics")
 async def quick_quote_analytics():
@@ -425,6 +496,8 @@ async def proxy_patch(request: Request):
         raise HTTPException(502, f"Polsia proxy failed: {e}")
 
 
+=======
+>>>>>>> feature/hq-p2
 @app.get("/api/hq/sync")
 async def trigger_sync():
     await polsia_sync()
@@ -434,11 +507,14 @@ async def trigger_sync():
 async def dashboard():
     return FileResponse(os.path.join(os.path.dirname(__file__), "dashboard.html"))
 
+<<<<<<< HEAD
 @app.get("/dashboard")
 async def dashboard_redirect():
     from starlette.responses import RedirectResponse
     return RedirectResponse(url="/")
 
+=======
+>>>>>>> feature/hq-p2
 @app.get("/orders")
 async def orders_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "orders.html"))
@@ -447,6 +523,7 @@ async def orders_page():
 async def employees_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "employees.html"))
 
+<<<<<<< HEAD
 @app.get("/leads")
 async def leads_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "leads.html"))
@@ -1428,5 +1505,7 @@ async def industry_packs_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "industry_packs.html"))
 
 
+=======
+>>>>>>> feature/hq-p2
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)
