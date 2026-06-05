@@ -37,6 +37,15 @@ check_container() {
   fi
 }
 
+check_container_opt() {
+  local name=$1
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${name}$"; then
+    echo -e "  ${GREEN}✓${NC} $name — running"
+  else
+    echo -e "  ${YELLOW}○${NC} $name — not running (optional)"
+  fi
+}
+
 echo ""
 echo "═══════════════════════════════════════════"
 echo "  CrossWave Health Check — $(date '+%Y-%m-%d %H:%M:%S')"
@@ -48,12 +57,18 @@ check_container "hq-nocobase-1"
 check_container "hq-postgres-1"
 check_container "searxng"
 check_container "crosswave-crossblog"
+check_container_opt "crossdeploy"
+check_container_opt "crosswave-prometheus"
+check_container_opt "crosswave-grafana"
 
 echo ""
 echo "── HTTP Endpoints ──"
 check_http "NocoBase"     "http://localhost:13000/"
 check_http "CrossBlog"    "http://localhost:9000/health"
+check_http "CrossDeploy"  "http://localhost:8003/health"
 check_http "SearXNG"      "http://localhost:4000/"
+check_http "Grafana"      "http://localhost:3000/"  2>/dev/null || true
+check_http "Prometheus"   "http://localhost:9090/"  2>/dev/null || true
 
 echo ""
 echo "── Database ──"
