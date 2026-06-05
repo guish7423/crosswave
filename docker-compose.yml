@@ -164,6 +164,24 @@ services:
       retries: 3
     restart: unless-stopped
 
+  # ── CrossDeploy（部署服务）─────────────────────────
+  crossdeploy:
+    build:
+      context: ./products/deploy
+      dockerfile: Dockerfile
+    container_name: crossdeploy
+    ports:
+      - "8003:8002"
+    environment:
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
   # ── Nginx 反向代理（生产入口）─────────────────────
   nginx:
     image: nginx:alpine

@@ -104,11 +104,14 @@ uvicorn hq.server:hq_app --port 13001  # HQ 后台 (另一终端)
 
 ### 🚀 CrossDeploy (代部署服务)
 
-- **状态**: ✅ 服务包装就绪
-- **官网可见**: 3 档定价 (¥2K Basic / ¥3K Standard / ¥5K Enterprise)
-- **交付品**: 默认包装 Polsia Fork 为企业部署
-- **联系**: sales@crosswave.app
-- **案例**: CrossBlog / Polsia Fork / CrossWave 官网 (全部实际交付项目)
+- **状态**: ✅ v0.1.0 — 2026-06-05 激活
+- **技术栈**: FastAPI + SQLite + Docker
+- **API 端点**: 6 — CRUD 订单 + 定价查询
+- **定价**: Basic ¥2K / Standard ¥3K / Enterprise ¥5K
+- **测试**: 11 测试 ✅
+- **Docker**: crossdeploy 容器准备好 (`docker compose up crossdeploy`)
+- **部署到 Railway**: `cd products/deploy && railway up`
+- **集成**: HQ Dashboard 可通过 API 获取 CrossDeploy 订单数据
 
 ### 🐝 HiveMind (桌面客户端)
 
