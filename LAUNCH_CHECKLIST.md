@@ -1,14 +1,27 @@
 # CrossWave Launch Readiness Checklist
 
 > **Status Tracking**: Check off items as completed. Every unchecked item is a risk.
+> **Version**: v0.7.0 | Last updated: 2026-06-05
+> **Tests**: 174 passed ✅ | **Coverage**: 80%+
 
 ---
 
 ## Phase 0: Pre-Flight (Critical Path)
 
+### CrossBlog Deployment
+- [ ] Deploy CrossBlog to Railway: `cd ai-blog-engine && railway up`
+- [ ] Or: create Railway project from `guish7423/ai-blog-engine` GitHub repo
+- [ ] Verify: `curl https://blog.crosswave.app/health` returns article count
+- [ ] Configure `LLM_API_MOCK=false` + `LLM_API_KEY` in Railway env vars
+
+### SSE Dashboard Verification
+- [ ] Start HQ: `uvicorn hq.server:hq_app --port 13001`
+- [ ] Verify SSE: `curl -N http://localhost:13001/api/hq/events` — should see heartbeat JSON every 5s
+- [ ] Dashboard opens http://localhost:13001 with live KPI updates
+
 ### Stripe Payments — Revenue Readiness
 - [ ] Create Stripe account (stripe.com) → verify business details
-- [ ] Run `python hq/setup_stripe.py` with your STRIPE_SECRET_KEY
+- [ ] Run `python scripts/setup_stripe.py` with your STRIPE_SECRET_KEY
 - [ ] Copy output price IDs into production `.env`
 - [ ] Create Stripe Payment Links for CrossDeploy tiers in Dashboard
 - [ ] Add Payment Link URLs to `index.html` replacing `mailto:hello@...`

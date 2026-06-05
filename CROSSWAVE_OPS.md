@@ -1,6 +1,6 @@
 # CrossWave 运营手册
 
-> 版本: v1.0 | 最后更新: 2026-05-31
+> 版本: v2.0 | 最后更新: 2026-06-05
 
 ---
 
@@ -31,16 +31,23 @@ CrossWave 🌊 (Brand Umbrella)
 
 ### 📝 CrossBlog (SEO 博客 SaaS)
 
-- **状态**: ✅ 代码就绪，**未部署**
-- **位置**: `projects/ai-blog-engine/`
-- **启动**:
+- **状态**: ✅ 代码就绪 ✅ Docker 构建通过 ✅ Railway 配置就绪
+- **位置**: `ai-blog-engine/` (git submodule)
+- **Docker 构建**: `docker compose build crossblog` ✅ (已验证)
+- **部署到 Railway**:
   ```bash
-  cd projects/ai-blog-engine
-  python -m venv venv && source venv/bin/activate
-  pip install -r requirements.txt
-  LLM_API_MOCK=true uvicorn app.main:app --port 9000
+  # 克隆子模块仓库推送到 Railway
+  cd ai-blog-engine
+  git remote add railway https://railway.app/project/...  # 先创建 Railway 项目
+  railway up
   ```
-- **部署**: Railway GitHub 集成（`guish7423/ai-blog-engine`）
+  或使用 `crossblog.railway.toml` 配置（仓库根目录）
+- **本地启动**:
+  ```bash
+  cd ai-blog-engine
+  pip install -r requirements.txt
+  LLM_API_MOCK=true uvicorn app.main:app --port 8000
+  ```
 - **种子数据**: `python scripts/seed_posts.py`
 - **测试**: `python -m pytest tests/ -v`
 - **生成内容**: `POST /generate` with topic/tone/lang params
@@ -76,22 +83,24 @@ curl -H "X-API-Key: dev-key" http://localhost:8000/api/v1/dashboard/summary
 
 ### 📊 CrossWave (BFF 管理面板 + 官网)
 
-- **状态**: ✅ 完成，GitHub 已推送
+- **状态**: ✅ v0.7.0 — GitHub 已推送 `c419357`
 - **位置**: `projects/crosswave/`
-- **作为 BFF 代理** Polsia Fork 的所有 API
-- **5 HTMX 端点**: summary/task-summary/agents-status/rows/activity
+- **架构**: FastAPI create_app 工厂 + 10 domain modules
+- **HQ Dashboard**: 内嵌 Chart.js 可视化 + SSE 实时推送
+- **SSE 实时更新**: `GET /api/hq/events` 每5秒推送服务状态+KPI
+- **NocoBase 集成**: PostgreSQL 运行中，4 集合 25+ 记录同步
 
 **启动**:
 ```bash
 cd projects/crosswave
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-POLSIA_MOCK=true uvicorn app.main:app --port 9999
+source .venv/bin/activate
+uvicorn app.main:app --port 9999    # 官网
+uvicorn hq.server:hq_app --port 13001  # HQ 后台 (另一终端)
 ```
 
-**访问**: 浏览器打开 http://localhost:9999
-**Dashboard**: 通过 nav 进入 → Dashboard
-**验证**: `python -m pytest tests/ -v` (17 tests ✅)
+**访问**: http://localhost:9999 官网 / http://localhost:13001 后台
+**Dashboard**: SSE 自动刷新 + 30 秒轮询双保险
+**验证**: `python -m pytest tests/ hq/tests/ -v` (174 tests ✅)
 
 ### 🚀 CrossDeploy (代部署服务)
 
@@ -143,14 +152,15 @@ uvicorn app.main:app --port 9999
 ## 上线运营准备 Checklist
 
 ### 即刻可用 (零成本)
-- [x] CrossWave 官网已上线 (localhost:9999)
-- [x] Dashboard 数据可视化 (5 HTMX 端点)
+- [x] CrossWave 官网已上线 (localhost:9999 + :13001)
+- [x] HQ Dashboard 可视化 (Chart.js + SSE 实时推送)
+- [x] SSE 端点 `/api/hq/events` — 5 秒心跳自动刷新
 - [x] Polsia Fork 57/57 后端测试 + 67/67 前端测试
-- [x] 17 种子数据表 (SQLite)
-- [x] 39 种子任务 + 31 天收入曲线
-- [x] CrossBlog 18 测试 + 7 种子文章
-- [ ] 部署 Polsia Fork 到 Railway → **激活 Dashboard**
-- [ ] 部署 CrossBlog 到 Railway
+- [x] NocoBase PostgreSQL 运行中 (4 集合 25+ 记录)
+- [x] 174 测试通过 (覆盖率 80%+)
+- [x] Admin 登录 + Stripe 支付基础设施就绪
+- [ ] 部署 Polsia Fork 到 Railway → **激活 Dashboard 数据**
+- [ ] 部署 CrossBlog 到 Railway (`crossblog.railway.toml` 就绪)
 
 ### 运营准备 (需操作)
 - [ ] 注册公司域名 (crosswave.app 已指向?)
