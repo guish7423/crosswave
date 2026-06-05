@@ -1,16 +1,11 @@
 """HQ API routes — data endpoints."""
 
-import json
-import os
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from hq.domains.data import (
     CACHE,
-    DB_PATH,
-    SERVICES_TO_CHECK,
-    _check_svc,
     polsia_sync,
 )
 

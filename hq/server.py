@@ -9,21 +9,20 @@ Split into domain modules under hq/domains/:
   - model_router_routes.py: Model Router API endpoints
 """
 
-import os
 from pathlib import Path
 
 from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.core.exceptions import register_exception_handlers
+from hq.domains.api_routes import router as api_router
+from hq.domains.auth_routes import router as auth_router
 from hq.domains.data import CACHE  # noqa: F401 — imported by tests
 from hq.domains.middleware import app_lifespan, require_token
-from hq.domains.page_routes import router as page_router
-from hq.domains.api_routes import router as api_router
-from hq.domains.monitor_routes import router as monitor_router
 from hq.domains.model_router_routes import router as model_router_router
+from hq.domains.monitor_routes import router as monitor_router
+from hq.domains.page_routes import router as page_router
 from hq.domains.stripe_routes import router as stripe_router
-from hq.domains.auth_routes import router as auth_router
 
 
 def create_app() -> FastAPI:
@@ -59,4 +58,4 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=13001)
+    uvicorn.run(app, host="0.0.0.0", port=13001)  # noqa: S104

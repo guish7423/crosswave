@@ -1,8 +1,7 @@
 """Stripe Payment Infrastructure — Webhook + Checkout Session."""
 
 import stripe
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.config import settings

@@ -6,7 +6,6 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import settings
 from app.services.polsia_client import polsia_client
 
 router = APIRouter(tags=["pages"])

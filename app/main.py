@@ -1,8 +1,7 @@
 """CrossWave — Application Factory."""
 
-import os
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -65,10 +64,10 @@ def create_app() -> FastAPI:
     setup_middleware(app)
 
     # ── Register routes from domains ───────────────────────────────────
-    from app.domains.page_routes import router as page_router
-    from app.domains.proxy_routes import router as proxy_router
     from app.domains.blog_proxy import router as blog_router
     from app.domains.mcp_routes import router as mcp_router
+    from app.domains.page_routes import router as page_router
+    from app.domains.proxy_routes import router as proxy_router
 
     app.include_router(page_router)
     app.include_router(proxy_router)

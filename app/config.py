@@ -1,6 +1,6 @@
 """CrossWave — Pydantic v2 Settings (fail-fast on env validation)."""
 
-from typing import Optional, Literal
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,16 +24,16 @@ class Settings(BaseSettings):
     polsia_mock: bool = True
 
     # ── LLM Providers ──────────────────────────────────────────────────
-    llm_api_key: Optional[str] = Field(default=None, repr=False)
-    deepseek_api_key: Optional[str] = Field(default=None, repr=False)
+    llm_api_key: str | None = Field(default=None, repr=False)
+    deepseek_api_key: str | None = Field(default=None, repr=False)
     openai_base_url: str = "https://api.openai.com/v1"
     llm_provider_mock: bool = True
 
     # ── Sentry ─────────────────────────────────────────────────────────
-    sentry_dsn: Optional[str] = Field(default=None, repr=False)
+    sentry_dsn: str | None = Field(default=None, repr=False)
 
     # ── Admin Login ────────────────────────────────────────────────────
-    secret_key: str = "dev-secret"
+    secret_key: str = "dev-secret"  # noqa: S105
     admin_username: str = "admin"
     admin_password_hash: str = ""
 
@@ -41,8 +41,8 @@ class Settings(BaseSettings):
     crossblog_url: str = "http://127.0.0.1:8001"
 
     # ── Stripe ─────────────────────────────────────────────────────────
-    stripe_secret_key: Optional[str] = Field(default=None, repr=False)
-    stripe_webhook_secret: Optional[str] = Field(default=None, repr=False)
+    stripe_secret_key: str | None = Field(default=None, repr=False)
+    stripe_webhook_secret: str | None = Field(default=None, repr=False)
     stripe_price_ids: dict[str, str] = {}  # e.g. {"crossbridge_starter": "price_xxx"}
 
     @field_validator("debug", mode="before")

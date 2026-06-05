@@ -1,6 +1,7 @@
 """HQ Model Router API routes (Phase 3)."""
 
 from fastapi import APIRouter
+
 from hq.model_router import AGENT_CAPABILITY_MAP, get_registry
 
 router = APIRouter(prefix="/api/hq", tags=["model_router"])
