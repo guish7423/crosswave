@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     environment: Literal["development", "staging", "production"] = "development"
     debug: bool = False
     proxy_timeout: int = 5
-    secret_key: str = "dev-secret"
 
     # ── Polsia Fork ────────────────────────────────────────────────────
     polsia_base_url: str = "http://localhost:8000"
@@ -33,17 +32,18 @@ class Settings(BaseSettings):
     # ── Sentry ─────────────────────────────────────────────────────────
     sentry_dsn: Optional[str] = Field(default=None, repr=False)
 
-    # ── CrossBlog ──────────────────────────────────────────────────────
-    crossblog_url: str = "http://127.0.0.1:8001"
-
     # ── Admin Login ────────────────────────────────────────────────────
+    secret_key: str = "dev-secret"
     admin_username: str = "admin"
     admin_password_hash: str = ""
 
+    # ── CrossBlog ──────────────────────────────────────────────────────
+    crossblog_url: str = "http://127.0.0.1:8001"
+
     # ── Stripe ─────────────────────────────────────────────────────────
     stripe_secret_key: Optional[str] = Field(default=None, repr=False)
-    stripe_bridge_price_id: Optional[str] = None
-    stripe_blog_price_id: Optional[str] = None
+    stripe_webhook_secret: Optional[str] = Field(default=None, repr=False)
+    stripe_price_ids: dict[str, str] = {}  # e.g. {"crossbridge_starter": "price_xxx"}
 
     @field_validator("debug", mode="before")
     @classmethod
