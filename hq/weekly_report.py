@@ -153,7 +153,8 @@ def format_markdown(report):
     lines.append("*由 CrossWave HQ 自动生成*\n")
     return "\n".join(lines)
 
-if __name__ == "__main__":
+def main():
+    """CLI entry point: parse args, generate report, output."""
     parser = argparse.ArgumentParser(description="CrossWave HQ 自动周报")
     parser.add_argument("--save", action="store_true", help="保存到 hq/reports/ 目录")
     parser.add_argument("--json", action="store_true", help="JSON 格式输出")
@@ -177,3 +178,7 @@ if __name__ == "__main__":
         print(f"[report] ✅ 周报已保存到 {filepath}")
     else:
         print(format_markdown(report))
+
+
+if __name__ == "__main__":
+    main()
