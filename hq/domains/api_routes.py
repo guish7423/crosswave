@@ -106,6 +106,24 @@ async def get_lines():
     return {"data": CACHE["lines"]}
 
 
+@router.get("/deployment-orders")
+async def get_deployment_orders(status: str | None = None):
+    """Fetch deployment orders from CrossDeploy service."""
+    from hq.crossdeploy_client import get_deployment_orders as _fetch_orders  # noqa: lazy import
+
+    orders = await _fetch_orders(status)
+    return {"data": orders, "total": len(orders)}
+
+
+@router.get("/deployment-tiers")
+async def get_deployment_tiers():
+    """Fetch available deployment tiers/pricing from CrossDeploy."""
+    from hq.crossdeploy_client import get_deployment_tiers  # noqa: lazy import
+
+    tiers = await get_deployment_tiers()
+    return {"tiers": tiers}
+
+
 @router.get("/sync")
 async def manual_sync():
     await polsia_sync()
