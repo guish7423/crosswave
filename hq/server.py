@@ -21,6 +21,7 @@ from hq.domains.data import CACHE  # noqa: F401 — imported by tests
 from hq.domains.middleware import app_lifespan, require_token
 from hq.domains.model_router_routes import router as model_router_router
 from hq.domains.monitor_routes import router as monitor_router
+from hq.domains.nocobase_routes import router as nocobase_router
 from hq.domains.page_routes import router as page_router
 from hq.domains.stripe_routes import router as stripe_router
 
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(page_router)
     app.include_router(api_router)
     app.include_router(monitor_router)
+    app.include_router(nocobase_router)
     app.include_router(model_router_router)
     app.include_router(stripe_router)
     app.include_router(auth_router)

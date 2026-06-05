@@ -1,7 +1,8 @@
 # CrossWave Multi-Product Architecture — Architecture Decision Record
 
-> Version: 1.0 | Date: 2026-06-05
+> Version: 1.1 | Date: 2026-06-05
 > Based on research of SoundCloud BFF, Nx monorepo, Veld Systems, Ginilab, and 10+ production SaaS architectures.
+> Status: v0.7.0 — 198 tests passing, SSE real-time, NocoBase PostgreSQL live
 
 ---
 
@@ -14,7 +15,7 @@ CrossWave has 6 product surfaces, each at a different stage:
 | 🌉 **CrossBridge** | ✅ Live on Railway | Railway | Flask (monolith) |
 | 📝 **CrossBlog** | ✅ Code ready | Not deployed | FastAPI (monolith) |
 | 🏢 **Polsia Fork** | ✅ Complete | Not deployed | FastAPI + Celery |
-| 📊 **CrossWave HQ** | ✅ v0.6.2 | Not deployed | FastAPI + HTMX (refactored to domains) |
+| 📊 **CrossWave HQ** | ✅ v0.7.0 | Not deployed | FastAPI + HTMX (11 domain modules, SSE, NocoBase) |
 | 🚀 **CrossDeploy** | ✅ Service ready | Static pages | Static (part of HQ) |
 | 🐝 **HiveMind** | ✅ Complete | Tauri v2 desktop | Rust + React |
 
