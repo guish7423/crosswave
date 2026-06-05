@@ -5,6 +5,9 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from datetime import datetime, timezone
 
+# ─── Model Router (Phase 3) ──────────────────────────────────────────────
+from hq.model_router import AGENT_CAPABILITY_MAP, get_registry
+
 # ─── Simple Auth (Token-based) ─────────────────────────────────────────────
 AUTH_TOKEN = os.environ.get("HQ_AUTH_TOKEN", "")
 if not AUTH_TOKEN:
@@ -13,7 +16,7 @@ if not AUTH_TOKEN:
 
 async def require_token(request: Request):
     """Reject requests missing X-HQ-Token header. Skip public paths."""
-    public_paths = ("/health", "/login", "/api/hq/auth", "/api/portal/", "/portal/", "/static")
+    public_paths = ("/health", "/login", "/api/hq/auth", "/api/portal/", "/portal/", "/static", "/api/hq/models", "/api/hq/agents/")
     if request.url.path.startswith("/api/portal/") or request.url.path.startswith("/portal/") or request.url.path in ("/health", "/login") or request.url.path.startswith("/api/hq/auth") or request.url.path.startswith("/static"):
         return True
     token = request.headers.get("X-HQ-Token", "")
@@ -499,6 +502,40 @@ async def finance_page():
 @app.get("/reports")
 async def reports_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "reports.html"))
+
+# ─── Model Router API (Phase 3) ──────────────────────────────────────────
+
+
+@app.get("/api/hq/models")
+async def get_models():
+    """Return all registered model profiles + agent→capability mapping."""
+    registry = get_registry()
+    profiles = registry.get_all_profiles()
+    return {
+        "profiles": [p.model_dump() for p in profiles],
+        "agent_mapping": dict(AGENT_CAPABILITY_MAP),
+    }
+
+
+@app.post("/api/hq/agents/{agent_type}/trigger")
+async def trigger_agent(agent_type: str):
+    """Send a test prompt to the best provider for *agent_type*."""
+    registry = get_registry()
+    cap = AGENT_CAPABILITY_MAP.get(agent_type, "conversation")
+    prompt = f"As a {agent_type} agent ({cap} task), provide your analysis."
+    result = await registry.chat(
+        agent_type,
+        [{"role": "system", "content": f"You are a {agent_type} agent."},
+         {"role": "user", "content": prompt}],
+    )
+    return {
+        "agent_type": agent_type,
+        "capability": cap,
+        "provider": result.provider,
+        "model": result.model,
+        "content": result.content,
+    }
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=13001)
