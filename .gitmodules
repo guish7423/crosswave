@@ -1,0 +1,6 @@
+[submodule "polsia-fork"]
+	path = polsia-fork
+	url = git@github.com:guish7423/polsia-fork.git
+[submodule "ai-blog-engine"]
+	path = ai-blog-engine
+	url = git@github.com:guish7423/ai-blog-engine.git

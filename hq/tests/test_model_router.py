@@ -187,3 +187,148 @@ class TestMockFlag:
             prof = p.get_profile()
             assert prof.available is False, "should be unavailable in mock mode"
             assert prof.key_preview != ""
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 6. Error handling & retry (integration)
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestProviderErrorHandling:
+    """Test error handling in real providers (skipped without API keys)."""
+
+    @pytest.mark.asyncio
+    async def test_openai_fallback_on_mock(self):
+        """OpenAI provider falls back to Mock when LLM_PROVIDER_MOCK=true."""
+        from hq.model_router.providers import OpenAIChatProvider
+
+        with patch.dict(os.environ, {"LLM_API_KEY": "sk-test", "LLM_PROVIDER_MOCK": "true"}):
+            p = OpenAIChatProvider()
+            resp = await p.chat([{"role": "user", "content": "hi"}])
+            assert resp.provider == "mock"
+            assert resp.error is None
+
+    @pytest.mark.asyncio
+    async def test_openai_returns_error_on_bad_key(self):
+        """OpenAI provider returns error ModelResponse (not raise) with bad key."""
+        from hq.model_router.providers import OpenAIChatProvider
+
+        with patch.dict(os.environ, {
+            "LLM_API_KEY": "sk-bad-key-xxx",
+            "LLM_PROVIDER_MOCK": "false",
+            "OPENAI_BASE_URL": "https://api.openai.com/v1",
+        }):
+            p = OpenAIChatProvider()
+            resp = await p.chat([{"role": "user", "content": "hi"}])
+            # Should get an error response, not crash
+            assert resp.error is not None
+            assert "Provider error" in resp.content or resp.error
+
+    @pytest.mark.asyncio
+    async def test_deepseek_returns_error_on_bad_key(self):
+        """DeepSeek provider returns error ModelResponse (not raise) with bad key."""
+        from hq.model_router.providers import DeepSeekProvider
+
+        with patch.dict(os.environ, {
+            "DEEPSEEK_API_KEY": "sk-bad-key-xxx",
+            "LLM_PROVIDER_MOCK": "false",
+            "DEEPSEEK_BASE_URL": "https://api.deepseek.com/v1",
+        }):
+            p = DeepSeekProvider()
+            resp = await p.chat([{"role": "user", "content": "hi"}])
+            assert resp.error is not None
+            assert "Provider error" in resp.content or resp.error
+
+    @pytest.mark.asyncio
+    async def test_provider_timeout_handled_gracefully(self):
+        """Provider returns timeout error, not crash, on unreachable URL."""
+        from hq.model_router.providers import OpenAIChatProvider
+
+        with patch.dict(os.environ, {
+            "LLM_API_KEY": "sk-test",
+            "LLM_PROVIDER_MOCK": "false",
+            "OPENAI_BASE_URL": "http://192.0.2.1:9999/v1",  # TEST-NET, unreachable
+        }):
+            p = OpenAIChatProvider()
+            import httpx
+            # Force a small timeout so test doesn't take forever
+            resp = await p.chat(
+                [{"role": "user", "content": "hi"}],
+                timeout=1,
+            )
+            assert resp.error is not None
+            assert resp.provider == "openai"
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 7. Real API connectivity (skipped without env keys)
+# ══════════════════════════════════════════════════════════════════════════
+
+REAL_OPENAI_KEY = os.environ.get("LLM_API_KEY", "")
+REAL_DEEPSEEK_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+
+
+@pytest.mark.skipif(not REAL_OPENAI_KEY, reason="LLM_API_KEY not set")
+class TestOpenAIIntegration:
+    """Tests that hit the real OpenAI API.  Run with: LLM_API_KEY=... pytest ..."""
+
+    @pytest.mark.asyncio
+    async def test_openai_chat_real(self):
+        from hq.model_router.providers import OpenAIChatProvider
+
+        with patch.dict(os.environ, {
+            "LLM_API_KEY": REAL_OPENAI_KEY,
+            "LLM_PROVIDER_MOCK": "false",
+        }):
+            p = OpenAIChatProvider()
+            resp = await p.chat([
+                {"role": "user", "content": "Say exactly: HELLO_FROM_CROSSWAVE"},
+            ])
+            assert resp.error is None, f"API error: {resp.error}"
+            assert resp.provider == "openai"
+            assert "HELLO_FROM_CROSSWAVE" in resp.content
+
+    @pytest.mark.asyncio
+    async def test_openai_health_check(self):
+        from hq.model_router.providers import OpenAIChatProvider
+
+        with patch.dict(os.environ, {
+            "LLM_API_KEY": REAL_OPENAI_KEY,
+            "LLM_PROVIDER_MOCK": "false",
+        }):
+            p = OpenAIChatProvider()
+            healthy = await p.check_health()
+            assert healthy is True
+
+
+@pytest.mark.skipif(not REAL_DEEPSEEK_KEY, reason="DEEPSEEK_API_KEY not set")
+class TestDeepSeekIntegration:
+    """Tests that hit the real DeepSeek API.  Run with: DEEPSEEK_API_KEY=... pytest ..."""
+
+    @pytest.mark.asyncio
+    async def test_deepseek_chat_real(self):
+        from hq.model_router.providers import DeepSeekProvider
+
+        with patch.dict(os.environ, {
+            "DEEPSEEK_API_KEY": REAL_DEEPSEEK_KEY,
+            "LLM_PROVIDER_MOCK": "false",
+        }):
+            p = DeepSeekProvider()
+            resp = await p.chat([
+                {"role": "user", "content": "Say exactly: HELLO_FROM_CROSSWAVE"},
+            ])
+            assert resp.error is None, f"API error: {resp.error}"
+            assert resp.provider == "deepseek"
+            assert "HELLO_FROM_CROSSWAVE" in resp.content
+
+    @pytest.mark.asyncio
+    async def test_deepseek_health_check(self):
+        from hq.model_router.providers import DeepSeekProvider
+
+        with patch.dict(os.environ, {
+            "DEEPSEEK_API_KEY": REAL_DEEPSEEK_KEY,
+            "LLM_PROVIDER_MOCK": "false",
+        }):
+            p = DeepSeekProvider()
+            healthy = await p.check_health()
+            assert healthy is True

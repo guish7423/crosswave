@@ -46,3 +46,4 @@ class ModelResponse(BaseModel):
     content: str
     model: str
     provider: str
+    error: Optional[str] = None  # error detail if the request failed

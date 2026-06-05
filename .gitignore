@@ -10,3 +10,10 @@ backups/
 
 # Planning docs (non-code)
 docs/superpowers/
+
+# Submodule generated files (not the submodules themselves)
+polsia-fork/.venv/
+polsia-fork/__pycache__/
+polsia-fork/*.db
+ai-blog-engine/venv/
+ai-blog-engine/blog.db

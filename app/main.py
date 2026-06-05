@@ -32,7 +32,17 @@ async def lifespan(app: FastAPI):
     await polsia_client.stop()
 
 
-app = FastAPI(title="CrossWave", version="0.3.0", lifespan=lifespan)
+# ─── Sentry Error Tracking ────────────────────────────────────────────────
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+if SENTRY_DSN:
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        traces_sample_rate=0.25,
+        enable_tracing=True,
+    )
+
+app = FastAPI(title="CrossWave", version="0.5.0", lifespan=lifespan)
 
 with suppress(RuntimeError):
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")

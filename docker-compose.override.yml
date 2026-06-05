@@ -1,0 +1,47 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# CrossWave — Local Development Override
+# 
+# Without submodules:  git clone each repo as a sibling, then symlink:
+#   ln -s ../polsia-fork ./polsia-fork
+#   ln -s ../ai-blog-engine ./ai-blog-engine
+#
+# With submodules:     git clone --recurse-submodules (auto-included)
+#
+# Usage:  docker compose up -d
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  # Override build contexts for local development — use the submodule paths
+  polsia-fork:
+    build:
+      context: ./polsia-fork
+      dockerfile: Dockerfile
+
+  celery-worker:
+    build:
+      context: ./polsia-fork
+      dockerfile: Dockerfile
+
+  celery-beat:
+    build:
+      context: ./polsia-fork
+      dockerfile: Dockerfile
+
+  crosswave:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Mount source for hot-reload during development
+    volumes:
+      - ./app:/app/app:ro
+      - ./hq:/app/hq:ro
+      - ./templates:/app/templates:ro
+      - ./static:/app/static:ro
+      - ./scripts:/app/scripts:ro
+    environment:
+      - DEBUG=true
+
+  crossblog:
+    build:
+      context: ./ai-blog-engine
+      dockerfile: Dockerfile

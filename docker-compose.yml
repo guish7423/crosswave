@@ -25,7 +25,7 @@ services:
   # ── Polsia Fork 后端 + Celery Worker ────────────────
   polsia-fork:
     build:
-      context: ../polsia-fork
+      context: ./polsia-fork
       dockerfile: Dockerfile
     container_name: polsia-fork
     ports:
@@ -63,7 +63,7 @@ services:
   # ── Celery Worker（Polsia Fork 任务执行器）─────────
   celery-worker:
     build:
-      context: ../polsia-fork
+      context: ./polsia-fork
       dockerfile: Dockerfile
     container_name: polsia-celery-worker
     command: celery -A celery_app worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance
@@ -88,7 +88,7 @@ services:
   # ── Celery Beat（定时任务调度）─────────────────────
   celery-beat:
     build:
-      context: ../polsia-fork
+      context: ./polsia-fork
       dockerfile: Dockerfile
     container_name: polsia-celery-beat
     command: celery -A celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
@@ -145,7 +145,7 @@ services:
   # ── CrossBlog（SEO 博客引擎）────────────────────────
   crossblog:
     build:
-      context: ../ai-blog-engine
+      context: ./ai-blog-engine
       dockerfile: Dockerfile
     container_name: crossblog
     ports:

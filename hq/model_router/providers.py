@@ -1,5 +1,6 @@
 """Concrete LLM provider implementations: Mock, OpenAI-compatible, DeepSeek."""
 
+import asyncio
 import os
 from typing import Optional
 
@@ -7,6 +8,41 @@ import httpx
 
 from .base import ModelProvider
 from .models import Capability, ModelProfile, ModelResponse
+
+# ─── Retry helper ──────────────────────────────────────────────────────────
+
+MAX_RETRIES = 3
+RETRY_BACKOFF = 1.5  # multiplicative backoff: 1s → 1.5s → 2.25s
+RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
+
+
+async def _chat_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    headers: dict,
+    json_body: dict,
+) -> httpx.Response:
+    """POST with exponential backoff on retryable errors."""
+    last_exc: Optional[Exception] = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = await client.post(url, headers=headers, json=json_body)
+            if resp.status_code in RETRYABLE_STATUSES and attempt < MAX_RETRIES:
+                wait = RETRY_BACKOFF ** (attempt - 1)
+                await asyncio.sleep(wait)
+                continue
+            resp.raise_for_status()
+            return resp
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            last_exc = exc
+            if attempt < MAX_RETRIES:
+                wait = RETRY_BACKOFF ** (attempt - 1)
+                await asyncio.sleep(wait)
+                continue
+            raise
+        except httpx.HTTPStatusError:
+            raise
+    raise last_exc or httpx.HTTPError("request failed after retries")
 
 # ─── Mock canned responses per capability ────────────────────────────────
 
@@ -150,28 +186,49 @@ class OpenAIChatProvider(ModelProvider):
     ) -> ModelResponse:
         if _is_mock_forced() or not self._api_key:
             return await MockProvider().chat(messages, **kwargs)
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                f"{self._base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": kwargs.get("model", self._model),
-                    "messages": messages,
-                    **({k: v for k, v in kwargs.items() if k != "model"}),
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            choice = data["choices"][0]
-            content = choice["message"]["content"] or ""
-            return ModelResponse(
-                content=content,
-                model=data.get("model", self._model),
-                provider=self.provider_name,
-            )
+        timeout_s: float = float(kwargs.pop("timeout", 30))  # type: ignore[arg-type]
+        async with httpx.AsyncClient(timeout=timeout_s) as client:
+            try:
+                resp = await _chat_with_retry(
+                    client,
+                    f"{self._base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json_body={
+                        "model": kwargs.get("model", self._model),
+                        "messages": messages,
+                        **kwargs,
+                    },
+                )
+                data = resp.json()
+                choice = data["choices"][0]
+                content = choice["message"]["content"] or ""
+                return ModelResponse(
+                    content=content,
+                    model=data.get("model", self._model),
+                    provider=self.provider_name,
+                )
+            except httpx.HTTPStatusError as e:
+                detail = ""
+                try:
+                    detail = e.response.text[:200]
+                except Exception:
+                    pass
+                return ModelResponse(
+                    content=f"⚠️ Provider error ({e.response.status_code}): {detail}",
+                    model=self._model,
+                    provider=self.provider_name,
+                    error=f"HTTP {e.response.status_code}",
+                )
+            except (httpx.TimeoutException, httpx.ConnectError) as e:
+                return ModelResponse(
+                    content=f"⚠️ Provider unreachable after {MAX_RETRIES} retries: {type(e).__name__}",
+                    model=self._model,
+                    provider=self.provider_name,
+                    error="connection_error",
+                )
 
     async def check_health(self) -> bool:
         if not self._api_key or _is_mock_forced():
@@ -233,28 +290,49 @@ class DeepSeekProvider(ModelProvider):
     ) -> ModelResponse:
         if _is_mock_forced() or not self._api_key:
             return await MockProvider().chat(messages, **kwargs)
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                f"{self._base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": kwargs.get("model", self._model),
-                    "messages": messages,
-                    **({k: v for k, v in kwargs.items() if k != "model"}),
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            choice = data["choices"][0]
-            content = choice["message"]["content"] or ""
-            return ModelResponse(
-                content=content,
-                model=data.get("model", self._model),
-                provider=self.provider_name,
-            )
+        timeout_s: float = float(kwargs.pop("timeout", 30))  # type: ignore[arg-type]
+        async with httpx.AsyncClient(timeout=timeout_s) as client:
+            try:
+                resp = await _chat_with_retry(
+                    client,
+                    f"{self._base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json_body={
+                        "model": kwargs.get("model", self._model),
+                        "messages": messages,
+                        **kwargs,
+                    },
+                )
+                data = resp.json()
+                choice = data["choices"][0]
+                content = choice["message"]["content"] or ""
+                return ModelResponse(
+                    content=content,
+                    model=data.get("model", self._model),
+                    provider=self.provider_name,
+                )
+            except httpx.HTTPStatusError as e:
+                detail = ""
+                try:
+                    detail = e.response.text[:200]
+                except Exception:
+                    pass
+                return ModelResponse(
+                    content=f"⚠️ Provider error ({e.response.status_code}): {detail}",
+                    model=self._model,
+                    provider=self.provider_name,
+                    error=f"HTTP {e.response.status_code}",
+                )
+            except (httpx.TimeoutException, httpx.ConnectError) as e:
+                return ModelResponse(
+                    content=f"⚠️ Provider unreachable after {MAX_RETRIES} retries: {type(e).__name__}",
+                    model=self._model,
+                    provider=self.provider_name,
+                    error="connection_error",
+                )
 
     async def check_health(self) -> bool:
         if not self._api_key or _is_mock_forced():
