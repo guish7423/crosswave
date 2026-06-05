@@ -1,43 +1,58 @@
-"""CrossWave — centralized configuration."""
+"""CrossWave — Pydantic v2 Settings (fail-fast on env validation)."""
 
-from dataclasses import dataclass, field
-from os import environ
+from typing import Optional, Literal
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-@dataclass
-class Settings:
-    polsia_base_url: str = field(
-        default_factory=lambda: environ.get(
-            "POLSIA_BASE_URL", "http://localhost:8000"
-        )
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
-    polsia_api_key: str = field(
-        default_factory=lambda: environ.get("POLSIA_API_KEY", "dev-key")
-    )
+
+    # ── Environment ────────────────────────────────────────────────────
+    environment: Literal["development", "staging", "production"] = "development"
+    debug: bool = False
     proxy_timeout: int = 5
-    debug: bool = field(
-        default_factory=lambda: environ.get("DEBUG", "true").lower() == "true"
-    )
-    polsia_mock: bool = field(
-        default_factory=lambda: environ.get("POLSIA_MOCK", "true").lower() == "true"
-    )
 
-    # ── LLM Provider Abstraction (Phase 3) ──────────────────────────
-    llm_api_key: str = field(
-        default_factory=lambda: environ.get("LLM_API_KEY", "")
-    )
-    deepseek_api_key: str = field(
-        default_factory=lambda: environ.get("DEEPSEEK_API_KEY", "")
-    )
-    openai_base_url: str = field(
-        default_factory=lambda: environ.get(
-            "OPENAI_BASE_URL", "https://api.openai.com/v1"
-        )
-    )
-    llm_provider_mock: bool = field(
-        default_factory=lambda: environ.get("LLM_PROVIDER_MOCK", "true").lower()
-        == "true"
-    )
+    # ── Polsia Fork ────────────────────────────────────────────────────
+    polsia_base_url: str = "http://localhost:8000"
+    polsia_api_key: str = "dev-key"
+    polsia_mock: bool = True
+
+    # ── LLM Providers ──────────────────────────────────────────────────
+    llm_api_key: Optional[str] = Field(default=None, repr=False)
+    deepseek_api_key: Optional[str] = Field(default=None, repr=False)
+    openai_base_url: str = "https://api.openai.com/v1"
+    llm_provider_mock: bool = True
+
+    # ── Sentry ─────────────────────────────────────────────────────────
+    sentry_dsn: Optional[str] = Field(default=None, repr=False)
+
+    # ── CrossBlog ──────────────────────────────────────────────────────
+    crossblog_url: str = "http://127.0.0.1:8001"
+
+    # ── Stripe ─────────────────────────────────────────────────────────
+    stripe_secret_key: Optional[str] = Field(default=None, repr=False)
+    stripe_bridge_price_id: Optional[str] = None
+    stripe_blog_price_id: Optional[str] = None
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug(cls, v: object) -> bool:
+        if isinstance(v, str):
+            return v.lower() in ("true", "1", "yes")
+        return bool(v)
+
+    @field_validator("polsia_mock", "llm_provider_mock", mode="before")
+    @classmethod
+    def parse_bool(cls, v: object) -> bool:
+        if isinstance(v, str):
+            return v.lower() in ("true", "1", "yes")
+        return bool(v)
 
 
 settings = Settings()
