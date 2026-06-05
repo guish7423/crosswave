@@ -20,8 +20,8 @@
 - [ ] Configure `crossbridge.crosswave.app` as CNAME or A record
 
 ### SSL (via Nginx + Let's Encrypt)  
-- [ ] Copy `scripts/nginx.conf` → `/etc/nginx/sites-available/crosswave`
-- [ ] Run `certbot --nginx -d crosswave.app -d blog.crosswave.app`
+- [ ] Copy `nginx.conf` (production version) to `/opt/crosswave/`
+- [ ] Run `bash scripts/setup-ssl.sh` (interactive) or `bash scripts/setup-ssl.sh --self-signed` (testing)
 - [ ] Verify SSL: `curl -I https://crosswave.app`
 
 ---

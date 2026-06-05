@@ -9,10 +9,12 @@ os.environ.setdefault("POLSIA_DB", "/tmp/crosswave-test-polsia.db")
 # Set auth token for tests
 os.environ.setdefault("HQ_AUTH_TOKEN", "test-hq-token")
 
-# Ensure hq/ is on sys.path so `from server import app` works
+# Ensure paths so `from server import app` and `from hq.model_router import *` work
 _hq_dir = str(Path(__file__).resolve().parent.parent)
-if _hq_dir not in sys.path:
-    sys.path.insert(0, _hq_dir)
+_root_dir = str(Path(__file__).resolve().parent.parent.parent)
+for _p in [_hq_dir, _root_dir]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 
 import pytest

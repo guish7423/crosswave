@@ -1,65 +1,52 @@
-# PROJECT_STATUS.md — Session 2026-06-05 (v0.5.0 → v0.6.0)
+# PROJECT_STATUS.md — Session 2026-06-05 (v0.6.1 Cleanup)
 
 Last updated: 2026-06-05
 
-## 当前阶段: Phase 3+ 项目完善 & 生态布局
+## 当前阶段: 运营前自主清扫完成 ✅
 
-### ✅ 本轮完成
+### 本轮完成 — 所有可自主执行的部分
 
-| 组件 | 内容 | 状态 |
+#### ✅ 清扫清单
+
+| 项目 | 变更 | 状态 |
 |------|------|------|
-| **Sentry 错误追踪** | sentry-sdk 集成到 CrossWave (app/main.py) + .env.example 配置项 | ✅ |
-| **Provider 错误处理** | 指数退避重试(429/5xx)、超时/连接错误优雅降级、ModelResponse.error 字段 | ✅ |
-| **CLI 测试工具** | `hq/scripts/test-provider.sh` — 一键测试所有 Provider (mock/openai/deepseek) | ✅ |
-| **Git Submodules** | polsia-fork + ai-blog-engine 作为 submodule 纳入 crosswave 生态 | ✅ |
-| **Docker Compose 统一** | docker-compose.yml 路径更新 + docker-compose.override.yml (热重载) | ✅ |
-| **集成测试** | 错误处理测试(25项) + 真实 API 集成测试(2项, 无 key 时跳过) | ✅ |
+| **版本号修复** | app/main.py health endpoint `0.3.0` → `0.6.0` | ✅ 修复 |
+| **nginx 生产级 HTTPS** | SSL + 安全头 + CSP + 速率限制 + WebSocket + Webhook 路由 | ✅ 新增 |
+| **Docker 安全加固** | 添加非 root 用户 (crosswave) | ✅ 新增 |
+| **CI 扩展** | 增加 HQ tests + Docker build, ruff 覆盖 hq/ | ✅ 改善 |
+| **SSL 自动配置脚本** | `scripts/setup-ssl.sh` (Let's Encrypt + 自签名) | ✅ 新增 |
+| **.env.example** | 增加 Stripe Price IDs 字段 | ✅ 改善 |
+| **LAUNCH_CHECKLIST** | SSL 指引更新至新脚本 | ✅ 改善 |
+| **HQ tests conftest** | 修复 sys.path 使 hq/imports 可用 | ✅ 修复 |
+| **Ruff** | 0 错误 | ✅ 审计通过 |
 
-测试:
-- **CrossWave 核心: 85/85 通过** ✅
-- **Model Router: 25/25 通过** (另有 2 项真实 API 测试因无 key 跳过) ✅
-- **HQ API: 18 项预存失败** (server.py 路由变更导致, 待修复)
+#### 🟢 已验证
+- **CrossWave 核心测试: 85/85 通过** ✅
+- **HQ 测试 (API + Model Router): 80/80 通过 + 2 skipped** ✅
+- **全量 165 通过** ✅
+- Ruff: 0 errors ✅
 
-### 版本: v0.6.0
+#### 🔴 仍需要用户手动操作的部分
 
-### 新增文件
-```
-.gitmodules                              ← Submodule 注册
-polsia-fork/                             ← Submodule: guish7423/polsia-fork
-ai-blog-engine/                          ← Submodule: guish7423/ai-blog-engine
-docker-compose.override.yml              ← 本地开发覆盖 (热重载)
-hq/scripts/test-provider.sh              ← Provider 连通性测试
-hq/scripts/README.md                     ← 脚本说明
-```
+这些需要 API keys/域名/外部服务，无法自动完成：
+1. **部署到生产** — VPS/Railway 上线
+2. **配置 LLM API Keys** — DeepSeek/OpenAI
+3. **配置 Stripe** — 密钥 + 价格表
+4. **域名 + DNS + SSL** — 指向服务器后跑 setup-ssl.sh
+5. **配置 SMTP** — SendGrid/Mailgun
+6. **Sentry DSN** — 配置错误追踪
 
-### 架构说明 (更新)
-```
-┌────────────────────────────────────────────────────────────┐
-│ crosswave (v0.6.0)                                         │
-│   FastAPI + HTMX + Sentry + model_router                   │
-│   Submodules: polsia-fork + ai-blog-engine                  │
-├────────────────────────────────────────────────────────────┤
-│ docker compose up -d  →  全部 7 个服务一键启动               │
-├────────────────────────────────────────────────────────────┤
-│ hq/scripts/test-provider.sh                                 │
-│   → Mock: instant ✓                                        │
-│   → OpenAI: needs LLM_API_KEY                              │
-│   → DeepSeek: needs DEEPSEEK_API_KEY                       │
-└────────────────────────────────────────────────────────────┘
-```
+### 版本: v0.6.1
 
-### 各服务运行状态
-| 服务 | 端口 | 运行方式 | 状态 |
-|------|------|---------|------|
-| Polsia Fork (19 Agents) | :8001 | submodule/systemd | ✅ |
-| Celery Worker+Beat | - | submodule/systemd | ✅ |
-| CrossWave (v0.6.0) | :9999 | systemd | ✅ |
-| CrossBlog | :8002 | submodule/systemd | ✅ |
-| HQ Bridge | :13001 | systemd | ✅ |
-| NocoBase (PG16) | :13000 | hq/docker-compose.yml | ✅ |
+### 测试矩阵
+| 套件 | 数量 | 状态 |
+|------|------|------|
+| CrossWave 核心 (tests/) | 85 | ✅ 85/85 |
+| HQ API + Model Router (hq/tests/) | 82 (2 skip) | ✅ 80/80 + 2 skip |
+| **总计** | **167** | **✅ 165/165 + 2 skip** |
 
-### 下一步选择
-1. **修复 HQ API 测试** (18项预存失败 — 需要更新 server.py 路由或测试用例)
-2. **真实 LLM API 集成** — 设 LLM_PROVIDER_MOCK=false + 配置 API keys
-3. **Deploy prep** — 域名/SSL/VPS 部署全栈
-4. **Stripe 支付** — 生产密钥 + 支付流程
+### 下一步建议路径
+1. **🛠 真实部署上线** — 启用真实 API Keys + docker-compose 生产启动
+2. **📊 NocoBase 上线** — docker compose 拉起运营看板
+3. **💳 Stripe 配置** — 密钥 + 产品定价
+4. **🌐 域名 + SSL** — 配置 DNS 后跑 setup-ssl.sh

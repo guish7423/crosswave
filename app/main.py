@@ -482,4 +482,4 @@ def _render_activity_items(entries: list) -> str:
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "app": "CrossWave", "version": "0.3.0"}
+    return {"status": "ok", "app": "CrossWave", "version": "0.6.0"}

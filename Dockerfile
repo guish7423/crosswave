@@ -6,6 +6,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user for security
+RUN addgroup --system --gid 1001 crosswave && \
+    adduser --system --uid 1001 --gid 1001 --no-create-home crosswave
+
 # Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -16,6 +20,12 @@ COPY hq/ hq/
 COPY templates/ templates/
 COPY static/ static/
 COPY index.html scripts/ docker-start.sh ./
+
+# Fix permissions for non-root user
+RUN chown -R crosswave:crosswave /app
+
+# Switch to non-root user
+USER crosswave
 
 # Ports: 9999 CrossWave app, 13001 HQ bridge
 EXPOSE 9999 13001
