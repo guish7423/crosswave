@@ -15,6 +15,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.core.exceptions import register_exception_handlers
 from hq.domains.data import CACHE  # noqa: F401 — imported by tests
 from hq.domains.middleware import app_lifespan, require_token
 from hq.domains.page_routes import router as page_router
@@ -32,6 +33,9 @@ def create_app() -> FastAPI:
         docs_url=None,
         redoc_url=None,
     )
+
+    # Exception handlers
+    register_exception_handlers(app)
 
     # Static files
     hq_dir = Path(__file__).resolve().parent
