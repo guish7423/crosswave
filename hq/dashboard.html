@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CrossWave HQ — 战情室</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<<<<<<< HEAD
-<link rel="stylesheet" href="/static/styles.css">
-=======
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
@@ -58,7 +55,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .empty { color: #64748b; text-align: center; padding: 24px; font-size: 14px; }
 .error-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #f87171; text-align: center; color: #f87171; }
 </style>
->>>>>>> feature/hq-p2
 </head>
 <body>
 <div class="header">
@@ -66,7 +62,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   <div>
     <span class="sync-info" id="syncInfo"></span>
     <span class="nav">
-<<<<<<< HEAD
       <a href="/" class="active">战情室</a>
       <a href="/employees">员工</a>
       <a href="/orders">订单</a>
@@ -75,14 +70,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <a href="/reports">报表</a>
     </span>
     <span id="dashNotif" style="display:none;cursor:pointer;font-size:.82rem;background:rgba(239,68,68,.15);color:#f87171;padding:2px 10px;border-radius:12px" onclick="window.location.href='/leads'"></span>
-=======
-      <a href="/">战情室</a>
-      <a href="/employees">员工</a>
-      <a href="/orders">订单</a>
-      <a href="/finance">财务</a>
-      <a href="/reports">报表</a>
-    </span>
->>>>>>> feature/hq-p2
     <span class="time" id="time"></span>
   </div>
 </div>
@@ -92,16 +79,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   <div class="kpi-card" style="border-left-color:#4ade80"><div class="label">活跃订单</div><div class="value">—</div><div class="sub" id="orderBreakdown"></div></div>
   <div class="kpi-card" style="border-left-color:#facc15"><div class="label">月收入 (MRR)</div><div class="value">—</div><div class="sub">¥ ARR</div></div>
   <div class="kpi-card" style="border-left-color:#a78bfa"><div class="label">客户数</div><div class="value">—</div><div class="sub">跨业务线</div></div>
-<<<<<<< HEAD
   <div class="kpi-card" style="border-left-color:#60a5fa"><div class="label">线索 (Leads)</div><div class="value">—</div><div class="sub" id="leadBreakdown">新: —</div></div>
 </div>
 
-<div class="chart-row">
-=======
-</div>
-
 <div class="charts-row">
->>>>>>> feature/hq-p2
   <div class="chart-card"><h3>👥 员工状态分布</h3><canvas id="empChart"></canvas></div>
   <div class="chart-card"><h3>📊 业务线收入分布</h3><canvas id="revenueChart"></canvas></div>
   <div class="chart-card"><h3>🔵 任务状态分布</h3><canvas id="taskChart"></canvas></div>
@@ -127,11 +108,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <script>
 function updateTime() { document.getElementById('time').textContent = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }); }
 setInterval(updateTime, 1000); updateTime();
-<<<<<<< HEAD
 async function loadNotif(){try{const r=await fetch('/api/hq/notifications');const d=await r.json();const b=document.getElementById('dashNotif');if(d.new_leads>0){b.style.display='inline';b.textContent='🔔 '+d.new_leads+' new'}else b.style.display='none'}catch(e){}}
 loadNotif();setInterval(loadNotif,15000);
-=======
->>>>>>> feature/hq-p2
 
 let empChart, revenueChart, taskChart;
 const apiBase = 'http://localhost:13001';
@@ -153,13 +131,10 @@ async function loadSummary() {
     kpis[2].querySelector('.value').textContent = `¥${data.mrr.toLocaleString()}`;
     kpis[2].querySelector('.sub').textContent = `¥${(data.mrr * 12).toLocaleString()} ARR`;
     kpis[3].querySelector('.value').textContent = data.customers;
-<<<<<<< HEAD
     if (data.leads) {
       kpis[4].querySelector('.value').textContent = data.leads.total;
       document.getElementById('leadBreakdown').textContent = `新: ${data.leads.new}`;
     }
-=======
->>>>>>> feature/hq-p2
 
     const empLabels = Object.keys(sd);
     const empValues = Object.values(sd);
@@ -236,7 +211,6 @@ async function loadActivity() {
   }
 }
 
-<<<<<<< HEAD
 async function loadLeads() {
   try {
     const res = await fetch(`${apiBase}/api/hq/leads`);
@@ -255,11 +229,23 @@ async function loadLeads() {
 }
 
 loadSummary(); loadEmployees(); loadActivity(); loadLeads();
+
+// Polling fallback (every 30s)
 setInterval(() => { loadSummary(); loadEmployees(); loadActivity(); loadLeads(); }, 30000);
-=======
-loadSummary(); loadEmployees(); loadActivity();
-setInterval(() => { loadSummary(); loadEmployees(); loadActivity(); }, 30000);
->>>>>>> feature/hq-p2
+
+// SSE real-time updates
+const evtSource = new EventSource('/api/hq/events');
+evtSource.onmessage = (e) => {
+  try {
+    const data = JSON.parse(e.data);
+    if (data.type === 'heartbeat') {
+      // Update sync info
+      document.getElementById('syncInfo').textContent = `SSE: ${new Date(data.timestamp).toLocaleTimeString('zh-CN')}`;
+      // Auto-refresh if page is visible
+      if (!document.hidden) { loadSummary(); }
+    }
+  } catch (_) {}
+};
 </script>
 </body>
 </html>

@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CrossWave HQ — 订单中心</title>
-<<<<<<< HEAD
-<link rel="stylesheet" href="/static/styles.css">
-=======
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
@@ -24,6 +21,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .filters { padding: 0 32px 16px; display: flex; gap: 12px; }
 .filters select, .filters input { background: #1e293b; border: 1px solid #334155; color: #e2e8f0; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
 
+.section-tabs { padding: 0 32px 12px; display: flex; gap: 8px; }
+.section-tabs .tab { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 8px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.section-tabs .tab.active { background: #1e3a5f; color: #60a5fa; border-color: #60a5fa; }
+
 .table-wrap { padding: 0 32px 24px; }
 table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; }
 th { background: #0f172a; color: #94a3b8; font-size: 12px; text-transform: uppercase; padding: 12px 16px; text-align: left; }
@@ -35,6 +36,9 @@ tr:hover td { background: #1a2744; }
 .badge.pending { background: #5c3d1a; color: #facc15; }
 .badge.in_progress { background: #1e3a5f; color: #60a5fa; }
 .badge.failed { background: #5c1a1a; color: #f87171; }
+.badge.scanned { background: #1e3a5f; color: #60a5fa; }
+.badge.evaluated { background: #5c3d1a; color: #facc15; }
+.badge.accepted { background: #166534; color: #4ade80; }
 
 .platforms { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding: 0 32px 16px; }
 .platform-card { background: #1e293b; border-radius: 10px; padding: 16px; border: 1px solid #334155; border-left: 4px solid #94a3b8; text-align: center; }
@@ -43,29 +47,28 @@ tr:hover td { background: #1a2744; }
 .platform-card .platform-status.connected { background: #166534; color: #4ade80; }
 .platform-card .platform-status.disconnected { background: #5c1a1a; color: #f87171; }
 
+.action-btn { background: #1e3a5f; border: 1px solid #60a5fa; color: #60a5fa; padding: 6px 16px; border-radius: 8px; font-size: 12px; cursor: pointer; }
+.action-btn:hover { background: #1e4a7f; }
+.mini-btn { background: transparent; border: 1px solid #334155; color: #94a3b8; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+.mini-btn:hover { border-color: #60a5fa; color: #60a5fa; }
+
 .empty { color: #64748b; text-align: center; padding: 40px; }
 </style>
->>>>>>> feature/hq-p2
 </head>
 <body>
 <div class="header">
   <h1>🌊 <span>CrossWave</span> HQ · 订单中心</h1>
   <span class="nav">
     <a href="/">战情室</a>
-<<<<<<< HEAD
     <a href="/timeline">时间线</a>
-      <a href="/employees">员工</a>
+    <a href="/employees">员工</a>
     <a href="/orders" class="active">订单</a>
     <a href="/leads">线索</a>
-      <a href="/agents">Agent</a>
+    <a href="/agents">Agent</a>
     <a href="/deploy">部署</a>
     <a href="/finance">财务</a>
     <a href="/monitor">监控</a>
-      <a href="/evolution">进化办</a>
-    <a href="/reports">报表</a>
-=======
-    <a href="/employees">员工</a>
-    <a href="/finance">财务</a>
+    <a href="/evolution">进化办</a>
     <a href="/reports">报表</a>
   </span>
 </div>
@@ -73,35 +76,25 @@ tr:hover td { background: #1a2744; }
 <div class="kpi-row" id="kpiRow"></div>
 
 <div class="filters">
-<<<<<<< HEAD
   <select id="sourceFilter" onchange="loadAll()"><option value="">全部来源</option><option value="internal">内部任务</option><option value="upwork">Upwork</option><option value="fiverr">Fiverr</option><option value="zhubajie">猪八戒</option></select>
   <select id="statusFilter" onchange="loadAll()"><option value="">全部状态</option><option value="pending">待处理</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="failed">失败</option><option value="scanned">已扫描</option><option value="evaluated">已评估</option><option value="accepted">已接单</option></select>
-=======
-  <select id="platformFilter" onchange="loadOrders()"><option value="">全部平台</option><option value="internal">内部</option><option value="upwork">Upwork</option><option value="fiverr">Fiverr</option></select>
-  <select id="statusFilter" onchange="loadOrders()"><option value="">全部状态</option><option value="pending">待处理</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="failed">失败</option></select>
->>>>>>> feature/hq-p2
 </div>
 
 <h3 style="padding:0 32px 8px;font-size:13px;color:#94a3b8;">🔌 平台连接</h3>
 <div class="platforms" id="platformGrid"></div>
 
-<<<<<<< HEAD
 <div class="section-tabs">
   <button class="tab active" onclick="switchTab('internal')">📋 内部任务</button>
   <button class="tab" onclick="switchTab('external')">🌍 外部订单</button>
 </div>
 
 <div class="table-wrap" id="internalTable" style="display:block;">
-=======
-<div class="table-wrap">
->>>>>>> feature/hq-p2
   <table>
     <thead><tr><th>标题</th><th>平台</th><th>状态</th><th>时间</th></tr></thead>
     <tbody id="orderTable"></tbody>
   </table>
 </div>
 
-<<<<<<< HEAD
 <div class="table-wrap" id="externalTable" style="display:none;">
   <div style="padding:12px 0;display:flex;gap:8px;flex-wrap:wrap;">
     <button class="action-btn" onclick="scanPlatform('upwork')">🔍 扫描 Upwork</button>
@@ -134,17 +127,6 @@ async function loadOrders() {
     const status = document.getElementById('statusFilter').value;
     const params = new URLSearchParams();
     if (source) params.set('platform', source);
-=======
-<script>
-const apiBase = 'http://localhost:13001';
-
-async function loadOrders() {
-  try {
-    const platform = document.getElementById('platformFilter').value;
-    const status = document.getElementById('statusFilter').value;
-    const params = new URLSearchParams();
-    if (platform) params.set('platform', platform);
->>>>>>> feature/hq-p2
     if (status) params.set('status', status);
     const res = await fetch(`${apiBase}/api/hq/orders?${params}`);
     const data = (await res.json()).data || [];
@@ -175,7 +157,6 @@ async function loadOrders() {
   }
 }
 
-<<<<<<< HEAD
 async function loadExternalOrders() {
   try {
     const source = document.getElementById('sourceFilter').value;
@@ -257,22 +238,12 @@ async function fulfillOrder(orderId) {
 function loadPlatforms() {
   const platforms = [
     { name: '内部系统', status: 'connected', desc: 'Polsia Fork 任务' },
-    { name: 'Upwork', status: 'disconnected', desc: '按需扫描' },
-    { name: 'Fiverr', status: 'disconnected', desc: '按需扫描' },
-    { name: '猪八戒', status: 'disconnected', desc: '按需扫描' },
-  ];
-  document.getElementById('platformGrid').innerHTML = platforms.map(p => `
-=======
-async function loadPlatforms() {
-  const platforms = [
-    { name: '内部系统', status: 'connected', desc: 'Polsia Fork 任务' },
     { name: 'Upwork', status: 'disconnected', desc: 'MCP 集成' },
     { name: 'Fiverr', status: 'disconnected', desc: 'Apify 集成' },
     { name: '猪八戒', status: 'disconnected', desc: '抢单宝 API' },
   ];
   const grid = document.getElementById('platformGrid');
   grid.innerHTML = platforms.map(p => `
->>>>>>> feature/hq-p2
     <div class="platform-card">
       <div class="platform-name">${p.name}</div>
       <div class="platform-status ${p.status}">${p.status === 'connected' ? '已连接' : '未连接'}</div>
@@ -281,7 +252,6 @@ async function loadPlatforms() {
   `).join('');
 }
 
-<<<<<<< HEAD
 function loadAll() {
   if (currentTab === 'external') loadExternalOrders();
   else loadOrders();
@@ -290,11 +260,6 @@ function loadAll() {
 loadOrders();
 loadPlatforms();
 setInterval(() => { if (currentTab === 'external') loadExternalOrders(); else loadOrders(); }, 30000);
-=======
-loadOrders();
-loadPlatforms();
-setInterval(loadOrders, 30000);
->>>>>>> feature/hq-p2
 </script>
 </body>
 </html>

@@ -1,15 +1,62 @@
-"""HQ monitor, evolution, and portal routes."""
+"""HQ monitor, evolution, portal, and SSE real-time routes."""
 
 import asyncio
 import json
 import os
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 
 from hq.domains.data import CACHE, DB_PATH, SERVICES_TO_CHECK, _check_svc
 
 router = APIRouter(tags=["monitor"])
+
+
+async def event_stream():
+    """SSE event stream: pushes dashboard KPI updates every 5 seconds."""
+    while True:
+        try:
+            # Quick service health check (non-blocking gather)
+            tasks = [_check_svc(s["name"], s["url"]) for s in SERVICES_TO_CHECK]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            services = []
+            for i, r in enumerate(results):
+                if isinstance(r, Exception):
+                    services.append({"service": SERVICES_TO_CHECK[i]["name"], "status": "error"})
+                else:
+                    services.append(r)
+
+            # Dashboard heartbeat event
+            data = json.dumps({
+                "type": "heartbeat",
+                "timestamp": datetime.now(UTC).isoformat(),
+                "services": services,
+                "kpi": {
+                    "employees": len(CACHE.get("employees", [])),
+                    "orders": len(CACHE.get("orders", [])),
+                    "leads": len(CACHE.get("leads", [])),
+                    "external_orders": len(CACHE.get("external_orders", [])),
+                },
+            })
+            yield f"data: {data}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        await asyncio.sleep(5)
+
+
+@router.get("/api/hq/events")
+async def sse_events(request: Request):
+    """SSE endpoint for real-time dashboard updates."""
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/health")
