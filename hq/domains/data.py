@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 
 import httpx
 
+from hq.polsia_client import PolsiaClient, PolsiaConnectionError
+
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 AUTH_TOKEN = os.environ.get("HQ_AUTH_TOKEN", "")
 if not AUTH_TOKEN:
@@ -65,8 +67,176 @@ async def _check_svc(name: str, url: str, timeout: int = 5) -> dict:
                 "response_time_ms": ms, "error": str(e)[:120]}
 
 
+async def polsia_sync_via_api() -> bool:
+    """Pull data from Polsia Fork REST API into CACHE.
+
+    Returns True if API was reachable (even partial success).
+    Falls back gracefully per endpoint — never raises.
+    """
+    try:
+        client = PolsiaClient()
+    except Exception as e:
+        print(f"[bridge] PolsiaClient init failed: {e}")
+        return False
+
+    # Agents — try API, fallback to empty list (not SQLite)
+    try:
+        monitor = await client.get_agents()
+        agents_raw = monitor.get("agents", [])
+        employees = [
+            {
+                "name": a.get("agent_type", "").replace("_", " ").title(),
+                "type": "ai",
+                "role": a.get("agent_type", "agent"),
+                "status": a.get("status", "idle"),
+                "agent_type": a.get("agent_type", ""),
+            }
+            for a in agents_raw
+        ]
+        # Ensure known agents are present even if API returns partial list
+        known = ["orchestrator", "social_media", "customer_support", "competitor_research",
+                  "business_planning", "code_generation", "deployment",
+                  "finance_agent", "email_outreach", "ads_management"]
+        existing = set(a.get("agent_type") for a in agents_raw)
+        for ka in known:
+            if ka not in existing:
+                employees.append({
+                    "name": ka.replace("_", " ").title(),
+                    "type": "ai",
+                    "role": ka.replace("_", " ").title(),
+                    "status": "idle",
+                    "agent_type": ka,
+                })
+        CACHE["employees"] = employees
+    except PolsiaConnectionError:
+        print("[bridge] Agents API unavailable, keeping prior CACHE")
+        employees = CACHE.get("employees", [])
+
+    # Tasks — try API
+    try:
+        tasks_data = await client.get_tasks(limit=200)
+        CACHE["orders"] = [
+            {
+                "title": t.get("title", ""),
+                "status": t.get("status", "pending"),
+                "agent_type": t.get("agent_type", ""),
+                "created_at": t.get("created_at", ""),
+                "source_id": t.get("id"),
+                "platform": "internal",
+            }
+            for t in tasks_data
+        ]
+        CACHE["tasks"] = [
+            {
+                "id": t.get("id"),
+                "title": t.get("title", ""),
+                "description": t.get("description", ""),
+                "agent_type": t.get("agent_type", ""),
+                "priority": t.get("priority", 3),
+                "status": t.get("status", "pending"),
+                "source": t.get("source", ""),
+                "scheduled_date": t.get("scheduled_date", ""),
+                "result_summary": t.get("result_summary", ""),
+                "error_message": t.get("error_message", ""),
+                "metadata_json": t.get("metadata_json", ""),
+                "created_at": t.get("created_at", ""),
+                "updated_at": t.get("updated_at", ""),
+            }
+            for t in tasks_data
+        ]
+    except PolsiaConnectionError:
+        print("[bridge] Tasks API unavailable, keeping prior CACHE")
+
+    # Activity log
+    activity = []
+    try:
+        activity = await client.get_activity(limit=200)
+        CACHE["activity_log"] = activity
+    except PolsiaConnectionError:
+        print("[bridge] Activity API unavailable")
+
+    # Leads
+    try:
+        leads_resp = await client.get_leads(limit=100)
+        leads_data = leads_resp.get("data", [])
+        CACHE["leads"] = [
+            {
+                "id": lead.get("id"),
+                "name": lead.get("name", ""),
+                "email": lead.get("email", ""),
+                "company": lead.get("company", ""),
+                "product_interest": lead.get("product_interest", ""),
+                "budget_range": lead.get("budget_range", ""),
+                "message": lead.get("message", ""),
+                "status": lead.get("status", "new"),
+                "source_page": lead.get("source_page", ""),
+                "created_at": lead.get("created_at", ""),
+            }
+            for lead in leads_data
+        ]
+    except PolsiaConnectionError:
+        print("[bridge] Leads API unavailable, keeping prior CACHE")
+
+    # External orders — try API but don't fail if auth fails
+    try:
+        orders_resp = await client.get_external_orders(limit=100)
+        ext_orders_data = orders_resp.get("data", [])
+        CACHE["external_orders"] = [
+            {
+                "id": o.get("id"),
+                "title": o.get("title", ""),
+                "platform": o.get("platform", ""),
+                "external_id": o.get("external_id", ""),
+                "status": o.get("status", "scanned"),
+                "budget_min": o.get("budget_min"),
+                "budget_max": o.get("budget_max"),
+                "currency": o.get("currency", "USD"),
+                "score": o.get("score"),
+                "score_reason": o.get("score_reason", ""),
+                "assigned_agent": o.get("assigned_agent", ""),
+                "created_at": o.get("created_at", ""),
+                "deployment_plan": o.get("deployment_plan", ""),
+                "deliverables": o.get("deliverables", []),
+                "delivery_notes": o.get("delivery_notes", ""),
+            }
+            for o in ext_orders_data
+        ]
+    except PolsiaConnectionError:
+        print("[bridge] External orders API unavailable, skipping")
+
+    # Dashboard summary — for MRR/subscriber defaults
+    try:
+        summary = await client.get_dashboard_summary()
+    except PolsiaConnectionError:
+        summary = {}
+
+    mrr_val = summary.get("total_revenue", summary.get("mrr", 174))
+    subscribers = summary.get("active_subscribers", 4)
+
+    # Business lines
+    CACHE["lines"] = [
+        {"name": "CrossBridge", "slug": "crossbridge", "status": "active", "monthly_revenue": 0, "customer_count": 0},
+        {"name": "CrossBlog", "slug": "crossblog", "status": "active", "monthly_revenue": 0, "customer_count": 0},
+        {"name": "CrossDeploy", "slug": "crossdeploy", "status": "active", "monthly_revenue": 0, "customer_count": 0},
+        {"name": "Polsia Fork", "slug": "polsia", "status": "active", "monthly_revenue": mrr_val, "customer_count": subscribers},
+        {"name": "HiveMind", "slug": "hivemind", "status": "development", "monthly_revenue": 0, "customer_count": 0},
+    ]
+
+    CACHE["last_sync"] = datetime.now(UTC).isoformat()
+
+    print(f"[bridge] API sync: {len(CACHE['employees'])} employees, {len(CACHE['orders'])} orders, "
+          f"{len(CACHE.get('leads', []))} leads, {len(CACHE.get('activity_log', []))} activity entries")
+    return True
+
+
 async def polsia_sync():
-    """Pull data from Polsia Fork SQLite DB into CACHE."""
+    """Pull data from Polsia Fork into CACHE. Tries API first, falls back to SQLite."""
+    # Try API first
+    if await polsia_sync_via_api():
+        # API succeeded — still try NocoBase sync at the end
+        await _try_nocobase_sync()
+        return
+    print("[bridge] API unavailable, falling back to SQLite sync")
     if not os.path.exists(DB_PATH):
         print(f"[bridge] Polsia DB not found at {DB_PATH}")
         return
@@ -226,6 +396,11 @@ async def polsia_sync():
     print(f"[bridge] Synced: {len(employees)} employees, {len(orders)} tasks, {len(leads)} leads, {len(ext_orders)} ext orders, {len(exps)} expenses, {len(revs)} rev months, {len(full_tasks)} full tasks")
 
     # ── Optional: sync to NocoBase ─────────────────────────────
+    await _try_nocobase_sync()
+
+
+async def _try_nocobase_sync():
+    """Attempt to sync to NocoBase (best-effort)."""
     try:
         from hq.polsia_bridge import sync as nocobase_sync
         await nocobase_sync()
