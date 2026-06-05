@@ -12,7 +12,6 @@ Packs live in ``hq/industry-packs/*.yaml``.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 

@@ -10,7 +10,7 @@ Defines the core message structures per the JSON-RPC 2.0 specification:
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass
 from typing import Any
 
 

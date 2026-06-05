@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from app.core.mcp.protocol import JSONRPCError, JSONRPCErrorCode
 

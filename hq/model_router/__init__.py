@@ -33,7 +33,7 @@ AGENT_CAPABILITY_MAP: dict[str, Capability] = {
 }
 
 
-def resolve_capability(agent_type: str) -> Optional[Capability]:
+def resolve_capability(agent_type: str) -> Capability | None:
     """Return the capability for a given agent type, or None."""
     return AGENT_CAPABILITY_MAP.get(agent_type)
 
@@ -61,7 +61,7 @@ class ProviderRegistry:
     def get_available_profiles(self) -> list[ModelProfile]:
         return [p for p in self.get_all_profiles() if p.available]
 
-    def get_profile(self, name: str) -> Optional[ModelProfile]:
+    def get_profile(self, name: str) -> ModelProfile | None:
         for p in self._providers.values():
             if p.name == name:
                 return p.get_profile()
@@ -69,7 +69,7 @@ class ProviderRegistry:
 
     # ── routing ─────────────────────────────────────────────────────
 
-    def select_model(self, agent_type: str) -> Optional[ModelProvider]:
+    def select_model(self, agent_type: str) -> ModelProvider | None:
         """Return the best available provider for *agent_type*.
 
         Selection algorithm:
@@ -115,7 +115,7 @@ class ProviderRegistry:
 
 # ─── Singleton factory ───────────────────────────────────────────────────
 
-_registry: Optional[ProviderRegistry] = None
+_registry: ProviderRegistry | None = None
 
 
 def get_registry() -> ProviderRegistry:

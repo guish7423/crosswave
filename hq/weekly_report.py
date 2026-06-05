@@ -7,7 +7,11 @@ Usage:
   python hq/weekly_report.py --json              # JSON output
 """
 
-import os, sys, json, sqlite3, argparse
+import argparse
+import json
+import os
+import sqlite3
+import sys
 from datetime import datetime, timedelta
 
 POLSIA_DB = os.environ.get(
@@ -96,14 +100,14 @@ def generate_report(db):
 
 def format_markdown(report):
     lines = []
-    lines.append(f"# 📊 CrossWave 周报\n")
+    lines.append("# 📊 CrossWave 周报\n")
     lines.append(f"**周期**: {report['period']}  |  **生成时间**: {report['generated_at'][:19]}\n")
     lines.append("---\n")
 
     # MRR
     m = report["mrr"]
     growth_emoji = "📈" if m["growth"] >= 0 else "📉"
-    lines.append(f"## 💰 收入\n")
+    lines.append("## 💰 收入\n")
     lines.append(f"- **当前 MRR**: ${m['current']:.2f}")
     lines.append(f"- **ARR**: ${m['arr']:.2f}")
     lines.append(f"- **活跃订阅**: {m['subscribers']}")
@@ -112,26 +116,26 @@ def format_markdown(report):
 
     # Tasks
     t = report["tasks"]
-    lines.append(f"## ✅ 任务\n")
+    lines.append("## ✅ 任务\n")
     lines.append(f"- **总计**: {t['total']} | ✅ {t['done']} | ❌ {t['failed']} | ⏳ {t['pending']}")
     lines.append(f"- **完成率**: {t['completion_rate']}%")
     lines.append(f"- **本周新增**: {t['this_week']}\n")
 
     # Leads
     l = report["leads"]
-    lines.append(f"## 👥 线索\n")
+    lines.append("## 👥 线索\n")
     lines.append(f"- **总计**: {l['total']} | 🆕 {l['new']} | 🏆 {l['won']}")
     lines.append(f"- **本周新增**: {l['this_week']}")
     lines.append(f"- **转化率**: {l['conversion_rate']}%\n")
 
     # Orders
     o = report["external_orders"]
-    lines.append(f"## 📦 外部订单\n")
+    lines.append("## 📦 外部订单\n")
     lines.append(f"- **总计**: {o['total']} | ⏳ {o['pending']} | ✅ {o['accepted']}\n")
 
     # Activity
     a = report["activity"]
-    lines.append(f"## 🔄 活动\n")
+    lines.append("## 🔄 活动\n")
     lines.append(f"- **本周活动记录**: {a['this_week']}")
     lines.append(f"- **Agent 执行次数**: {a['agent_runs_this_week']}\n")
 
@@ -140,7 +144,7 @@ def format_markdown(report):
         first = report["revenue_trend_30d"][0]["mrr"]
         last = report["revenue_trend_30d"][-1]["mrr"]
         total_growth = ((last - first) / first * 100) if first > 0 else 0
-        lines.append(f"## 📈 30天收入趋势\n")
+        lines.append("## 📈 30天收入趋势\n")
         trend_days = len(report["revenue_trend_30d"])
         lines.append(f"- **{trend_days} 天数据**: ${first:.2f} → ${last:.2f}")
         lines.append(f"- **累计增长率**: +{total_growth:.1f}%\n")

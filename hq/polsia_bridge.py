@@ -5,8 +5,13 @@ polsia_bridge.py — Sync Polsia Fork SQLite → NocoBase REST API v2
 Syncs 4 collections (employees, business_lines, external_orders, platform_connections)
 with dedup by name/slug/external_id. Run standalone or integrated into bridge server.
 """
-import os, sys, json, asyncio, time, aiosqlite, httpx
-from datetime import datetime, timezone
+import asyncio
+import json
+import os
+import time
+
+import aiosqlite
+import httpx
 
 DB_PATH = os.environ.get("POLSIA_DB", "")
 if not DB_PATH:
@@ -169,60 +174,9 @@ async def sync():
 
         print("[polsia_bridge] sync complete")
 
-async def sync_expenses(client):
-    import aiosqlite
-    async with aiosqlite.connect(DB_PATH) as db:
-        rows = await db.execute_fetchall(
-            "SELECT amount, category, description, date FROM expenses ORDER BY date"
-        )
-        for row in rows:
-            payload = {
-                "amount": row[0],
-                "category": row[1] or "other",
-                "description": row[2] or "",
-                "date": row[3] or "",
-            }
-            try:
-                await client.post(
-                    f"{HQ_URL}/expenses:create",
-                    json=payload,
-                    headers={"Authorization": f"Bearer {HQ_TOKEN}"},
-                    timeout=10,
-                )
-            except Exception as e:
-                print(f"  [skip] expense {payload['description']}: {e}")
-
-async def sync_revenue_history(client):
-    import aiosqlite
-    async with aiosqlite.connect(DB_PATH) as db:
-        rows = await db.execute_fetchall(
-            "SELECT date, amount, source FROM finance_records ORDER BY date"
-        )
-        for row in rows:
-            payload = {
-                "date": row[0] or "",
-                "amount": row[1] or 0,
-                "source": row[2] or "unknown",
-            }
-            try:
-                await client.post(
-                    f"{HQ_URL}/revenue_records:create",
-                    json=payload,
-                    headers={"Authorization": f"Bearer {HQ_TOKEN}"},
-                    timeout=10,
-                )
-            except Exception as e:
-                print(f"  [skip] revenue {payload['date']}: {e}")
-
 async def main():
-    print(f"[polsia_bridge] DB: {DB_PATH}  HQ: {HQ_URL}")
-    async with httpx.AsyncClient() as client:
-        await sync_employees(client)
-        await sync_business_lines(client)
-        await sync_orders(client)
-        await sync_expenses(client)
-        await sync_revenue_history(client)
-    print("[polsia_bridge] sync complete")
+    """Standalone entry: run the full sync."""
+    await sync()
 
 if __name__ == "__main__":
     asyncio.run(main())

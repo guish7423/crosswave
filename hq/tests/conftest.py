@@ -14,13 +14,12 @@ _hq_dir = str(Path(__file__).resolve().parent.parent)
 if _hq_dir not in sys.path:
     sys.path.insert(0, _hq_dir)
 
-from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
 # Must import AFTER env/path setup
-from server import app, CACHE
+from server import CACHE, app
 
 _raw_client = TestClient(app)
 _AUTH = os.environ["HQ_AUTH_TOKEN"]

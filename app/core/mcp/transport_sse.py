@@ -13,7 +13,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ class SSETransport:
             try:
                 entry = await asyncio.wait_for(self._queue.get(), timeout=30.0)
                 parts.append(entry["formatted"])
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Send heartbeat on timeout
                 parts.append(self._format_sse("heartbeat", ""))
 
@@ -123,7 +124,7 @@ class SSETransport:
             try:
                 entry = await asyncio.wait_for(self._queue.get(), timeout=30.0)
                 yield entry["formatted"]
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 yield self._format_sse("heartbeat", "")
 
     @staticmethod

@@ -2,7 +2,6 @@
 
 import asyncio
 import os
-from typing import Optional
 
 import httpx
 
@@ -23,7 +22,7 @@ async def _chat_with_retry(
     json_body: dict,
 ) -> httpx.Response:
     """POST with exponential backoff on retryable errors."""
-    last_exc: Optional[Exception] = None
+    last_exc: Exception | None = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             resp = await client.post(url, headers=headers, json=json_body)
@@ -135,7 +134,7 @@ def _preview_key(key: str) -> str:
     return k[:6] + "…" + k[-4:]
 
 
-def _detect_env(env_var: str) -> Optional[str]:
+def _detect_env(env_var: str) -> str | None:
     val = os.environ.get(env_var, "")
     return env_var if val.strip() else None
 

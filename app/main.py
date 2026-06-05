@@ -1,22 +1,19 @@
 """CrossWave — Unified Management Platform"""
-import asyncio
 import json
+import os
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-
-import os
-
-import httpx
-
-from app.services.polsia_client import polsia_client
-from app.services.mcp_service import mcp_service
-from app.config import settings
 from pydantic import BaseModel
+
+from app.config import settings
+from app.services.mcp_service import mcp_service
+from app.services.polsia_client import polsia_client
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
@@ -42,7 +39,7 @@ if SENTRY_DSN:
         enable_tracing=True,
     )
 
-app = FastAPI(title="CrossWave", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title="CrossWave", version="0.6.0", lifespan=lifespan)
 
 with suppress(RuntimeError):
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")

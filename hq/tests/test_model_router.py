@@ -250,7 +250,6 @@ class TestProviderErrorHandling:
             "OPENAI_BASE_URL": "http://192.0.2.1:9999/v1",  # TEST-NET, unreachable
         }):
             p = OpenAIChatProvider()
-            import httpx
             # Force a small timeout so test doesn't take forever
             resp = await p.chat(
                 [{"role": "user", "content": "hi"}],

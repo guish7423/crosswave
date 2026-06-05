@@ -8,14 +8,11 @@ Covers all 13 API endpoints:
 """
 
 import os
-from pathlib import Path
 
 os.environ.setdefault("POLSIA_DB", "/tmp/crosswave-test-polsia.db")
 
 import pytest
-from fastapi.testclient import TestClient
-
-from conftest import client, CACHE
+from conftest import CACHE, client
 
 
 # ─── /health ───────────────────────────────────────────────────────────────────

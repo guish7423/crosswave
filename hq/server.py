@@ -1,9 +1,16 @@
-import os, json, asyncio, httpx, uvicorn, secrets, time
+import asyncio
+import json
+import os
+import secrets
+import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request, Depends, status
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from datetime import UTC, datetime
+
+import httpx
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from datetime import datetime, timezone
 
 # ─── Model Router (Phase 3) ──────────────────────────────────────────────
 from hq.model_router import AGENT_CAPABILITY_MAP, get_registry
@@ -16,8 +23,7 @@ if not AUTH_TOKEN:
 
 async def require_token(request: Request):
     """Reject requests missing X-HQ-Token header. Skip public paths."""
-    public_paths = ("/health", "/login", "/api/hq/auth", "/api/portal/", "/portal/", "/static", "/api/hq/models", "/api/hq/agents/")
-    if request.url.path.startswith("/api/portal/") or request.url.path.startswith("/portal/") or request.url.path in ("/health", "/login") or request.url.path.startswith("/api/hq/auth") or request.url.path.startswith("/static"):
+    if request.url.path.startswith("/api/portal/") or request.url.path.startswith("/portal/") or request.url.path in ("/health", "/login") or request.url.path.startswith("/api/hq/auth") or request.url.path.startswith("/static") or request.url.path.startswith("/api/hq/models") or request.url.path.startswith("/api/hq/agents/"):
         return True
     token = request.headers.get("X-HQ-Token", "")
     if token == AUTH_TOKEN:
@@ -133,7 +139,7 @@ async def polsia_sync():
     CACHE["employees"] = employees
     CACHE["lines"] = predef_lines
     CACHE["orders"] = orders
-    CACHE["last_sync"] = datetime.now(timezone.utc).isoformat()
+    CACHE["last_sync"] = datetime.now(UTC).isoformat()
     leads = []
     for row in lead_rows:
         leads.append({"id": row[0], "name": row[1] or "", "email": row[2] or "", "company": row[3] or "", "product_interest": row[4] or "", "budget_range": row[5] or "", "message": row[6] or "", "status": row[7] or "new", "source_page": row[8] or "", "created_at": row[9] or ""})
@@ -483,7 +489,7 @@ async def get_reports():
     for o in orders:
         d = o["created_at"][:10] if o["created_at"] else "unknown"
         task_by_day[d] = task_by_day.get(d, 0) + 1
-    activity_7d = sum(v for k, v in task_by_day.items() if k >= (datetime.now(timezone.utc).isoformat()[:10] if task_by_day else ""))
+    activity_7d = sum(v for k, v in task_by_day.items() if k >= (datetime.now(UTC).isoformat()[:10] if task_by_day else ""))
     return {
         "total_tasks": total_tasks,
         "completed_tasks": completed,
@@ -542,7 +548,7 @@ async def get_monitor():
         "summary": {
             "total": len(results), "up": up, "degraded": degraded, "down": down,
             "avg_response_time_ms": avg_ms, "all_up": up == len(results),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
         "results": [{**r, "label": next((s["label"] for s in SERVICES_TO_CHECK if s["name"] == r["service"]), r["service"])} for r in results],
     }
@@ -584,14 +590,17 @@ async def get_evolution():
         if at not in agent_data:
             agent_data[at] = {"agent_type": at, "total": 0, "errors": 0, "warnings": 0}
         agent_data[at]["total"] += cnt
-        if level == "error": agent_data[at]["errors"] += cnt
-        elif level == "warning": agent_data[at]["warnings"] += cnt
+        if level == "error":
+            agent_data[at]["errors"] += cnt
+        elif level == "warning":
+            agent_data[at]["warnings"] += cnt
     for row in task_rows:
-        at, status, cnt = row[0] or "unknown", row[1] or "pending", row[2] or 0
+        at, st, cnt = row[0] or "unknown", row[1] or "pending", row[2] or 0
         if at not in agent_data:
             agent_data[at] = {"agent_type": at, "total": 0, "errors": 0, "warnings": 0}
         agent_data[at]["total"] += cnt
-        if status == "failed": agent_data[at]["errors"] += cnt
+        if st == "failed":
+            agent_data[at]["errors"] += cnt
     metrics = []
     suggestions = []
     for at, d in sorted(agent_data.items()):
@@ -602,7 +611,7 @@ async def get_evolution():
             suggestions.append(f"{at}: 成功率 {success_rate}% ({d['errors']}/{d['total']} 错误)")
     if not suggestions:
         suggestions.append("所有 Agent 运行正常，无需优化")
-    return {"agent_metrics": metrics, "suggestions": suggestions, "total_activities": total_activities, "analyzed_at": datetime.now(timezone.utc).isoformat()}
+    return {"agent_metrics": metrics, "suggestions": suggestions, "total_activities": total_activities, "analyzed_at": datetime.now(UTC).isoformat()}
 
 @app.get("/evolution")
 async def evolution_page():
