@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     environment: Literal["development", "staging", "production"] = "development"
     debug: bool = False
     proxy_timeout: int = 5
+    secret_key: str = "dev-secret"
 
     # ── Polsia Fork ────────────────────────────────────────────────────
     polsia_base_url: str = "http://localhost:8000"
@@ -34,6 +35,10 @@ class Settings(BaseSettings):
 
     # ── CrossBlog ──────────────────────────────────────────────────────
     crossblog_url: str = "http://127.0.0.1:8001"
+
+    # ── Admin Login ────────────────────────────────────────────────────
+    admin_username: str = "admin"
+    admin_password_hash: str = ""
 
     # ── Stripe ─────────────────────────────────────────────────────────
     stripe_secret_key: Optional[str] = Field(default=None, repr=False)

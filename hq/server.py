@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.exceptions import register_exception_handlers
 from hq.domains.data import CACHE  # noqa: F401 — imported by tests
 from hq.domains.middleware import app_lifespan, require_token
+from hq.domains.auth_routes import router as auth_router
 from hq.domains.page_routes import router as page_router
 from hq.domains.api_routes import router as api_router
 from hq.domains.monitor_routes import router as monitor_router
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=str(hq_dir)), name="hq_static")
 
     # Register routers
+    app.include_router(auth_router)
     app.include_router(page_router)
     app.include_router(api_router)
     app.include_router(monitor_router)
