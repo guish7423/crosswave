@@ -1,8 +1,6 @@
 """Tests for MCP service integration."""
 
-import json
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app

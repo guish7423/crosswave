@@ -3,9 +3,7 @@
 import asyncio
 import json
 
-import pytest
-
-from app.core.mcp.transport_sse import SSETransport, SSETransportError
+from app.core.mcp.transport_sse import SSETransport
 
 
 class TestSSETransport:
@@ -104,5 +102,5 @@ class TestSSETransport:
         transport = SSETransport()
         formatted = transport._format_sse("message", "line1\nline2\nline3")
         lines = formatted.strip().split("\n")
-        data_lines = [l for l in lines if l.startswith("data:")]
+        data_lines = [ln for ln in lines if ln.startswith("data:")]
         assert len(data_lines) == 3

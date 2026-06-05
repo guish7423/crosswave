@@ -60,7 +60,7 @@ class StdioTransport:
                 raise JSONRPCError(
                     code=JSONRPCErrorCode.PARSE_ERROR,
                     message="Parse error: invalid JSON in input stream",
-                )
+                ) from None
 
     async def send(self, message: str) -> None:
         """Write a JSON-RPC message to the output stream."""

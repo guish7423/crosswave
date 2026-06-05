@@ -37,14 +37,14 @@ def register_exception_handlers(app: FastAPI) -> None:
     """Register all exception handlers on the given app instance."""
 
     @app.exception_handler(AppError)
-    async def app_error_handler(request: Request, exc: AppError):  # noqa: RUF100
+    async def app_error_handler(request: Request, exc: AppError):
         return JSONResponse(
             status_code=exc.status,
             content={"error": exc.code, "detail": exc.message},
         )
 
     @app.exception_handler(StarletteHTTPException)
-    async def http_exception_handler(request: Request, exc: StarletteHTTPException):  # noqa: RUF100
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         return JSONResponse(
             status_code=exc.status_code,
             content={"error": "HTTP_ERROR", "detail": exc.detail},
@@ -52,7 +52,7 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     # Catch-all via middleware (avoids Starlette's ServerErrorMiddleware issue)
     @app.middleware("http")
-    async def catch_all_exceptions(request: Request, call_next):  # noqa: RUF100
+    async def catch_all_exceptions(request: Request, call_next):
         try:
             return await call_next(request)
         except Exception:

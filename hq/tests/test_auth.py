@@ -45,28 +45,28 @@ class TestLogin:
 
     def test_wrong_password_returns_401(self, client):
         """POST /login with bad password should return 401."""
-        with patch("app.config.settings.admin_username", "admin"):
-            with patch("app.config.settings.admin_password_hash", "a_non_empty_hash_str"):
-                with patch("bcrypt.checkpw", return_value=False):
-                    resp = client.post("/login", json={"username": "admin", "password": "wrong"})
+        with patch("app.config.settings.admin_username", "admin"), \
+             patch("app.config.settings.admin_password_hash", "a_non_empty_hash_str"), \
+             patch("bcrypt.checkpw", return_value=False):
+            resp = client.post("/login", json={"username": "admin", "password": "wrong"})
         assert resp.status_code == 401
 
     def test_login_success_redirects_and_sets_cookie(self, client):
         """POST /login with valid creds should redirect and set session cookie."""
-        with patch("app.config.settings.admin_username", "admin"):
-            with patch("app.config.settings.admin_password_hash", "a_non_empty_hash_str"):
-                with patch("bcrypt.checkpw", return_value=True):
-                    resp = client.post("/login", json={"username": "admin", "password": "correct"},
-                                       follow_redirects=False)
+        with patch("app.config.settings.admin_username", "admin"), \
+             patch("app.config.settings.admin_password_hash", "a_non_empty_hash_str"), \
+             patch("bcrypt.checkpw", return_value=True):
+            resp = client.post("/login", json={"username": "admin", "password": "correct"},
+                               follow_redirects=False)
         assert resp.status_code == 302
         assert resp.headers["location"] == "/"
         assert "session" in resp.cookies
 
     def test_login_empty_hash_returns_401(self, client):
         """POST /login when no password hash is configured should return 401."""
-        with patch("app.config.settings.admin_username", "admin"):
-            with patch("app.config.settings.admin_password_hash", ""):
-                resp = client.post("/login", json={"username": "admin", "password": "any"})
+        with patch("app.config.settings.admin_username", "admin"), \
+             patch("app.config.settings.admin_password_hash", ""):
+            resp = client.post("/login", json={"username": "admin", "password": "any"})
         assert resp.status_code == 401
 
 

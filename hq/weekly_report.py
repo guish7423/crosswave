@@ -122,11 +122,11 @@ def format_markdown(report):
     lines.append(f"- **本周新增**: {t['this_week']}\n")
 
     # Leads
-    l = report["leads"]
+    lead_info = report["leads"]
     lines.append("## 👥 线索\n")
-    lines.append(f"- **总计**: {l['total']} | 🆕 {l['new']} | 🏆 {l['won']}")
-    lines.append(f"- **本周新增**: {l['this_week']}")
-    lines.append(f"- **转化率**: {l['conversion_rate']}%\n")
+    lines.append(f"- **总计**: {lead_info['total']} | 🆕 {lead_info['new']} | 🏆 {lead_info['won']}")
+    lines.append(f"- **本周新增**: {lead_info['this_week']}")
+    lines.append(f"- **转化率**: {lead_info['conversion_rate']}%\n")
 
     # Orders
     o = report["external_orders"]

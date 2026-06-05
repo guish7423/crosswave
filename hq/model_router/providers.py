@@ -1,6 +1,7 @@
 """Concrete LLM provider implementations: Mock, OpenAI-compatible, DeepSeek."""
 
 import asyncio
+import contextlib
 import os
 
 import httpx
@@ -211,10 +212,8 @@ class OpenAIChatProvider(ModelProvider):
                 )
             except httpx.HTTPStatusError as e:
                 detail = ""
-                try:
+                with contextlib.suppress(Exception):
                     detail = e.response.text[:200]
-                except Exception:
-                    pass
                 return ModelResponse(
                     content=f"⚠️ Provider error ({e.response.status_code}): {detail}",
                     model=self._model,
@@ -315,10 +314,8 @@ class DeepSeekProvider(ModelProvider):
                 )
             except httpx.HTTPStatusError as e:
                 detail = ""
-                try:
+                with contextlib.suppress(Exception):
                     detail = e.response.text[:200]
-                except Exception:
-                    pass
                 return ModelResponse(
                     content=f"⚠️ Provider error ({e.response.status_code}): {detail}",
                     model=self._model,

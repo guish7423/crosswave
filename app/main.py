@@ -37,7 +37,7 @@ def create_app() -> FastAPI:
     """Create and configure the CrossWave FastAPI application."""
     app = FastAPI(
         title="CrossWave",
-        version="0.6.1",
+        version="0.7.0",
         lifespan=lifespan,
         docs_url="/docs" if settings.environment == "development" else None,
         redoc_url=None,

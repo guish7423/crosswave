@@ -7,7 +7,6 @@ Exports:
 """
 
 import os
-from typing import Optional
 
 from .base import ModelProvider
 from .models import Capability, ModelProfile, ModelResponse

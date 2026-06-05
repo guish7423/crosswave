@@ -140,10 +140,10 @@ async def sync():
             {"name": "Polsia Fork", "slug": "polsia", "status": "active"},
             {"name": "HiveMind", "slug": "hivemind", "status": "development"},
         ]
-        for l in lines:
-            if l["slug"] in existing_lines:
+        for item in lines:
+            if item["slug"] in existing_lines:
                 continue
-            await create_record(client, "business_lines", l)
+            await create_record(client, "business_lines", item)
 
         # ── 3. External Orders ─────────────────────────────────────
         existing_orders = await list_collection(client, "external_orders", "external_id")

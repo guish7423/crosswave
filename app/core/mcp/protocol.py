@@ -135,7 +135,7 @@ def parse_message(raw: str) -> MessageType:
         raise JSONRPCError(
             code=JSONRPCErrorCode.PARSE_ERROR,
             message="Parse error: invalid JSON",
-        )
+        ) from None
 
     if not isinstance(data, dict):
         raise JSONRPCError(

@@ -18,9 +18,9 @@ async def summary():
     lines = CACHE["lines"]
     orders = CACHE["orders"]
     active_orders = [o for o in orders if o["status"] in ("pending", "in_progress")]
-    total_mrr = sum(l.get("monthly_revenue", 0) for l in lines)
+    total_mrr = sum(item.get("monthly_revenue", 0) for item in lines)
     CACHE["mrr"] = total_mrr
-    total_customers = sum(l.get("customer_count", 0) for l in lines)
+    total_customers = sum(item.get("customer_count", 0) for item in lines)
     leads = CACHE["leads"]
     return {
         "employees": {
@@ -29,11 +29,11 @@ async def summary():
             "status_distribution": {s: len([e for e in emps if e.get("status") == s]) for s in set(e["status"] for e in emps)},
         },
         "lines": [
-            {"name": l["name"], "slug": l.get("slug", ""), "status": l.get("status", "unknown"),
-             "health": "healthy" if l.get("status") == "active" else "warning",
-             "monthly_revenue": l.get("monthly_revenue", 0),
-             "customer_count": l.get("customer_count", 0)}
-            for l in lines
+            {"name": item["name"], "slug": item.get("slug", ""), "status": item.get("status", "unknown"),
+             "health": "healthy" if item.get("status") == "active" else "warning",
+             "monthly_revenue": item.get("monthly_revenue", 0),
+             "customer_count": item.get("customer_count", 0)}
+            for item in lines
         ],
         "orders": {
             "total": len(orders),
@@ -44,7 +44,7 @@ async def summary():
         "customers": total_customers,
         "leads": {
             "total": len(leads),
-            "new": len([l for l in leads if l.get("status") == "new"]),
+            "new": len([lead for lead in leads if lead.get("status") == "new"]),
         },
         "last_sync": CACHE.get("last_sync"),
     }
@@ -69,8 +69,8 @@ async def get_orders(status: str | None = None, platform: str | None = None):
 async def get_leads(status: str | None = None):
     result = CACHE["leads"]
     if status:
-        result = [l for l in result if l.get("status") == status]
-    return {"data": result, "total": len(CACHE["leads"]), "new_count": len([l for l in CACHE["leads"] if l.get("status") == "new"])}
+        result = [lead for lead in result if lead.get("status") == status]
+    return {"data": result, "total": len(CACHE["leads"]), "new_count": len([lead for lead in CACHE["leads"] if lead.get("status") == "new"])}
 
 
 @router.get("/external-orders")

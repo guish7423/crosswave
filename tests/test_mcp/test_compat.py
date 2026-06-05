@@ -1,14 +1,12 @@
 """Tests for backward compatibility layer."""
 
-import json
 
-import pytest
 
 from app.core.mcp.compat import (
     CompatAdapter,
     OldProtocolMessage,
-    convert_old_to_new,
     convert_new_to_old,
+    convert_old_to_new,
 )
 
 

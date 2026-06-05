@@ -63,8 +63,8 @@ class TestSummary:
         data = resp.json()
         lines = data["lines"]
         assert len(lines) == 3
-        active = [l for l in lines if l["health"] == "healthy"]
-        dev = [l for l in lines if l["health"] == "warning"]
+        active = [item for item in lines if item["health"] == "healthy"]
+        dev = [item for item in lines if item["health"] == "warning"]
         assert len(active) == 2
         assert len(dev) == 1
 
@@ -158,13 +158,13 @@ class TestLines:
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["data"]) == 3
-        slugs = [l["slug"] for l in data["data"]]
+        slugs = [item["slug"] for item in data["data"]]
         assert "crossbridge" in slugs
         assert "polsia" in slugs
 
     def test_line_revenue(self, auth_client):
         resp = auth_client.get("/api/hq/lines")
-        polsia = next(l for l in resp.json()["data"] if l["slug"] == "polsia")
+        polsia = next(item for item in resp.json()["data"] if item["slug"] == "polsia")
         assert polsia["monthly_revenue"] == 174
 
 

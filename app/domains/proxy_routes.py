@@ -40,7 +40,9 @@ async def proxy_accept_proposal(view_token: str):
 
 
 @router.post("/reject-proposal/{view_token}")
-async def proxy_reject_proposal(view_token: str, data: dict = {}):
+async def proxy_reject_proposal(view_token: str, data: dict = None):
+    if data is None:
+        data = {}
     reason = data.get("reason", "") if isinstance(data, dict) else ""
     return await polsia_client.reject_proposal(view_token, reason)
 

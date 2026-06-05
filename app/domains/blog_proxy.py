@@ -7,6 +7,8 @@ from fastapi import APIRouter
 
 from app.config import settings
 
+logger = __import__("logging").getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1/_proxy/blog", tags=["blog"])
 
 
@@ -15,10 +17,10 @@ async def _fetch_blog(path: str) -> dict | list:
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"{settings.crossblog_url}{path}")
-            if resp.status_code == 200:
+            if resp.is_success:
                 return resp.json()
-    except Exception:
-        pass
+    except (httpx.ConnectError, httpx.TimeoutException) as e:
+        logger.warning("CrossBlog proxy error for %s: %s", path, e)
     return {"posts": []} if "posts" in path else []
 
 
