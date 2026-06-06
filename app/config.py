@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret"  # noqa: S105
     admin_username: str = "admin"
     admin_password_hash: str = ""
+    hq_auth_token: str = ""
 
     # ── CrossBlog ──────────────────────────────────────────────────────
     crossblog_url: str = "http://127.0.0.1:8001"

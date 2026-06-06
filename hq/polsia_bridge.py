@@ -254,8 +254,9 @@ async def sync():
                 "FROM expense_records ORDER BY date"
             )
             # Use date+category+amount as dedup key
-            expense_key = lambda r: f"{r[3]}|{r[1]}|{r[0]}"
-            new_keys = {expense_key(r) for r in rows}
+            def expense_key(r):
+                return f"{r[3]}|{r[1]}|{r[0]}"
+            {expense_key(r) for r in rows}
             existing_exp = await list_collection(client, "expenses", "record_key")
             for r in rows:
                 ek = expense_key(r)

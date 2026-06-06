@@ -120,11 +120,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <script>
 function updateTime() { document.getElementById('time').textContent = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }); }
 setInterval(updateTime, 1000); updateTime();
-async function loadNotif(){try{const r=await fetch('/api/hq/notifications');const d=await r.json();const b=document.getElementById('dashNotif');if(d.new_leads>0){b.style.display='inline';b.textContent='🔔 '+d.new_leads+' new'}else b.style.display='none'}catch(e){}}
+async function loadNotif(){try{const r=await fetch('/hq/api/hq/notifications');const d=await r.json();const b=document.getElementById('dashNotif');if(d.new_leads>0){b.style.display='inline';b.textContent='🔔 '+d.new_leads+' new'}else b.style.display='none'}catch(e){}}
 loadNotif();setInterval(loadNotif,15000);
 
 let empChart, revenueChart, taskChart;
-const apiBase = '';
+const apiBase = '/hq';
 
 async function loadSummary() {
   try {
@@ -272,7 +272,7 @@ loadSummary(); loadEmployees(); loadActivity(); loadLeads(); loadPlugins();
 setInterval(() => { loadSummary(); loadEmployees(); loadActivity(); loadLeads(); loadPlugins(); }, 30000);
 
 // SSE real-time updates
-const evtSource = new EventSource('/api/hq/events');
+const evtSource = new EventSource('/hq/api/hq/events');
 evtSource.onmessage = (e) => {
   try {
     const data = JSON.parse(e.data);

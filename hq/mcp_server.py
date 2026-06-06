@@ -17,11 +17,9 @@ from app.core.mcp import (
     serialize_message,
 )
 from app.core.mcp.transport_sse import SSETransport
-
-from hq.plugin_registry.registry import get_registry
-from hq.plugin_registry.models import PluginRegisterRequest
 from hq.event_bus.bus import EventBus
-from hq.event_bus.models import EventType
+from hq.plugin_registry.models import PluginRegisterRequest
+from hq.plugin_registry.registry import get_registry
 
 logger = logging.getLogger(__name__)
 

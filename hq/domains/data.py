@@ -8,8 +8,10 @@ from datetime import UTC, datetime
 
 import httpx
 
+from app.config import settings
+
 # ─── Auth ─────────────────────────────────────────────────────────────────────
-AUTH_TOKEN = os.environ.get("HQ_AUTH_TOKEN", "")
+AUTH_TOKEN: str = settings.hq_auth_token or ""
 if not AUTH_TOKEN:
     AUTH_TOKEN = secrets.token_urlsafe(24)
     print(f"[hq] ⚠ No HQ_AUTH_TOKEN set — generated: {AUTH_TOKEN}")

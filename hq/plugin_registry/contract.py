@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any
-
 from .models import PluginInfo, PluginRegisterRequest, PluginStatus
 
 
-class CrossWavePlugin(ABC):
-    """Abstract base class for all CrossWave plugins/products.
+class CrossWavePlugin:
+    """Base class for all CrossWave plugins/products.
 
     Subclasses define:
     - Plugin metadata (name, version, capabilities)

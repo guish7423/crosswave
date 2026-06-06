@@ -2,19 +2,24 @@
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 
 from hq.domains.data import polsia_sync
 from hq.nocobase_client import (
     get_employees as _get_employees,
-    get_external_orders as _get_external_orders,
+)
+from hq.nocobase_client import (
     get_expenses,
-    get_leads as _get_leads,
     get_lines,
-    get_proposals,
     get_revenue_history,
     get_summary,
     get_tasks,
+)
+from hq.nocobase_client import (
+    get_external_orders as _get_external_orders,
+)
+from hq.nocobase_client import (
+    get_leads as _get_leads,
 )
 
 router = APIRouter(prefix="/api/hq", tags=["api"])
@@ -69,15 +74,15 @@ async def get_leads(status: str | None = None):
     nb = await _get_leads()
     if nb:
         result = [
-            {"id": l.get("id"), "name": l.get("name", ""), "email": l.get("email", ""),
-             "company": l.get("company", ""), "product_interest": l.get("product_interest", ""),
-             "budget_range": l.get("budget_range", ""), "message": l.get("message", ""),
-             "status": l.get("status", "new"), "source_page": l.get("source_page", ""),
-             "created_at": l.get("created_at", "")}
-            for l in nb
+            {"id": lead.get("id"), "name": lead.get("name", ""), "email": lead.get("email", ""),
+             "company": lead.get("company", ""), "product_interest": lead.get("product_interest", ""),
+             "budget_range": lead.get("budget_range", ""), "message": lead.get("message", ""),
+             "status": lead.get("status", "new"), "source_page": lead.get("source_page", ""),
+             "created_at": lead.get("created_at", "")}
+            for lead in nb
         ]
         total = len(result)
-        new_count = len([l for l in result if l.get("status") == "new"])
+        new_count = len([lead for lead in result if lead.get("status") == "new"])
     else:
         result, total, new_count = [], 0, 0
     if status:
@@ -115,10 +120,10 @@ async def get_external_orders(platform: str | None = None, status: str | None = 
 async def get_lines_endpoint():
     nb = await get_lines()
     return {"data": [
-        {"name": l.get("name", l.get("slug", "")), "slug": l.get("slug", ""),
-         "status": l.get("status", "unknown"), "monthly_revenue": l.get("monthly_revenue", 0) or 0,
-         "customer_count": l.get("customer_count", 0) or 0}
-        for l in (nb or [])
+        {"name": item.get("name", item.get("slug", "")), "slug": item.get("slug", ""),
+         "status": item.get("status", "unknown"), "monthly_revenue": item.get("monthly_revenue", 0) or 0,
+         "customer_count": item.get("customer_count", 0) or 0}
+        for item in (nb or [])
     ]}
 
 

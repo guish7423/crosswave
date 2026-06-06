@@ -122,8 +122,8 @@ async def get_summary() -> dict:
 
     # Lead stats
     lead_statuses: dict[str, int] = {}
-    for l in leads_raw:
-        s = l.get("status", "new")
+    for ld in leads_raw:
+        s = ld.get("status", "new")
         lead_statuses[s] = lead_statuses.get(s, 0) + 1
 
     return {

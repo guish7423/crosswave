@@ -15,14 +15,16 @@ _session_serializer = URLSafeTimedSerializer(settings.secret_key, salt="admin-se
 
 async def require_token(request: Request):
     """Reject requests missing X-HQ-Token header. Skip public paths."""
-    if (request.url.path.startswith("/api/portal/")
-        or request.url.path.startswith("/portal/")
-        or request.url.path in ("/health", "/login", "/logout")
-        or request.url.path.startswith("/api/hq/auth")
-        or request.url.path.startswith("/static")
-        or request.url.path.startswith("/api/hq/models")
-        or request.url.path.startswith("/api/hq/agents/")
-        or request.url.path.startswith("/api/hq/plugins/")):
+    path = request.url.path
+    if (path.startswith("/api/portal/")
+        or path.startswith("/portal/")
+        or path in ("/health", "/login", "/logout")
+        or path.startswith("/api/hq/auth")
+        or path.startswith("/static")
+        or path.startswith("/api/hq/models")
+        or path.startswith("/api/hq/agents/")
+        or path.startswith("/api/hq/plugins/")
+        or path.startswith("/api/hq/events/")):
         return True
     token = request.headers.get("X-HQ-Token", "")
     if token == AUTH_TOKEN:

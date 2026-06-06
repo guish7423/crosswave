@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any
+from datetime import UTC, datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class PluginStatus(str, Enum):
+class PluginStatus(StrEnum):
     ONLINE = "online"
     OFFLINE = "offline"
     DEGRADED = "degraded"
@@ -28,7 +26,7 @@ class PluginInfo(BaseModel):
     metadata: dict[str, str] = Field(default_factory=dict)
 
     def touch(self) -> None:
-        self.last_heartbeat = datetime.now(timezone.utc).isoformat()
+        self.last_heartbeat = datetime.now(UTC).isoformat()
         self.status = PluginStatus.ONLINE
 
 

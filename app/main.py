@@ -37,7 +37,7 @@ def create_app() -> FastAPI:
     """Create and configure the CrossWave FastAPI application."""
     app = FastAPI(
         title="CrossWave",
-        version="0.7.0",
+        version="1.0.0",
         lifespan=lifespan,
         docs_url="/docs" if settings.environment == "development" else None,
         redoc_url=None,
@@ -62,6 +62,10 @@ def create_app() -> FastAPI:
 
     # ── Middleware ─────────────────────────────────────────────────────
     setup_middleware(app)
+
+    # ── Mount HQ admin sub-app under /hq ────────────────────────────────
+    from hq.server import create_app as create_hq_app
+    app.mount("/hq", create_hq_app())
 
     # ── Register routes from domains ───────────────────────────────────
     from app.domains.blog_proxy import router as blog_router

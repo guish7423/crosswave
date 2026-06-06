@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+
+import httpx
 
 from .contract import CrossWavePlugin
 from .models import PluginInfo, PluginRegisterRequest, PluginStatus
-
-import httpx
 
 
 class PluginRegistry:
@@ -58,7 +57,7 @@ class PluginRegistry:
             pass
 
     def register(self, req: PluginRegisterRequest) -> PluginInfo:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         plugin_id = req.metadata.get("id", uuid.uuid4().hex[:12])
         info = PluginInfo(
             id=plugin_id,

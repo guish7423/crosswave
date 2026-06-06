@@ -15,6 +15,10 @@ router = APIRouter(tags=["pages"])
 async def dashboard():
     return FileResponse(os.path.join(_HQ_DIR, "dashboard.html"))
 
+@router.get("/dashboard")
+async def dashboard_alias():
+    return FileResponse(os.path.join(_HQ_DIR, "dashboard.html"))
+
 
 @router.get("/employees")
 async def employees_page():

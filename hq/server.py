@@ -17,23 +17,24 @@ from fastapi.staticfiles import StaticFiles
 from app.core.exceptions import register_exception_handlers
 from hq.domains.api_routes import router as api_router
 from hq.domains.auth_routes import router as auth_router
+from hq.domains.mcp_hq_routes import router as hq_mcp_router
+
 # CACHE removed in Step 5 — data now goes directly to NocoBase
-from hq.domains.middleware import app_lifespan, require_token
+from hq.domains.middleware import app_lifespan, require_session
 from hq.domains.model_router_routes import router as model_router_router
 from hq.domains.monitor_routes import router as monitor_router
 from hq.domains.nocobase_routes import router as nocobase_router
 from hq.domains.page_routes import router as page_router
 from hq.domains.stripe_routes import router as stripe_router
-from hq.plugin_registry.routes import router as plugin_router
 from hq.event_bus.routes import router as event_bus_router
-from hq.domains.mcp_hq_routes import router as hq_mcp_router
+from hq.plugin_registry.routes import router as plugin_router
 
 
 def create_app() -> FastAPI:
     """Create the HQ Bridge FastAPI application."""
     app = FastAPI(
         title="CrossWave HQ Bridge",
-        dependencies=[Depends(require_token)],
+        dependencies=[Depends(require_session)],
         lifespan=app_lifespan,
         docs_url=None,
         redoc_url=None,

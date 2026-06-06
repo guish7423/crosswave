@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from .models import PluginRegisterRequest, PluginStatus
+from .models import PluginRegisterRequest
 from .registry import get_registry
 
 router = APIRouter(prefix="/api/hq/plugins", tags=["plugins"])

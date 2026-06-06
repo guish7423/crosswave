@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 from collections.abc import AsyncIterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from hq.event_bus.models import Event, EventType, Subscription
 
@@ -38,7 +38,7 @@ class EventBus:
             type=EventType._value2member_map_.get(event_type, EventType.CUSTOM),
             source=source,
             data=data or {},
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_id=str(uuid.uuid4())[:12],
         )
         async with self._lock:
@@ -78,7 +78,7 @@ class EventBus:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=30.0)
                     yield f"event: {event.type.value}\ndata: {event.source}|{event.event_id}|{event.data}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield "event: ping\ndata: \n\n"
         finally:
             self._sse_queues.remove(queue)

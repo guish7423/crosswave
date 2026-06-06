@@ -7,7 +7,6 @@ import os
 
 os.environ.setdefault("POLSIA_DB", "/tmp/crosswave-test-polsia.db")
 
-import pytest
 
 
 # ─── /health (public, no auth) ────────────────────────────────────────────────

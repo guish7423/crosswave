@@ -39,4 +39,4 @@ async def mcp_message(request: Request):
 
 @router.get("/health")
 async def health():
-    return {"status": "ok", "app": "CrossWave", "version": "0.6.1"}
+    return {"status": "ok", "app": "CrossWave", "version": "1.0.0"}
