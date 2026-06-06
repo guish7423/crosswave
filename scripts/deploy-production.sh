@@ -1,191 +1,82 @@
 #!/usr/bin/env bash
+# ═══════════════════════════════════════════════════════
+# CrossWave 生产一键部署脚本
+# 用法: bash scripts/deploy-production.sh [--prod]
+# ═══════════════════════════════════════════════════════
 set -euo pipefail
 
-# ═══════════════════════════════════════════
-# CrossWave Production Deployment Script
-# ═══════════════════════════════════════════
-# Prerequisites:
-#   1. Docker + Docker Compose installed
-#   2. Python 3.12+ with pip
-#   3. Redis running (systemd or Docker)
-#   4. Environment variables set (see .env.example)
-#
-# Usage:
-#   bash scripts/deploy-production.sh [--build] [--no-celery]
-#
-# Flags:
-#   --build       Rebuild Docker images
-#   --no-celery   Skip Celery worker (agents won't run)
-# ═══════════════════════════════════════════
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
 
-CROSSWAVE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD=false
-CELERY=true
-VERBOSE=false
+echo ""
+echo -e "${CYAN}═══════════════════════════════════════════${NC}"
+echo -e "${CYAN}  CrossWave Production Deploy${NC}"
+echo -e "${CYAN}  $(date '+%Y-%m-%d %H:%M:%S')${NC}"
+echo -e "${CYAN}═══════════════════════════════════════════${NC}"
+echo ""
 
-for arg in "$@"; do
-    case "$arg" in
-        --build) BUILD=true ;;
-        --no-celery) CELERY=false ;;
-        --verbose) VERBOSE=true ;;
-    esac
-done
+# ── Pre-flight checks ──────────────────────────────────────
+echo -e "${YELLOW}Pre-flight checks...${NC}"
 
-log() { echo "[$(date '+%H:%M:%S')] $*"; }
-vlog() { $VERBOSE && echo "[DEBUG] $*" || true; }
-
-# ── Health wait: poll endpoint until ready or timeout ──
-wait_for_service() {
-    local name=$1 url=$2 timeout=${3:-30} interval=${4:-2}
-    log "  ⏳ Waiting for $name ($url)..."
-    local elapsed=0
-    while [ $elapsed -lt $timeout ]; do
-        if curl -sf "$url" > /dev/null 2>&1; then
-            log "  ✅ $name ready after ${elapsed}s"
-            return 0
-        fi
-        sleep $interval
-        elapsed=$((elapsed + interval))
-    done
-    log "  ⚠️  $name not ready after ${timeout}s (check logs)"
-    return 1
-}
-
-# ── 1. Verify dependencies ──
-log "Checking prerequisites..."
-
-for cmd in docker docker-compose python3 pip3; do
-    if ! command -v "$cmd" &>/dev/null; then
-        echo "ERROR: $cmd not found. Install it first."
-        exit 1
-    fi
-done
-
-# Check Python version
-PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-if [ "$(echo "$PY_VER >= 3.12" | bc)" != "1" ]; then
-    echo "WARNING: Python $PY_VER detected. Recommended: 3.12+"
+if [ ! -f .env ]; then
+  echo -e "${RED}✗ .env file not found! Copy .env.example to .env and configure.${NC}"
+  exit 1
 fi
 
-# ── 2. Check environment ──
-log "Checking environment..."
-
-REQUIRED_VARS=(
-    "POLSIA_BASE_URL"
-    "POLSIA_API_KEY"
-)
-
-if [ -f "$CROSSWAVE_DIR/.env" ]; then
-    set -a; source "$CROSSWAVE_DIR/.env"; set +a
-    log "Loaded .env from $CROSSWAVE_DIR/.env"
+if [ ! -f ssl/fullchain.pem ] || [ ! -f ssl/privkey.pem ]; then
+  echo -e "${YELLOW}⚠ SSL certificates not found at ssl/. Using self-signed or HTTP only.${NC}"
+  echo -e "${YELLOW}  Run: bash scripts/setup-ssl.sh${NC}"
 fi
 
-for var in "${REQUIRED_VARS[@]}"; do
-    if [ -z "${!var:-}" ]; then
-        echo "WARNING: $var not set. Using defaults (may fail at runtime)."
-    fi
-done
-
-# ── 3. Install Python deps ──
-log "Installing Python dependencies..."
-pip3 install -q --upgrade pip
-pip3 install -q -r "$CROSSWAVE_DIR/requirements.txt" 2>/dev/null || {
-    echo "ERROR: pip install failed. Fix dependencies first."
-    exit 1
-}
-
-# ── 4. Start services (order: dependencies first) ──
-log "Starting services (dependencies first)..."
-
-# 4a. NocoBase HQ Backend (via Docker Compose)
-if [ -f "$CROSSWAVE_DIR/hq/docker-compose.yml" ]; then
-    log "  → NocoBase HQ Backend (port 13000)..."
-    cd "$CROSSWAVE_DIR/hq"
-    docker compose up -d 2>/dev/null || docker-compose up -d 2>/dev/null || log "  ⚠️  Docker Compose not available, skipping NocoBase"
-    cd "$CROSSWAVE_DIR"
-    log "  ✅ NocoBase stack started (PostgreSQL + NocoBase)"
+# Check Docker
+if ! docker info >/dev/null 2>&1; then
+  echo -e "${RED}✗ Docker is not running.${NC}"
+  exit 1
 fi
 
-# 4b. Polsia Fork API (first — HQ bridge depends on its DB)
-POLSIA_DIR="$CROSSWAVE_DIR/../polsia-fork"
-if [ -d "$POLSIA_DIR" ]; then
-    log "  → Polsia Fork API (port 8001)..."
-    pkill -f "uvicorn.*8001" 2>/dev/null || true
-    sleep 1
-    cd "$POLSIA_DIR"
-    DATABASE_URL="sqlite+aiosqlite:///./polsia.db" \
-    setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8001 > /tmp/polsia.log 2>&1 &
-    wait_for_service "Polsia Fork" "http://127.0.0.1:8001/api/v1/health" 30 2 || true
+echo -e "${GREEN}✓ Pre-flight checks passed${NC}"
+echo ""
 
-    if [ "$CELERY" = true ]; then
-        log "  → Celery Worker..."
-        setsid celery -A celery_app worker --loglevel=info --concurrency=2 -Q scheduler,agents,maintenance > /tmp/celery-worker.log 2>&1 &
-        sleep 2
-        log "  ✅ Celery Worker started"
+# ── Deploy ─────────────────────────────────────────────────
+echo -e "${YELLOW}Pulling latest images...${NC}"
+docker compose pull --quiet 2>/dev/null || true
 
-        log "  → Celery Beat..."
-        setsid celery -A celery_app beat --loglevel=info > /tmp/celery-beat.log 2>&1 &
-        sleep 1
-        log "  ✅ Celery Beat started"
-    fi
+echo -e "${YELLOW}Building services...${NC}"
+docker compose build --quiet 2>/dev/null || true
+
+echo -e "${YELLOW}Starting all services...${NC}"
+
+if [ "${1:-}" = "--prod" ] && [ -f docker-compose.prod.yml ]; then
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+  echo -e "${GREEN}✓ Production mode (with docker-compose.prod.yml)${NC}"
 else
-    log "  ⏭️  Polsia Fork not found at $POLSIA_DIR, skipping"
+  docker compose up -d --remove-orphans
+  echo -e "${GREEN}✓ Standard mode${NC}"
 fi
 
-# 4c. HQ Bridge (CrossWave HQ — depends on Polsia Fork DB)
-log "  → HQ Bridge (port 13001)..."
-pkill -f "uvicorn hq.server:app" 2>/dev/null || true
-sleep 1
-cd "$CROSSWAVE_DIR"
-setsid python3 -m uvicorn hq.server:app --host 0.0.0.0 --port 13001 > /tmp/hq-bridge.log 2>&1 &
-wait_for_service "HQ Bridge" "http://127.0.0.1:13001/api/hq/summary" 30 2 || true
+# ── Health check ───────────────────────────────────────────
+echo ""
+echo -e "${YELLOW}Waiting for services to be healthy...${NC}"
+sleep 5
 
-# 4d. CrossWave (Website)
-log "  → CrossWave Website (port 9999)..."
-pkill -f "uvicorn app.main:app.*9999" 2>/dev/null || true
-sleep 1
-cd "$CROSSWAVE_DIR"
-setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 9999 > /tmp/crosswave.log 2>&1 &
-wait_for_service "CrossWave" "http://127.0.0.1:9999/health" 20 2 || true
+# Run the health check
+bash scripts/health-check.sh
 
-# 4e. CrossBlog (if ai-blog-engine exists)
-BLOG_DIR="$CROSSWAVE_DIR/../ai-blog-engine"
-if [ -d "$BLOG_DIR" ]; then
-    log "  → CrossBlog (port 8002)..."
-    pkill -f "uvicorn.*8002" 2>/dev/null || true
-    sleep 1
-    cd "$BLOG_DIR"
-    setsid python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8002 > /tmp/crossblog.log 2>&1 &
-    wait_for_service "CrossBlog" "http://127.0.0.1:8002/health" 20 2 || true
-else
-    log "  ⏭️  CrossBlog not found at $BLOG_DIR, skipping"
-fi
-
-# ── 5. Final Health Summary ──
-log ""
-log "─────────────────────────────────"
-log "  FINAL HEALTH SUMMARY"
-log "─────────────────────────────────"
-check_endpoint() {
-    local name=$1 url=$2
-    if curl -sf "$url" > /dev/null 2>&1; then
-        log "  ✅ $name — $url"
-    else
-        log "  ❌ $name — $url (DOWN)"
-    fi
-}
-
-check_endpoint "CrossWave" "http://127.0.0.1:9999/health"
-check_endpoint "HQ Bridge" "http://127.0.0.1:13001/api/hq/summary"
-check_endpoint "CrossBlog" "http://127.0.0.1:8002/health" || true
-check_endpoint "Polsia Fork" "http://127.0.0.1:8001/api/v1/health" || true
-
-log ""
-log "─────────────────────────────────"
-log "  DEPLOYMENT COMPLETE"
-log "─────────────────────────────────"
-log "CrossWave:   http://localhost:9999"
-log "HQ:          http://localhost:13001/dashboard"
-log "All logs:    /tmp/{hq-bridge,crosswave,crossblog,polsia}.log"
-log ""
-log "To monitor:  watch ./scripts/health-check.sh"
+echo ""
+echo -e "${CYAN}═══════════════════════════════════════════${NC}"
+echo -e "${GREEN}  CrossWave deployment complete!${NC}"
+echo -e "${CYAN}═══════════════════════════════════════════${NC}"
+echo ""
+echo "  HQ Dashboard:    http://localhost:13001"
+echo "  CrossBlog:       http://localhost:8002"
+echo "  CrossDeploy:     http://localhost:8003"
+echo "  Grafana:         http://localhost:3000"
+echo "  NocoBase:        http://localhost:13000"
+echo "  Uptime Kuma:     http://localhost:3001"
+echo ""
+echo "  To monitor logs: docker compose logs -f"
+echo "  To stop:         docker compose down"
+echo ""

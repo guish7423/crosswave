@@ -229,8 +229,19 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # ── Uptime Kuma（外部监控）─────────────────────
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: crosswave-uptime
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptime_data:/app/data
+    restart: unless-stopped
+
 volumes:
   redis_data:
   polsia_data:
   blog_data:
   grafana_data:
+  uptime_data:

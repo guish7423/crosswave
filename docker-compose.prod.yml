@@ -1,0 +1,69 @@
+# CrossWave Production Override
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Applies resource limits, security hardening, and production defaults.
+
+services:
+  crosswave:
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "512M"
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - POLSIA_MOCK=false
+    restart: always
+
+  crossblog:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "256M"
+    environment:
+      - LLM_API_MOCK=false
+    restart: always
+
+  crossdeploy:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "256M"
+    restart: always
+
+  prometheus:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+    restart: always
+
+  grafana:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "256M"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-}
+      - GF_SERVER_ROOT_URL=https://${DOMAIN:-crosswave.app}/
+    restart: always
+
+  nginx:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "128M"
+    restart: always
+
+  uptime-kuma:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "256M"
+    restart: always
