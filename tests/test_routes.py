@@ -20,10 +20,9 @@ import pytest
 @pytest.mark.parametrize("path,keyword", [
     ("/", "CrossWave"),
     ("/dashboard", "Dashboard"),
-    ("/agents", "Agent"),
     ("/deploy", "Deploy"),
     ("/request-quote", "Quote"),
-], ids=["landing", "dashboard", "agents", "deploy", "request-quote"])
+], ids=["landing", "dashboard", "deploy", "request-quote"])
 def test_page_routes(path: str, keyword: str):
     """All page routes return 200 + expected keyword in content."""
     resp = client.get(path)

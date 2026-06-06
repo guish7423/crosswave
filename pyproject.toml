@@ -12,8 +12,9 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "stripe>=8.0.0",
     "pyjwt>=2.13.0",
-    "crosswave-core",
-    "crosswave-auth",
+    "bcrypt>=5.0.0",
+    "itsdangerous>=2.2.0",
+    "aiosqlite>=0.22.1",
 ]
 
 [project.optional-dependencies]
@@ -44,10 +45,6 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests", "hq/tests"]
 addopts = "--tb=short -q"
-
-[tool.uv.sources]
-crosswave-core = { path = "packages/crosswave-core", editable = true }
-crosswave-auth = { path = "packages/crosswave-auth", editable = true }
 
 [tool.coverage.run]
 source = ["app", "hq", "packages"]
