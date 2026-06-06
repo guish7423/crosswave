@@ -10,6 +10,8 @@ from pathlib import Path
 
 os.environ.setdefault("POLSIA_DB", "/tmp/crosswave-test-polsia.db")
 os.environ.setdefault("HQ_AUTH_TOKEN", "test-hq-token")
+# Disable NocoBase in tests → API routes fall back to CACHE
+os.environ["NB_DISABLED"] = "true"
 
 _root_dir = str(Path(__file__).resolve().parent.parent.parent)
 if _root_dir not in sys.path:

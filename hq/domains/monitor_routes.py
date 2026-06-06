@@ -13,6 +13,29 @@ from hq.domains.data import CACHE, DB_PATH, SERVICES_TO_CHECK, _check_svc
 router = APIRouter(tags=["monitor"])
 
 
+async def _kpi_counts() -> dict:
+    """Read dashboard KPIs from NocoBase first, fall back to CACHE."""
+    try:
+        from hq.nocobase_client import list_all
+        emps = await list_all("employees")
+        tasks = await list_all("tasks")
+        leads = await list_all("leads")
+        ext_orders = await list_all("external_orders")
+        return {
+            "employees": len(emps),
+            "orders": len(tasks),
+            "leads": len(leads),
+            "external_orders": len(ext_orders),
+        }
+    except Exception:
+        return {
+            "employees": len(CACHE.get("employees", [])),
+            "orders": len(CACHE.get("orders", [])),
+            "leads": len(CACHE.get("leads", [])),
+            "external_orders": len(CACHE.get("external_orders", [])),
+        }
+
+
 async def event_stream():
     """SSE event stream: pushes dashboard KPI updates every 5 seconds."""
     while True:
@@ -27,17 +50,13 @@ async def event_stream():
                 else:
                     services.append(r)
 
-            # Dashboard heartbeat event
+            # Dashboard heartbeat event with NocoBase KPIs
+            kpi = await _kpi_counts()
             data = json.dumps({
                 "type": "heartbeat",
                 "timestamp": datetime.now(UTC).isoformat(),
                 "services": services,
-                "kpi": {
-                    "employees": len(CACHE.get("employees", [])),
-                    "orders": len(CACHE.get("orders", [])),
-                    "leads": len(CACHE.get("leads", [])),
-                    "external_orders": len(CACHE.get("external_orders", [])),
-                },
+                "kpi": kpi,
             })
             yield f"data: {data}\n\n"
         except Exception as e:
@@ -144,26 +163,47 @@ async def get_evolution():
             "analyzed_at": datetime.now(UTC).isoformat()}
 
 
+def _format_portal_order(order: dict, stage_order: list[str], stage_idx: dict[str, int]) -> dict:
+    """Format an external order dict into portal response shape."""
+    status = order.get("status", "pending")
+    progress_idx = stage_idx.get(status, 0)
+    deployment_plan = None
+    plan_raw = order.get("deployment_plan") or order.get("description")
+    if plan_raw:
+        try:
+            deployment_plan = json.loads(plan_raw) if isinstance(plan_raw, str) else plan_raw
+        except (json.JSONDecodeError, TypeError):
+            deployment_plan = plan_raw
+    return {
+        "id": order.get("id") or order.get("external_id"),
+        "title": order.get("title", "CrossDeploy Project"),
+        "status": status,
+        "progress_idx": min(progress_idx, len(stage_order) - 1),
+        "total_stages": len(stage_order),
+        "stages": stage_order,
+        "score": order.get("score"),
+        "platform": order.get("platform", "direct"),
+        "created_at": order.get("created_at", ""),
+        "deployment_plan": deployment_plan,
+    }
+
+
 @router.get("/api/portal/order/{order_id}")
 async def portal_order(order_id: int):
+    stage_order = ["pending", "scanned", "accepted", "in_progress", "deploying", "testing", "completed", "delivered"]
+    stage_idx = {"pending": 0, "scanned": 1, "accepted": 2, "in_progress": 3, "deploying": 4, "testing": 5, "completed": 6, "delivered": 7}
+    # Try NocoBase first
+    try:
+        from hq.nocobase_client import list_all
+        nb_orders = await list_all("external_orders")
+        nb_match = next((o for o in nb_orders if str(o.get("id")) == str(order_id) or str(o.get("external_id")) == str(order_id)), None)
+        if nb_match:
+            return _format_portal_order(nb_match, stage_order, stage_idx)
+    except Exception:
+        pass
+    # Fall back to CACHE
     orders = CACHE.get("external_orders", [])
     order = next((o for o in orders if o["id"] == order_id), None)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    stage_order = ["pending", "scanned", "accepted", "in_progress", "deploying", "testing", "completed", "delivered"]
-    stage_idx = {"pending": 0, "scanned": 1, "accepted": 2, "in_progress": 3, "deploying": 4, "testing": 5, "completed": 6, "delivered": 7}
-    status = order.get("status", "pending")
-    progress_idx = stage_idx.get(status, 0)
-    deployment_plan = None
-    if "deployment_plan" in order:
-        try:
-            deployment_plan = json.loads(order["deployment_plan"]) if isinstance(order["deployment_plan"], str) else order["deployment_plan"]
-        except (json.JSONDecodeError, TypeError):
-            deployment_plan = None
-    return {
-        "id": order["id"], "title": order.get("title", "CrossDeploy Project"),
-        "status": status, "progress_idx": min(progress_idx, len(stage_order) - 1),
-        "total_stages": len(stage_order), "stages": stage_order,
-        "score": order.get("score"), "platform": order.get("platform", "direct"),
-        "created_at": order.get("created_at", ""), "deployment_plan": deployment_plan,
-    }
+    return _format_portal_order(order, stage_order, stage_idx)

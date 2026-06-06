@@ -12,6 +12,7 @@ import httpx
 NB_URL = os.environ.get("HQ_URL", "http://localhost:13000/api")
 NB_EMAIL = os.environ.get("NB_EMAIL", "admin@nocobase.com")
 NB_PASSWORD = os.environ.get("NB_PASSWORD", "CrossWave@2026")
+_NB_DISABLED = os.environ.get("NB_DISABLED", "").lower() in ("1", "true", "yes")
 
 _token: str | None = None
 _token_expires: float = 0
@@ -36,6 +37,8 @@ async def get_token(client: httpx.AsyncClient) -> str:
 
 async def list_all(collection: str, page_size: int = 100) -> list[dict]:
     """Fetch all records from a NocoBase collection."""
+    if _NB_DISABLED:
+        return []
     async with httpx.AsyncClient(timeout=15) as client:
         token = await get_token(client)
         items = []
@@ -60,6 +63,8 @@ async def list_all(collection: str, page_size: int = 100) -> list[dict]:
 
 async def get_stats() -> dict:
     """Get summary counts from all synced NocoBase collections."""
+    if _NB_DISABLED:
+        return {"status": "disabled", "employees": 0, "business_lines": 0, "external_orders": 0}
     employees = await list_all("employees")
     lines = await list_all("business_lines")
     orders = await list_all("external_orders")
@@ -74,9 +79,13 @@ async def get_stats() -> dict:
 
 async def get_summary() -> dict:
     """Rich summary matching /api/hq/summary shape, sourced from NocoBase."""
+    if _NB_DISABLED:
+        return {"source": "disabled"}
     employees = await list_all("employees")
     lines = await list_all("business_lines")
-    orders = await list_all("external_orders")
+    ext_orders = await list_all("external_orders")
+    tasks_raw = await list_all("tasks")
+    leads_raw = await list_all("leads")
 
     # Employee stats
     emp_statuses: dict[str, int] = {}
@@ -98,12 +107,24 @@ async def get_summary() -> dict:
             "customer_count": line.get("customer_count", 0) or 0,
         })
 
-    # Order stats
-    active_orders = [o for o in orders if o.get("status") in ("pending", "in_progress")]
+    # Order stats (from tasks + external_orders)
+    active_orders = [o for o in ext_orders if o.get("status") in ("pending", "in_progress")]
     order_statuses: dict[str, int] = {}
-    for o in orders:
+    for o in ext_orders:
         s = o.get("status", "pending")
         order_statuses[s] = order_statuses.get(s, 0) + 1
+
+    # Task stats
+    task_statuses: dict[str, int] = {}
+    for t in tasks_raw:
+        s = t.get("status", "pending")
+        task_statuses[s] = task_statuses.get(s, 0) + 1
+
+    # Lead stats
+    lead_statuses: dict[str, int] = {}
+    for l in leads_raw:
+        s = l.get("status", "new")
+        lead_statuses[s] = lead_statuses.get(s, 0) + 1
 
     return {
         "employees": {
@@ -113,13 +134,67 @@ async def get_summary() -> dict:
         },
         "lines": line_summaries,
         "orders": {
-            "total": len(orders),
+            "total": len(ext_orders),
             "active": len(active_orders),
             "status_distribution": order_statuses,
         },
+        "tasks": {
+            "total": len(tasks_raw),
+            "status_distribution": task_statuses,
+        },
         "mrr": total_mrr,
         "customers": total_customers,
-        "leads": {"total": 0, "new": 0},  # NocoBase doesn't have leads yet
+        "leads": {
+            "total": len(leads_raw),
+            "new": lead_statuses.get("new", 0),
+        },
         "last_sync": None,
         "source": "nocobase",
     }
+
+
+# ─── Domain-specific readers ──────────────────────────────────────────────────
+
+async def get_employees() -> list[dict]:
+    return await list_all("employees")
+
+
+async def get_lines() -> list[dict]:
+    return await list_all("business_lines")
+
+
+async def get_external_orders() -> list[dict]:
+    return await list_all("external_orders")
+
+
+async def get_leads() -> list[dict]:
+    return await list_all("leads")
+
+
+async def get_tasks() -> list[dict]:
+    return await list_all("tasks")
+
+
+async def get_proposals() -> list[dict]:
+    return await list_all("proposals")
+
+
+async def get_expenses() -> list[dict]:
+    rows = await list_all("expenses")
+    return [
+        {"amount": r.get("amount_cents", 0) / 100.0 if r.get("amount_cents") else 0,
+         "category": r.get("category", "other"),
+         "description": r.get("description", ""),
+         "date": r.get("date", "")}
+        for r in rows
+    ]
+
+
+async def get_revenue_history() -> list[dict]:
+    rows = await list_all("revenue_snapshots")
+    return [
+        {"date": r.get("snapshot_date", ""),
+         "amount": (r.get("mrr_cents", 0) or 0) / 100.0,
+         "source": "subscription"}
+        for r in rows
+    ]

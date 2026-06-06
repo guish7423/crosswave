@@ -11,7 +11,7 @@ class TestNocoBaseEndpoints:
         resp = auth_client.get("/api/hq/nocobase/stats")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["status"] in ("disconnected", "connected")
+        assert data["status"] in ("disconnected", "connected", "disabled")
 
     def test_nocobase_employees_disconnected(self, auth_client):
         """When NocoBase is unreachable, returns empty data."""

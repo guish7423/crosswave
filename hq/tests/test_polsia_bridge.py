@@ -203,8 +203,12 @@ async def test_sync_with_mocked_db():
         import aiosqlite
 
         async with aiosqlite.connect(db_path) as db:
-            await db.execute("CREATE TABLE tasks (id INTEGER PRIMARY KEY, title TEXT, agent_type TEXT, status TEXT, created_at TEXT)")
+            await db.execute("CREATE TABLE tasks (id INTEGER PRIMARY KEY, title TEXT, description TEXT, agent_type TEXT, priority INTEGER, status TEXT, source TEXT, scheduled_date TEXT, result_summary TEXT, error_message TEXT, metadata_json TEXT, created_at TEXT, updated_at TEXT)")
             await db.execute("CREATE TABLE external_orders (id INTEGER PRIMARY KEY, title TEXT, platform TEXT, external_id TEXT, status TEXT, budget_min REAL, budget_max REAL, currency TEXT, score REAL, score_reason TEXT, created_at TEXT, provider_notes TEXT, deliverables TEXT, delivery_notes TEXT)")
+            await db.execute("CREATE TABLE leads (id INTEGER PRIMARY KEY, name TEXT, email TEXT, company TEXT, product_interest TEXT, budget_range TEXT, message TEXT, status TEXT, source_page TEXT, created_at TEXT)")
+            await db.execute("CREATE TABLE proposals (id INTEGER PRIMARY KEY, order_id TEXT, status TEXT, proposed_amount REAL, currency TEXT, content TEXT, summary TEXT, proposal_metadata TEXT, created_at TEXT, updated_at TEXT)")
+            await db.execute("CREATE TABLE expense_records (id INTEGER PRIMARY KEY, amount_cents INTEGER, category TEXT, description TEXT, date TEXT)")
+            await db.execute("CREATE TABLE revenue_snapshots (id INTEGER PRIMARY KEY, snapshot_date TEXT, mrr_cents INTEGER, active_subscribers INTEGER)")
             await db.execute("INSERT INTO tasks (title, agent_type, status, created_at) VALUES (?, ?, ?, ?)",
                 ("Test Task", "orchestrator", "pending", "2026-06-01"),
             )
@@ -212,6 +216,7 @@ async def test_sync_with_mocked_db():
 
         # Mock NocoBase HTTP
         pb.DB_PATH = db_path
+        os.environ["NB_DISABLED"] = "false"
         with patch("hq.polsia_bridge.httpx.AsyncClient") as mock_http:
             client_instance = AsyncMock()
             mock_http.return_value.__aenter__.return_value = client_instance
@@ -229,4 +234,5 @@ async def test_sync_with_mocked_db():
             assert client_instance.post.called
 
     finally:
+        os.environ.pop("NB_DISABLED", None)
         os.unlink(db_path)

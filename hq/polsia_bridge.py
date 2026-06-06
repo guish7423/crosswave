@@ -94,6 +94,9 @@ async def ensure_platform_connections(client: httpx.AsyncClient):
             await create_record(client, "platform_connections", d)
 
 async def sync():
+    if os.environ.get("NB_DISABLED", "").lower() in ("1", "true", "yes"):
+        print("[polsia_bridge] disabled (NB_DISABLED=true)")
+        return
     print(f"[polsia_bridge] DB: {DB_PATH}  NB: {NB_URL}")
     if not os.path.exists(DB_PATH):
         print("  DB not found, skipping")
@@ -171,6 +174,117 @@ async def sync():
 
         # ── 4. Platform Connections (seed if empty) ────────────────
         await ensure_platform_connections(client)
+
+        # ── 5. Leads ────────────────────────────────────────────────
+        existing_leads = await list_collection(client, "leads", "email")
+        async with aiosqlite.connect(DB_PATH) as db:
+            rows = await db.execute_fetchall(
+                "SELECT id, name, email, company, product_interest, budget_range, "
+                "message, status, source_page, created_at "
+                "FROM leads ORDER BY created_at DESC LIMIT 200"
+            )
+            for r in rows:
+                email = str(r[2] or f"lead-{r[0]}@placeholder.com")
+                if email in existing_leads:
+                    continue
+                await create_record(client, "leads", {
+                    "name": r[1] or "Unknown",
+                    "email": email,
+                    "company": r[3] or "",
+                    "product_interest": r[4] or "",
+                    "budget_range": r[5] or "",
+                    "message": r[6] or "",
+                    "status": r[7] or "new",
+                    "source_page": r[8] or "",
+                })
+
+        # ── 6. Tasks (full task records) ────────────────────────────
+        existing_tasks = await list_collection(client, "tasks", "source_id")
+        async with aiosqlite.connect(DB_PATH) as db:
+            rows = await db.execute_fetchall(
+                "SELECT id, title, description, agent_type, priority, status, "
+                "source, scheduled_date, result_summary, error_message, "
+                "metadata_json, created_at, updated_at "
+                "FROM tasks ORDER BY created_at DESC LIMIT 300"
+            )
+            for r in rows:
+                sid = str(r[0])
+                if sid in existing_tasks:
+                    continue
+                await create_record(client, "tasks", {
+                    "title": r[1] or "",
+                    "description": r[2] or "",
+                    "agent_type": r[3] or "",
+                    "priority": r[4] or 3,
+                    "status": r[5] or "pending",
+                    "source": r[6] or "",
+                    "scheduled_date": r[7] or "",
+                    "result_summary": r[8] or "",
+                    "error_message": r[9] or "",
+                    "source_id": sid,
+                })
+
+        # ── 7. Proposals ────────────────────────────────────────────
+        existing_proposals = await list_collection(client, "proposals", "order_id")
+        async with aiosqlite.connect(DB_PATH) as db:
+            rows = await db.execute_fetchall(
+                "SELECT id, order_id, status, proposed_amount, currency, "
+                "content, summary, proposal_metadata, created_at, updated_at "
+                "FROM proposals ORDER BY created_at DESC LIMIT 100"
+            )
+            for r in rows:
+                oid = str(r[1] or r[0])
+                if oid in existing_proposals:
+                    continue
+                meta = str(r[7]) if r[7] else "{}"
+                await create_record(client, "proposals", {
+                    "order_id": oid,
+                    "status": r[2] or "draft",
+                    "proposed_amount": float(r[3]) if r[3] else 0.0,
+                    "currency": r[4] or "USD",
+                    "content": r[5] or "",
+                    "summary": r[6] or "",
+                    "proposal_metadata": meta,
+                })
+
+        # ── 8. Expenses ────────────────────────────────────────────
+        async with aiosqlite.connect(DB_PATH) as db:
+            rows = await db.execute_fetchall(
+                "SELECT amount_cents, category, description, date "
+                "FROM expense_records ORDER BY date"
+            )
+            # Use date+category+amount as dedup key
+            expense_key = lambda r: f"{r[3]}|{r[1]}|{r[0]}"
+            new_keys = {expense_key(r) for r in rows}
+            existing_exp = await list_collection(client, "expenses", "record_key")
+            for r in rows:
+                ek = expense_key(r)
+                if ek in existing_exp:
+                    continue
+                await create_record(client, "expenses", {
+                    "amount_cents": r[0] or 0,
+                    "category": r[1] or "other",
+                    "description": r[2] or "",
+                    "date": r[3] or "",
+                    "record_key": ek,
+                })
+
+        # ── 9. Revenue Snapshots ────────────────────────────────────
+        existing_rev = await list_collection(client, "revenue_snapshots", "snapshot_date")
+        async with aiosqlite.connect(DB_PATH) as db:
+            rows = await db.execute_fetchall(
+                "SELECT snapshot_date, mrr_cents, active_subscribers "
+                "FROM revenue_snapshots ORDER BY snapshot_date"
+            )
+            for r in rows:
+                sd = str(r[0] or "")
+                if sd in existing_rev or not sd:
+                    continue
+                await create_record(client, "revenue_snapshots", {
+                    "snapshot_date": sd,
+                    "mrr_cents": r[1] or 0,
+                    "active_subscribers": r[2] or 0,
+                })
 
         print("[polsia_bridge] sync complete")
 
