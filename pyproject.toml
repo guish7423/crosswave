@@ -1,6 +1,6 @@
 [project]
 name = "crosswave"
-version = "0.7.0"
+version = "1.0.0"
 description = "CrossWave — AI-Powered Autonomous Company Platform"
 requires-python = ">=3.11"
 dependencies = [
@@ -12,6 +12,8 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "stripe>=8.0.0",
     "pyjwt>=2.13.0",
+    "crosswave-core",
+    "crosswave-auth",
 ]
 
 [project.optional-dependencies]
@@ -43,8 +45,12 @@ asyncio_mode = "auto"
 testpaths = ["tests", "hq/tests"]
 addopts = "--tb=short -q"
 
+[tool.uv.sources]
+crosswave-core = { path = "packages/crosswave-core", editable = true }
+crosswave-auth = { path = "packages/crosswave-auth", editable = true }
+
 [tool.coverage.run]
-source = ["app", "hq"]
+source = ["app", "hq", "packages"]
 omit = ["tests/*", "*/__pycache__/*"]
 
 [tool.coverage.report]
