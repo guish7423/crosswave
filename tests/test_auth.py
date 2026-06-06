@@ -34,3 +34,19 @@ class TestAuth:
     def test_verify_no_token(self, client):
         resp = client.get("/api/auth/verify")
         assert resp.status_code == 401
+
+
+class TestAuthMiddleware:
+    def test_require_jwt_missing_header(self, client):
+        resp = client.get("/api/auth/verify")
+        assert resp.status_code == 401
+
+    def test_require_jwt_invalid_token(self, client):
+        resp = client.get("/api/auth/verify", headers={"Authorization": "Bearer invalid"})
+        assert resp.status_code == 401
+
+    def test_gateway_health(self, client):
+        resp = client.get("/api/gateway/health")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["gateway"] == "CrossWave API Gateway"
