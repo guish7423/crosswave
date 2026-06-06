@@ -2,11 +2,11 @@
 
 ## What this project is
 
-CrossWave is an AI Globalization Stack — a FastAPI BFF/website layer (port 9999) + HQ admin bridge (port 13001) that sits in front of a Polsia Fork agent engine. All products serve Chinese entrepreneurs expanding globally.
+CrossWave is an AI Globalization Stack — a FastAPI app (port 9999) with mounted sub-apps for HQ admin, BFFs, and shared services, all sitting in front of a Polsia Fork agent engine. Serves as the company's AI OS / neural center.
 
-**Two FastAPI apps, one Docker container.** Both run via `docker-start.sh` as separate uvicorn processes inside the same container (ports 9999 and 13001).
+**Single FastAPI app** (`app/main.py:create_app()`) with HQ mounted at `/hq`, product BFFs at `/bridge`, `/blog`, `/deploy`. All behind one port.
 
-## Product line (at a glance)
+## Product line
 
 | Product | Role |
 |---------|------|
@@ -18,97 +18,81 @@ CrossWave is an AI Globalization Stack — a FastAPI BFF/website layer (port 999
 ## Key commands
 
 ```bash
-# Install dependencies (uv — not pip)
-uv sync --frozen --no-dev
-
-# Lint
+uv sync --all-extras
+uv run pytest tests/ hq/tests/ -q
 uv run ruff check app/ hq/ scripts/
-
-# Type check
-uv run mypy app/ hq/
-
-# Run all tests (parallel)
-uv run pytest -n auto -q --cov=app --cov=hq --cov-report=term-missing --tb=short
-
-# Run only core tests
-uv run pytest tests/ -q
-
-# Run only HQ tests
-uv run pytest hq/tests/ -q
-
-# Run single test file
-uv run pytest tests/test_routes.py -q -x
-
-# Local dev (main app only)
-uv run uvicorn app.main:app --reload
-
-# Local dev (HQ bridge only)
-uv run uvicorn hq.server:app --host 0.0.0.0 --port 13001 --reload
-
-# Full Docker stack
-docker compose up -d
-
-# Docker with hot-reload mounts
-docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+uv run uvicorn app.main:app --reload          # unified app on :9999
+docker compose up -d                          # full stack
 ```
 
-## Architecture
+## Architecture — AI OS 4 Layers
 
-### Main app (`app/`)
-- FastAPI application factory in `app/main.py`
-- Routes split into domain modules in `app/domains/`: page_routes, proxy_routes, blog_proxy, mcp_routes
-- Polsia client (`app/services/polsia_client.py`) proxies requests to the Polsia Fork backend
-- MCP protocol (JSON-RPC 2.0 over SSE) at `/mcp/sse` and `/mcp/message`
-- Settings via pydantic-settings (`app/config.py`) — reads `.env` file, fail-fast on validation
+### Layer 1: Data (Phase A)
+- **NocoBase** (PostgreSQL) is the sole data store — CACHE was removed in Step 5.
+- `hq/polsia_bridge.py` syncs Polsia Fork data to NocoBase collections.
+- `hq/nocobase_client.py` reads from NocoBase for all HQ endpoints.
 
-### HQ bridge (`hq/`)
-- Separate FastAPI app in `hq/server.py` with 11 domain modules
-- **Auth**: All HQ routes (except `/health`, `/login`, `/portal/*`, `/static`, `/api/hq/auth`, `/api/hq/models`) require `X-HQ-Token` header. Session cookie fallback via `itsdangerous`.
-- **Shared state**: `hq/domains/data.py` contains a `CACHE` dict — this is the HQ's "database" (not persisted). Syncs from Polsia Fork's SQLite DB every 30 minutes.
-- Auth token auto-generated if `HQ_AUTH_TOKEN` env var is not set (prints to stdout on first boot).
+### Layer 2: Plugin Registry (Phase B)
+- `hq/plugin_registry/` — `CrossWavePlugin` base class, `PluginRegistry` singleton.
+- 5 products auto-register on startup: CrossBridge, CrossBlog, CrossDeploy, Polsia, NocoBase.
+- 60s health-check loop. REST API at `/api/hq/plugins`.
 
-### Products (`products/`)
-- CrossBridge: standalone Flask app, live on Railway
-- CrossBlog: `ai-blog-engine/` submodule, FastAPI, Docker
-- CrossDeploy: `products/deploy/`, Docker
+### Layer 3: Event Bus (Phase C)
+- `hq/event_bus/` — `EventBus` singleton, pub/sub with SSE stream.
+- Plugin lifecycle events auto-published. SSE at `/api/hq/events`.
 
-## Testing quirks
+### Layer 4: MCP Standard (Phase D)
+- `hq/mcp_server.py` — 10 MCP tools on SSE transport at `/api/hq/mcp/`.
+- Tools: plugin CRUD, event publish, system status, NocoBase queries.
 
-- **`tests/test_routes.py`** uses a **module-level** `TestClient(app)` — not a fixture. All other test files use fixtures.
-- **HQ tests** (`hq/tests/`) use `conftest.py` which sets `POLSIA_DB=/tmp/crosswave-test-polsia.db` and `HQ_AUTH_TOKEN=test-hq-token`. Fixtures: `app`, `client`, `auth_headers`, `auth_client`, `reset_cache`.
-- `reset_cache` autouse fixture populates `CACHE` with test data before each test and clears after.
-- `pytest.ini` has `asyncio_mode = auto`, testpaths = `tests hq/tests`, addopts = `--tb=short -q`.
-- Coverage minimum: 60% (`fail_under = 60`).
-- CI runs `pytest -n auto` (parallel) with coverage. CI does NOT install dev dependencies (`--no-dev`).
+### Workflow Engine
+- `hq/workflows/` — Trigger→condition→action patterns. Sync-complete→refresh-health built-in.
+- REST API at `/api/hq/workflows`.
 
-## Framework/toolchain quirks
+### Shared Auth
+- `app/core/auth/` — JWT (HS256) with `create_token`/`verify_token`, `require_jwt`/`optional_jwt` Dependencies.
+- Login at `/api/auth/login`, verify at `/api/auth/verify`.
 
-- **Package manager**: `uv` (not pip). Lockfile: `uv.lock`. Dependencies split: `pyproject.toml` has base + dev extras, `requirements.txt` has a subset for Docker (minimal).
-- **Python**: 3.11+ required.
-- **Linter**: ruff, line-length=100, all rules except E501 (`ignore = ["E501"]`).
-- **Type checker**: mypy, non-strict (`strict = false`, `ignore_missing_imports = true`).
-- **Docker base**: `python:3.12-slim`, non-root user `crosswave`, multi-stage in docker-start.sh.
-- **LLMs**: Only DeepSeek-compatible API endpoints (httpx async). Use `POLSIA_MOCK=true` or `LLM_PROVIDER_MOCK=true` to stub LLM calls.
+### Monorepo
+- `packages/crosswave-core/`, `packages/crosswave-auth/` with editable installs.
 
-## Files/dirs an agent must know
+## Routes
+
+| Prefix | App | Auth |
+|--------|-----|------|
+| `/` | Main website (page_routes, proxy_routes, blog_proxy, mcp_routes) | None |
+| `/hq/` | HQ admin (dashboard, employees, orders, plugins, events, workflows) | Session cookie or X-HQ-Token |
+| `/api/auth/` | Shared JWT auth | None (login) / Bearer (verify) |
+| `/api/gateway/` | Health aggregator | None |
+| `/bridge/` | CrossBridge BFF | JWT |
+| `/blog/` | CrossBlog BFF | JWT |
+| `/deploy/` | CrossDeploy BFF | JWT |
+
+## Auth
+- HQ: `require_session()` checks cookie → falls back to `require_token()` (X-HQ-Token header).
+- BFFs: `require_jwt()` expects `Authorization: Bearer <token>`.
+- Token from `.env` (`HQ_AUTH_TOKEN`) or auto-generated (prints warning).
+
+## Testing
+
+- Dependencies: `uv sync --all-extras` (includes pytest, etc.).
+- `reset_cache` fixture **removed** in Step 5 — NocoBase is the sole data source.
+- NB_DISABLED=true in tests → NocoBase unavailable → routes return empty data.
+- Core tests: `tests/`, HQ tests: `hq/tests/`.
+- Coverage: `fail_under = 60`, source: `["app", "hq", "packages"]`.
+
+## Files/dirs
 
 | Path | What |
 |------|------|
-| `pyproject.toml` | Project metadata, deps, lint, test, coverage config |
-| `app/main.py` | Application factory, route registration |
-| `app/config.py` | Pydantic settings (reads `.env`) |
-| `hq/server.py` | HQ bridge factory |
-| `hq/domains/data.py` | `CACHE` dict, Polsia sync, service monitor |
-| `hq/domains/middleware.py` | `require_token` auth dependency |
-| `docker-start.sh` | Boots both apps in one container |
-| `docker-compose.yml` | Full production stack (10+ services) |
-| `crossblog.railway.toml` | CrossBlog Railway deploy config (port 8000) |
-| `railway.toml` | Main app Railway deploy config (port 9999) |
-| `CROSSWAVE_OPS.md` | Operations manual (deploy, maintain, recover) |
-| `COMPANY_STRATEGY.md` | Product strategy, pricing, positioning |
-| `polsia-fork/CLAUDE.md` | Agent platform instructions |
-
-## Known issues (preserve)
-
-- CrossBridge DB path hardcodes `../ai-content-bridge/content_bridge.db` — this is a sibling directory, not a submodule.
-- `hq/domains/data.py` generates a random `AUTH_TOKEN` if `HQ_AUTH_TOKEN` is unset (warning printed). In production, always set this explicitly.
+| `app/main.py` | Application factory, mounts HQ+BFFs |
+| `app/config.py` | Pydantic settings |
+| `hq/server.py` | HQ bridge sub-app factory |
+| `hq/domains/` | HQ routes (api_routes, page_routes, monitor_routes, etc.) |
+| `hq/plugin_registry/` | Plugin system (contract + registry + routes) |
+| `hq/event_bus/` | Event bus (bus + models + routes) |
+| `hq/workflows/` | Workflow engine |
+| `hq/mcp_server.py` | MCP tools |
+| `packages/` | Monorepo shared packages |
+| `docs/` | Design docs (auth-design, plugin-sdk, ARCHITECTURE) |
+| `.github/workflows/ci.yml` | GitHub Actions (lint→test→build) |
