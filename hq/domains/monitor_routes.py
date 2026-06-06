@@ -8,13 +8,13 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from hq.domains.data import CACHE, DB_PATH, SERVICES_TO_CHECK, _check_svc
+from hq.domains.data import DB_PATH, SERVICES_TO_CHECK, _check_svc
 
 router = APIRouter(tags=["monitor"])
 
 
 async def _kpi_counts() -> dict:
-    """Read dashboard KPIs from NocoBase first, fall back to CACHE."""
+    """Read dashboard KPIs from NocoBase."""
     try:
         from hq.nocobase_client import list_all
         emps = await list_all("employees")
@@ -28,12 +28,7 @@ async def _kpi_counts() -> dict:
             "external_orders": len(ext_orders),
         }
     except Exception:
-        return {
-            "employees": len(CACHE.get("employees", [])),
-            "orders": len(CACHE.get("orders", [])),
-            "leads": len(CACHE.get("leads", [])),
-            "external_orders": len(CACHE.get("external_orders", [])),
-        }
+        return {"employees": 0, "orders": 0, "leads": 0, "external_orders": 0}
 
 
 async def event_stream():
@@ -202,9 +197,4 @@ async def portal_order(order_id: int):
             return _format_portal_order(nb_match, stage_order, stage_idx)
     except Exception:
         pass
-    # Fall back to CACHE
-    orders = CACHE.get("external_orders", [])
-    order = next((o for o in orders if o["id"] == order_id), None)
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    return _format_portal_order(order, stage_order, stage_idx)
+    raise HTTPException(status_code=404, detail="Order not found")

@@ -1,7 +1,7 @@
 """CrossWave HQ Bridge Server.
 
 Split into domain modules under hq/domains/:
-  - data.py:         Shared state (CACHE), Polsia sync, service monitor
+  - data.py:         Polsia sync, service monitor (no CACHE)
   - middleware.py:   require_token auth, app_lifespan
   - page_routes.py:  HTML page routes (/dashboard, /employees, etc.)
   - api_routes.py:   Data API routes (/api/hq/summary, /api/hq/orders, etc.)
@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.exceptions import register_exception_handlers
 from hq.domains.api_routes import router as api_router
 from hq.domains.auth_routes import router as auth_router
-from hq.domains.data import CACHE  # noqa: F401 — imported by tests
+# CACHE removed in Step 5 — data now goes directly to NocoBase
 from hq.domains.middleware import app_lifespan, require_token
 from hq.domains.model_router_routes import router as model_router_router
 from hq.domains.monitor_routes import router as monitor_router
