@@ -73,12 +73,18 @@ def create_app() -> FastAPI:
     from app.domains.mcp_routes import router as mcp_router
     from app.domains.page_routes import router as page_router
     from app.domains.proxy_routes import router as proxy_router
+    from bffs.bridge import router as bridge_router
+    from bffs.blog import router as blog_bff_router
+    from bffs.deploy import router as deploy_router
 
     app.include_router(auth_router)
     app.include_router(page_router)
     app.include_router(proxy_router)
     app.include_router(blog_router)
     app.include_router(mcp_router)
+    app.include_router(bridge_router)
+    app.include_router(blog_bff_router)
+    app.include_router(deploy_router)
 
     return app
 
