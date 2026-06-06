@@ -40,7 +40,6 @@ async def event_stream():
     """SSE event stream: pushes dashboard KPI updates every 5 seconds."""
     while True:
         try:
-            # Quick service health check (non-blocking gather)
             tasks = [_check_svc(s["name"], s["url"]) for s in SERVICES_TO_CHECK]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             services = []
@@ -50,7 +49,6 @@ async def event_stream():
                 else:
                     services.append(r)
 
-            # Dashboard heartbeat event with NocoBase KPIs
             kpi = await _kpi_counts()
             data = json.dumps({
                 "type": "heartbeat",
@@ -59,6 +57,9 @@ async def event_stream():
                 "kpi": kpi,
             })
             yield f"data: {data}\n\n"
+
+            # Plugin status event every 30 seconds
+            yield f"data: {json.dumps({'type': 'plugins', 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
         await asyncio.sleep(5)
