@@ -155,31 +155,46 @@ async def get_summary() -> dict:
 
 # ─── Domain-specific readers ──────────────────────────────────────────────────
 
+async def _publish_access(collection: str) -> None:
+    try:
+        from hq.event_bus.bus import EventBus
+        await EventBus().publish("data.read", "nocobase", {"collection": collection})
+    except Exception:
+        pass
+
+
 async def get_employees() -> list[dict]:
+    await _publish_access("employees")
     return await list_all("employees")
 
 
 async def get_lines() -> list[dict]:
+    await _publish_access("business_lines")
     return await list_all("business_lines")
 
 
 async def get_external_orders() -> list[dict]:
+    await _publish_access("external_orders")
     return await list_all("external_orders")
 
 
 async def get_leads() -> list[dict]:
+    await _publish_access("leads")
     return await list_all("leads")
 
 
 async def get_tasks() -> list[dict]:
+    await _publish_access("tasks")
     return await list_all("tasks")
 
 
 async def get_proposals() -> list[dict]:
+    await _publish_access("proposals")
     return await list_all("proposals")
 
 
 async def get_expenses() -> list[dict]:
+    await _publish_access("expenses")
     rows = await list_all("expenses")
     return [
         {"amount": r.get("amount_cents", 0) / 100.0 if r.get("amount_cents") else 0,
@@ -191,6 +206,7 @@ async def get_expenses() -> list[dict]:
 
 
 async def get_revenue_history() -> list[dict]:
+    await _publish_access("revenue_snapshots")
     rows = await list_all("revenue_snapshots")
     return [
         {"date": r.get("snapshot_date", ""),

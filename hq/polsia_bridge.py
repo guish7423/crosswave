@@ -286,6 +286,19 @@ async def sync():
                     "active_subscribers": r[2] or 0,
                 })
 
+        # ── Publish sync complete event ───────────────────────────
+        try:
+            from hq.event_bus.bus import EventBus
+            bus = EventBus()
+            await bus.publish("sync.complete", "polsia_bridge", {
+                "collections": ["employees", "business_lines", "external_orders",
+                                "platform_connections", "leads", "tasks",
+                                "proposals", "expenses", "revenue_snapshots"],
+                "timestamp": time.time(),
+            })
+        except Exception:
+            pass
+
         print("[polsia_bridge] sync complete")
 
 async def main():
