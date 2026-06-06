@@ -70,6 +70,7 @@ def create_app() -> FastAPI:
     # ── Register routes from domains ───────────────────────────────────
     from app.core.auth.routes import router as auth_router
     from app.domains.blog_proxy import router as blog_router
+    from app.domains.gateway_routes import router as gateway_router
     from app.domains.mcp_routes import router as mcp_router
     from app.domains.page_routes import router as page_router
     from app.domains.proxy_routes import router as proxy_router
@@ -81,6 +82,7 @@ def create_app() -> FastAPI:
     app.include_router(page_router)
     app.include_router(proxy_router)
     app.include_router(blog_router)
+    app.include_router(gateway_router)
     app.include_router(mcp_router)
     app.include_router(bridge_router)
     app.include_router(blog_bff_router)
