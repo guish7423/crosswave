@@ -28,6 +28,7 @@ from hq.domains.page_routes import router as page_router
 from hq.domains.stripe_routes import router as stripe_router
 from hq.event_bus.routes import router as event_bus_router
 from hq.plugin_registry.routes import router as plugin_router
+from hq.workflows.routes import router as workflow_router
 
 
 def create_app() -> FastAPI:
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
     app.include_router(event_bus_router)
     app.include_router(hq_mcp_router)
     app.include_router(auth_router)
+    app.include_router(workflow_router)
 
     return app
 
