@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -23,6 +24,14 @@ class PluginRegistry:
 
     # ── Registration ──────────────────────────────────────────────────────
 
+    def _publish_fire_and_forget(self, event_type: str, data: dict):
+        try:
+            loop = asyncio.get_running_loop()
+            from hq.event_bus.bus import EventBus  # noqa: PLC0415
+            loop.create_task(EventBus().publish(event_type, self.__class__.__name__, data))
+        except (RuntimeError, Exception):
+            pass
+
     def register(self, req: PluginRegisterRequest) -> PluginInfo:
         now = datetime.now(timezone.utc).isoformat()
         plugin_id = req.metadata.get("id", uuid.uuid4().hex[:12])
@@ -38,10 +47,15 @@ class PluginRegistry:
             metadata=req.metadata,
         )
         self._plugins[plugin_id] = info
+        self._publish_fire_and_forget("plugin.registered", {"id": plugin_id, "name": req.name, "capabilities": req.capabilities})
         return info
 
     def unregister(self, plugin_id: str) -> bool:
-        return self._plugins.pop(plugin_id, None) is not None
+        info = self._plugins.pop(plugin_id, None)
+        if info:
+            self._publish_fire_and_forget("plugin.deregistered", {"id": plugin_id, "name": info.name})
+            return True
+        return False
 
     # ── Queries ───────────────────────────────────────────────────────────
 
