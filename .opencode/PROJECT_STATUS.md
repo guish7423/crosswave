@@ -1,22 +1,45 @@
-# PROJECT_STATUS.md — CrossWave v0.7.0 (All Phases Complete)
+# PROJECT_STATUS.md — CrossWave v0.8.0 (Polsia API Client)
 
-Last updated: 2026-06-05
+Last updated: 2026-06-06
 
-## Current Phase: 5a/5b/5c/6/7/8 — All Complete ✅
+## Current Phase: Feature Complete ✅
 
-### v0.7.0 Deliverables
+### Feature: Polsia Fork API Client (v0.8.0)
 
-| Phase | Feature | Status |
-|-------|---------|--------|
-| 5a | Merge conflict fix (15 in 3 HTML files) | ✅ |
-| 5a | SSE real-time endpoint `/api/hq/events` | ✅ |
-| 5a | Dashboard EventSource auto-refresh | ✅ |
-| 5a | CrossBlog railway.toml | ✅ |
-| 5b | 21 new tests (polsia_bridge 10, weekly_report 6, scheduler 5) | ✅ |
-| 5c | Version 0.7.0, ruff fixes, blog_proxy/mcp/protocol fixes | ✅ |
-| **6** | **NocoBase API client + `/api/hq/nocobase/*` routes + 3 tests** | **✅ NEW** |
-| **7** | **CrossBlog Docker build verified + deploy docs** | **✅ NEW** |
-| **8** | **ARCHITECTURE.md v1.1 update** | **✅ NEW** |
+| Task | Description | Status |
+|------|-------------|--------|
+| 1 | PolsiaClient class (9 API methods) + 13 unit tests | ✅ |
+| 2 | Integrate into data.py sync (API-first with SQLite fallback) | ✅ |
+| 3 | Mock fixture + integration test | ✅ |
+| 4 | Final verification (lint + test + typecheck) | ✅ |
+| **Feature** | **Polsia Fork API Client** | **✅ COMPLETE** |
+
+### Key Deliverables
+
+| File | What |
+|------|------|
+| `hq/polsia_client.py` | PolsiaClient class — 9 API methods via httpx.AsyncClient, X-API-Key auth, env config |
+| `hq/domains/data.py` | `polsia_sync_via_api()` — API-first sync; `_try_nocobase_sync()` helper; graceful SQLite fallback |
+| `hq/tests/test_polsia_client.py` | 14 tests (13 unit + 1 integration with mock) |
+| `hq/tests/conftest.py` | `mock_polsia_client` opt-in fixture (7 endpoints) |
+
+### Architecture (v0.8.0)
+
+```
+hq/
+├── server.py                    # 11 domain module factory
+├── domains/
+│   ├── data.py                  # CACHE + Polsia sync (API-first, SQLite fallback)
+│   ├── middleware.py            # Auth + lifespan
+│   └── ... (11 domain modules)
+├── polsia_client.py             # ← Polsia Fork REST API client (NEW)
+├── nocobase_client.py           # NocoBase REST client
+├── polsia_bridge.py             # Sync Polsia→NocoBase
+├── tests/ (85+ tests)
+└── ...
+```
+
+Sync architecture: `polsia_sync()` → tries `polsia_sync_via_api()` (REST) → on fail falls back to direct SQLite read. NocoBase bridge triggered after successful API sync.
 
 ### Test Matrix
 
@@ -24,51 +47,25 @@ Last updated: 2026-06-05
 |-------|-------|--------|
 | Core (tests/) | 85 | ✅ |
 | HQ API + Pages | 55 | ✅ |
-| NocoBase Routes | 3 | **✅ NEW** |
+| Polsia Client | 14 | **✅ NEW** |
 | Polsia Bridge | 10 | ✅ |
 | Weekly Report | 6 | ✅ |
 | Scheduler | 5 | ✅ |
 | Auth | 7 | ✅ |
 | Stripe | 2 | ✅ |
 | Model Router | 23 + 2 skip | ✅ |
-| **Total** | **198** | **✅ (2 skip)** |
+| Other HQ | 9 | ✅ |
+| **Total** | **216** | **✅ (2 skip)** |
 
-### Architecture (v0.7.0)
+### 产品线状态
 
-```
-hq/
-├── server.py                    # 11 domain module factory
-├── domains/
-│   ├── data.py                  # CACHE + Polsia sync
-│   ├── middleware.py            # Auth + lifespan
-│   ├── page_routes.py          # 11 HTML pages
-│   ├── api_routes.py           # Data API endpoints
-│   ├── monitor_routes.py       # Health + SSE + evolution
-│   ├── nocobase_routes.py      # ← NEW: NocoBase read path
-│   ├── model_router_routes.py
-│   ├── auth_routes.py
-│   └── stripe_routes.py
-├── nocobase_client.py          # ← NEW: NocoBase REST client
-├── model_router/               # LLM Provider abstraction
-├── polsia_bridge.py            # Sync Polsia→NocoBase
-├── weekly_report.py
-├── scheduler.py
-├── scripts/
-│   └── test-provider.sh
-├── tests/ (70 tests)
-└── *.html (18 pages)
-```
-
-### Product Line Status
-
-| Product | Deploy | Payment | Notes |
-|---------|--------|---------|-------|
+| 产品 | 部署 | 支付 | 备注 |
+|------|------|------|------|
 | CrossBridge | ✅ Railway | 🔲 | Live |
-| CrossBlog | railway.toml ready | 🔲 | Docker verified |
-| CrossDeploy | ❌ | 🔲 | Placeholder |
-| CrossWave HQ | ❌ | N/A | Local only |
-| Polsia Fork | ❌ | N/A | |
-| HiveMind | ❌ | N/A | Tauri v2 |
+| CrossBlog | railway.toml 就绪 | 🔲 | Docker 已验证 |
+| CrossDeploy | ❌ | 🔲 | v0.1.0 |
+| CrossWave HQ | ❌ | N/A | 本地运行 |
+| Polsia Fork | ❌ | N/A | submodule |
 
 ### Next Steps (User Action Required)
 1. Configure `.env` secrets (Stripe, Sentry, Admin password)

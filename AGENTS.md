@@ -14,7 +14,6 @@ CrossWave is an AI Globalization Stack — a FastAPI BFF/website layer (port 999
 | CrossBlog | SEO blog engine (ai-blog-engine/ submodule) |
 | CrossDeploy | Deployment service (products/deploy/) |
 | Polsia Fork | 10-agent backend platform (polsia-fork/ submodule) |
-| HiveMind | Tauri v2 desktop client (future) |
 
 ## Key commands
 

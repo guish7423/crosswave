@@ -6,7 +6,7 @@
 
 ## 公司全貌
 
-CrossWave 是一家 **AI-Native 技术公司**，通过 6 条产品线覆盖 AI 翻译 → 内容生成 → 自动化运营 → 部署托管 → 桌面客户端。
+CrossWave 是一家 **AI-Native 技术公司**，通过 5 条产品线覆盖 AI 翻译 → 内容生成 → 自动化运营 → 部署托管。
 
 ```
 CrossWave 🌊 (Brand Umbrella)
@@ -14,8 +14,7 @@ CrossWave 🌊 (Brand Umbrella)
 ├── 📝 CrossBlog     — SEO博客 SaaS         [✅ 就绪, 待部署]
 ├── 🏢 Polsia Fork   — 10-Agent 后端平台    [✅ 完成, 57+67 tests]
 ├── 📊 CrossWave     — BFF 管理面板+官网    [✅ 完成, 632行官网+5HTMX]
-├── 🚀 CrossDeploy   — 代部署服务 ¥2K-5K    [✅ 就绪, 官网已含]
-└── 🐝 HiveMind       — Tauri v2 桌面客户端  [✅ 完成, ACUI 入仓]
+└── 🚀 CrossDeploy   — 代部署服务 ¥2K-5K    [✅ 就绪, 官网已含]
 ```
 
 ---
@@ -112,16 +111,6 @@ uvicorn hq.server:hq_app --port 13001  # HQ 后台 (另一终端)
 - **Docker**: crossdeploy 容器准备好 (`docker compose up crossdeploy`)
 - **部署到 Railway**: `cd products/deploy && railway up`
 - **集成**: HQ Dashboard 可通过 API 获取 CrossDeploy 订单数据
-
-### 🐝 HiveMind (桌面客户端)
-
-- **状态**: ✅ 完成，GitHub Remote 已配置
-- **仓库**: `guish7423/hivemind` (private)
-- **位置**: `projects/hivemind/`
-- **技术栈**: Tauri v2 + React 19 + Rust + ACUI
-- **验证**: `cargo test --lib` (49/49 ✅), `tsc --noEmit` (0 errors)
-- **构建**: `npm run tauri build`
-- **注意**: 独立产品线，不直接参与 CrossWave 运营
 
 ---
 
