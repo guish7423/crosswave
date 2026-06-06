@@ -35,7 +35,7 @@ async def get_token(client: httpx.AsyncClient) -> str:
     return _token
 
 
-async def list_all(collection: str, page_size: int = 100) -> list[dict]:
+async def list_all(collection: str, page_size: int = 100, org_id: str | None = None) -> list[dict]:
     """Fetch all records from a NocoBase collection."""
     if _NB_DISABLED:
         return []
