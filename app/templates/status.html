@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>CrossWave Status</title>
+<style>body{font-family:-apple-system,sans-serif;max-width:800px;margin:40px auto;padding:0 20px}
+h1{color:#2563eb}.service{margin:8px 0;padding:12px;border-radius:6px;background:#f8fafc}
+.up{color:#16a34a}.down{color:#dc2626}.degraded{color:#d97706}</style></head>
+<body>
+<h1>CrossWave Status</h1>
+<div id="status">Loading...</div>
+<script>
+fetch('/api/gateway/health').then(r=>r.json()).then(d=>{
+  let html='<h2>'+d.gateway+'</h2>';
+  for(const[name,s]of Object.entries(d.services))
+    html+='<div class="service"><strong>'+name+'</strong>: <span class="'+s.status+'">'+s.status+'</span></div>';
+  document.getElementById('status').innerHTML=html;
+});
+</script>
+</body>
+</html>

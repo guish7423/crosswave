@@ -3,10 +3,12 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.polsia_client import polsia_client
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 router = APIRouter(tags=["pages"])
 
@@ -75,11 +77,14 @@ async def dashboard(request: Request):
             "summary": summary if isinstance(summary, dict) else {},
             "agents": agents if isinstance(agents, list) else [],
             "activity": activity if isinstance(activity, list) else [],
+            "activity": activity if isinstance(activity, list) else [],
         },
     )
 
 
-@router.get("/agents", response_class=HTMLResponse)
+@router.get("/status")
+async def status_page():
+    return FileResponse(BASE_DIR / "templates" / "status.html")
 async def agent_status(request: Request):
     agents = await polsia_client.get_agents_status()
     activity = await polsia_client.get_activity(limit=30)
