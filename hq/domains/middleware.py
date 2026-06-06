@@ -8,7 +8,7 @@ from itsdangerous import URLSafeTimedSerializer
 
 from app.config import settings
 from hq.domains.data import AUTH_TOKEN, periodic_sync
-from hq.plugin_registry.models import PluginRegisterRequest
+from hq.plugin_registry.plugins import ALL_PRODUCT_PLUGINS
 
 _session_serializer = URLSafeTimedSerializer(settings.secret_key, salt="admin-session")
 
@@ -36,15 +36,8 @@ async def app_lifespan(app: FastAPI):
     from hq.plugin_registry import get_registry
 
     registry = get_registry()
-    products = [
-        {"name": "CrossBridge", "description": "AI translation SaaS", "base_url": "https://crossbridge.example.com", "capabilities": ["translation", "api"]},
-        {"name": "CrossBlog", "description": "SEO blog engine", "base_url": settings.crossblog_url, "capabilities": ["content", "seo"]},
-        {"name": "CrossDeploy", "description": "Deployment service", "base_url": "http://localhost:8002", "capabilities": ["deployment", "infra"]},
-        {"name": "Polsia Fork", "description": "10-agent backend platform", "base_url": settings.polsia_base_url, "capabilities": ["agents", "orchestration", "llm"]},
-        {"name": "NocoBase", "description": "Low-code data platform", "base_url": "http://localhost:13000", "capabilities": ["database", "cms"]},
-    ]
-    for p in products:
-        registry.register(PluginRegisterRequest(**p))
+    for p in ALL_PRODUCT_PLUGINS:
+        registry.register_plugin(p)
 
     asyncio.create_task(periodic_sync())
     asyncio.create_task(_health_loop(registry))

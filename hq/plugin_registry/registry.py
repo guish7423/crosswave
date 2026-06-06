@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from .contract import CrossWavePlugin
 from .models import PluginInfo, PluginRegisterRequest, PluginStatus
 
 import httpx
@@ -21,6 +22,30 @@ class PluginRegistry:
 
     def __init__(self) -> None:
         self._plugins: dict[str, PluginInfo] = {}
+
+    # ── Plugin contract registration ─────────────────────────────────────
+
+    def register_plugin(self, plugin: CrossWavePlugin) -> PluginInfo:
+        """Register a plugin via the CrossWavePlugin contract.
+
+        Calls the plugin's on_register lifecycle hook after registration.
+        """
+        req = plugin.to_register_request()
+        info = self.register(req)
+        plugin._info = info
+        try:
+            asyncio.get_running_loop()
+            asyncio.create_task(plugin.on_register())
+        except RuntimeError:
+            pass
+        return info
+
+    def unregister_plugin(self, plugin_id: str) -> bool:
+        removed = self._plugins.pop(plugin_id, None)
+        if removed:
+            self._publish_fire_and_forget("plugin.deregistered", {"id": plugin_id, "name": removed.name})
+            return True
+        return False
 
     # ── Registration ──────────────────────────────────────────────────────
 

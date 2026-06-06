@@ -1,13 +1,7 @@
-# ELF Learning: Phase A — NocoBase-First Data Layer
+## Type: golden_rule
+**Rule**: When connecting an existing data pipeline (sync/read) to a new event system, use the "fire-and-forget" pattern — wrap event publishing in a try/except that silently catches failures. The event bus should never block the primary data flow.
+**Files**: hq/polsia_bridge.py:291, hq/nocobase_client.py:160
+**Rationale**: An event bus is a non-critical side-effect. If it fails (not installed, broken, not imported), the core data sync/read must still succeed.
 
 ## Type: learning
-**Pattern**: CACHE→NocoBase migration of HQ data layer
-**Key decisions**:
-- NocoBase-first, CACHE-fallback strategy (safe migration pattern)
-- NB_DISABLED env var for test isolation
-- polsia_bridge sync expanded to 5 new collections (leads/tasks/proposals/expenses/revenue_snapshots)
-- nocobase_client mirrors CACHE shape for seamless fallback
-
-## Type: golden_rule
-**Rule**: When migrating from in-memory CACHE to database, use "new-first, old-fallback" pattern — not "old-first, new-fallback". This surfaces DB issues immediately while keeping the system running.
-**File**: hq/domains/api_routes.py, hq/domains/monitor_routes.py, hq/nocobase_client.py
+**Learning**: CrossWave AI OS now has 4 complete layers: NocoBase data layer (Phase A), Plugin Registry (Phase B), Event Bus (Phase C), MCP tools (Phase D). Event stream connected to real product data flows (polsia_bridge sync + nocobase_client reads). Dashboard shows plugin status and event stream. v0.9.3.
