@@ -1,39 +1,28 @@
 # CrossWave PROJECT_STATUS.md
 
-## 最新状态 (v0.9.3)
-**git**: 05b88c5 (`feat: event stream — polsia_bridge + nocobase_client publish to Event Bus`)
-**AI OS**: 四层架构全面就绪 ✅
+## 最新状态 (Phase R 完成)
+**版本**: v1.0.0
+**git**: latest → origin/main
+**测试**: Core ✅, HQ ✅, CrossDeploy 11 ✅
 
-## AI OS 架构
-
-```
-┌─────────────────────────────────────────┐
-│  Phase D: MCP Standard (10 tools)       │
-├─────────────────────────────────────────┤
-│  Phase C: Event Bus (publish/subscribe)  │
-├─────────────────────────────────────────┤
-│  Phase B: Plugin Registry (5 products)   │
-├─────────────────────────────────────────┤
-│  Phase A: NocoBase-First Data Layer      │
-└─────────────────────────────────────────┘
-```
+## Phase R 完成项
+| 任务 | 状态 | 说明 |
+|------|------|------|
+| R1 代码质量 | ✅ | ruff 39→0, v1.0.0 tag |
+| R2 CI/CD | ✅ | GitHub Actions (lint→test→build) |
+| R3 测试覆盖 | ✅ | CrossDeploy 依赖安装+测试通过 |
+| R4 共享 Auth | ✅ | docs/auth-design.md |
 
 ## 运行中服务
-- hq-nocobase-1 :13000→80
-- hq-postgres-1 (98 tables, healthy)
-- crosswave-crossblog :9000
-- searxng
-- redis :6379
+- hq-nocobase-1, hq-postgres-1 (98 tables)
+- crosswave-crossblog (:9000)
+- searxng, redis (host :6379)
 
-## 产品线
-| 产品 | 状态 |
-|------|------|
-| CrossBridge | Live (Railway) |
-| CrossBlog | Docker ready (Railway config) |
-| CrossDeploy | v0.1.0 (Docker + Railway) |
-| HQ/MCP | v0.9.3 (SSE + NocoBase + Plugin + Event + MCP) |
+## 统一入口
+- 官网: http://localhost:9999
+- 后台: http://localhost:9999/hq/dashboard (Token: crosswave-admin-2026-dev-token)
 
-## 待办
-- Step 5: CACHE 数据依赖清理
-- 生产部署: SSL/域名/Stripe/SMTP/Sentry
-- Ruff 清理 + 覆盖率提升
+## 下一步 (Phase S)
+S1: 共享 Auth 实现 (JWT)
+S2: per-product BFFs
+S3: API 网关
