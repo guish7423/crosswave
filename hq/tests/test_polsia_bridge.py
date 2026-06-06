@@ -195,9 +195,8 @@ async def test_sync_with_mocked_db():
 
     import hq.polsia_bridge as pb
 
-    Pf = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    db_path = Pf.name
-    Pf.close()
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as pf:
+        db_path = pf.name
 
     try:
         # Create a minimal Polsia-like DB with one task

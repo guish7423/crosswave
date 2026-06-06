@@ -46,29 +46,35 @@ async def test_run_sync_prints_stderr():
         return_value=(b"sync ok", b"warning: slow query")
     )
 
-    with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
-        with patch("builtins.print") as mock_print:
-            result = await run_sync()
-            assert result is True
-            # Should print both stdout and stderr
-            assert mock_print.called
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        patch("builtins.print") as mock_print,
+    ):
+        result = await run_sync()
+        assert result is True
+        # Should print both stdout and stderr
+        assert mock_print.called
 
 
 @pytest.mark.asyncio
 async def test_main_one_shot():
     """main() runs sync once and exits."""
-    with patch("hq.scheduler.run_sync", return_value=True):
-        with patch.object(sys, "argv", ["scheduler.py"]):
-            with pytest.raises(SystemExit) as exc:
-                await scheduler_main()
-            assert exc.value.code == 0
+    with (
+        patch("hq.scheduler.run_sync", return_value=True),
+        patch.object(sys, "argv", ["scheduler.py"]),
+        pytest.raises(SystemExit) as exc,
+    ):
+        await scheduler_main()
+        assert exc.value.code == 0
 
 
 @pytest.mark.asyncio
 async def test_main_with_interval_flag():
     """main() parses --interval flag."""
-    with patch("hq.scheduler.run_sync", return_value=True):
-        with patch.object(sys, "argv", ["scheduler.py", "--interval", "60"]):
-            with pytest.raises(SystemExit) as exc:
-                await scheduler_main()
-            assert exc.value.code == 0
+    with (
+        patch("hq.scheduler.run_sync", return_value=True),
+        patch.object(sys, "argv", ["scheduler.py", "--interval", "60"]),
+        pytest.raises(SystemExit) as exc,
+    ):
+        await scheduler_main()
+        assert exc.value.code == 0

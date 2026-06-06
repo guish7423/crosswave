@@ -1,0 +1,14 @@
+{
+  "status": "done",
+  "origin": "plan",
+  "planTitle": "Integrate PolsiaClient into data.py sync",
+  "dependsOn": [
+    "01-create-polsiaclient-class-with-tests"
+  ],
+  "baseCommit": "a1f4bb712532cc9b354b79232f46ef57a96d4265",
+  "schemaVersion": 1,
+  "startedAt": "2026-06-05T15:35:19.821Z",
+  "idempotencyKey": "hive-polsia-api-client-02-integrate-polsiaclient-into-datapy-sync-1",
+  "summary": "集成 PolsiaClient 到 hq/domains/data.py: (1) 添加 `polsia_sync_via_api()` — 通过 REST API 填充 CACHE (PolsiaClient 9个端点，按 endpoint 独立 try/except 优雅降级); (2) 修改 `polsia_sync()` — API 优先，失败后回退到原有的 SQLite 同步; (3) 提取 `_try_nocobase_sync()` 辅助函数; (4) 修复 E741 (l→lead)。验证: 130 PASS/2 SKIP, ruff 零错误。",
+  "completedAt": "2026-06-05T15:40:35.966Z"
+}

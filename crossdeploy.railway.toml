@@ -1,0 +1,11 @@
+[build]
+dockerfile = "products/deploy/Dockerfile"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+healthcheckPath = "/health"
+healthcheckTimeout = 10
+
+[service]
+port = 8001

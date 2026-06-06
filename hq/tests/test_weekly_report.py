@@ -16,9 +16,8 @@ from hq.weekly_report import main as report_main
 @pytest.fixture
 def polsia_db():
     """Create a temp Polsia Fork SQLite DB with realistic data."""
-    Pf = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    db_path = Pf.name
-    Pf.close()
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as pf:
+        db_path = pf.name
 
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
@@ -108,9 +107,8 @@ def test_generate_report_with_trend(polsia_db):
 
 def test_generate_report_empty_db():
     """generate_report handles empty DB gracefully."""
-    Pf = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    db_path = Pf.name
-    Pf.close()
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as pf:
+        db_path = pf.name
 
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()

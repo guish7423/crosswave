@@ -85,17 +85,17 @@ async def get_summary() -> dict:
         emp_statuses[s] = emp_statuses.get(s, 0) + 1
 
     # Line stats
-    total_mrr = sum(l.get("monthly_revenue", 0) or 0 for l in lines)
-    total_customers = sum(l.get("customer_count", 0) or 0 for l in lines)
+    total_mrr = sum(line.get("monthly_revenue", 0) or 0 for line in lines)
+    total_customers = sum(line.get("customer_count", 0) or 0 for line in lines)
     line_summaries = []
-    for l in lines:
+    for line in lines:
         line_summaries.append({
-            "name": l.get("name", l.get("slug", "unknown")),
-            "slug": l.get("slug", ""),
-            "status": l.get("status", "unknown"),
-            "health": "healthy" if l.get("status") == "active" else "warning",
-            "monthly_revenue": l.get("monthly_revenue", 0) or 0,
-            "customer_count": l.get("customer_count", 0) or 0,
+            "name": line.get("name", line.get("slug", "unknown")),
+            "slug": line.get("slug", ""),
+            "status": line.get("status", "unknown"),
+            "health": "healthy" if line.get("status") == "active" else "warning",
+            "monthly_revenue": line.get("monthly_revenue", 0) or 0,
+            "customer_count": line.get("customer_count", 0) or 0,
         })
 
     # Order stats

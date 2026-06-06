@@ -1,0 +1,59 @@
+{
+  "sessions": [
+    {
+      "sessionId": "ses_167c8016effe6NqsBwanTZdkmT",
+      "startedAt": "2026-06-05T14:37:47.103Z",
+      "lastActiveAt": "2026-06-05T15:06:23.359Z",
+      "agent": "hive-master",
+      "sessionKind": "primary",
+      "baseAgent": "hive-master",
+      "directivePrompt": "▣ DCP | -134.6K removed, +18K summary — Compression #8",
+      "replayDirectivePending": false,
+      "featureName": "polsia-api-client"
+    },
+    {
+      "sessionId": "ses_1679eb700ffevbtVrr56zT95ES",
+      "startedAt": "2026-06-05T15:22:53.187Z",
+      "lastActiveAt": "2026-06-05T15:34:44.642Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "polsia-api-client",
+      "taskFolder": "01-create-polsiaclient-class-with-tests",
+      "workerPromptPath": ".hive/features/01_polsia-api-client/tasks/01-create-polsiaclient-class-with-tests/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_167933ad7ffeUym5xALy8LrrvA",
+      "startedAt": "2026-06-05T15:35:25.841Z",
+      "lastActiveAt": "2026-06-05T15:40:35.791Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "polsia-api-client",
+      "taskFolder": "02-integrate-polsiaclient-into-datapy-sync",
+      "workerPromptPath": ".hive/features/01_polsia-api-client/tasks/02-integrate-polsiaclient-into-datapy-sync/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_1678c367affe72omvBLawg2NDO",
+      "startedAt": "2026-06-05T15:43:05.725Z",
+      "lastActiveAt": "2026-06-05T15:55:13.017Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "polsia-api-client",
+      "taskFolder": "03-add-polsiaclient-mock-fixture-for-tests",
+      "workerPromptPath": ".hive/features/01_polsia-api-client/tasks/03-add-polsiaclient-mock-fixture-for-tests/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_1677e6d53ffePk7pxw8xgAujgX",
+      "startedAt": "2026-06-05T15:58:09.243Z",
+      "lastActiveAt": "2026-06-05T16:04:36.400Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "polsia-api-client",
+      "taskFolder": "04-final-verification",
+      "workerPromptPath": ".hive/features/01_polsia-api-client/tasks/04-final-verification/worker-prompt.md"
+    }
+  ]
+}

@@ -1,14 +1,13 @@
 """CrossDeploy API client — fetches deployment orders for HQ dashboard."""
 
 import os
-from typing import Optional
 
 import httpx
 
 CROSSDEPLOY_BASE_URL = os.getenv("CROSSDEPLOY_URL", "http://localhost:8003")
 
 
-async def get_deployment_orders(status: Optional[str] = None) -> list[dict]:
+async def get_deployment_orders(status: str | None = None) -> list[dict]:
     """Fetch deployment orders from CrossDeploy API."""
     try:
         async with httpx.AsyncClient(timeout=5) as client:
